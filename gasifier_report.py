@@ -9,6 +9,7 @@ import Thermo
 import argparse
 import csv
 import subprocess
+import statsmodels.tsa.arima_model as ARIMA
 
 class GasifierReport:
     """The basic data analysis class for gasifier experiments"""
@@ -56,14 +57,20 @@ class GasifierReport:
                               ylabel='Tube Skin Temperatures ($^\circ$C)',
                               caption='Time series plot for reactor tube skin temperatures.')
         
-        self.control_plot('mass_flow_brush_feeder',10)
-        self.control_plot('temp_skin_tube_middle',10)
-        self.control_plot('temp_steam_reactor_entry',10)
-        self.control_plot('pressure_ash_knockout_vessel',10)
-        self.control_plot('CO_MS',3)
-        self.control_plot('H2_MS',3)
-        self.control_plot('CO2_MS',3)
-        self.control_plot('CH4_MS',3)
+        #Create ARIMA fits as necessary
+        ARIMA_list = ['mass_flow_brush_feeder', 'temp_skin_tube_middle', 'temp_steam_reactor_entry']
+        for col in ARIMA_list:
+            self.fit_ARIMA(col)
+
+
+
+        self.control_plots = [('mass_flow_brush_feeder',10),('temp_skin_tube_middle',10),('temp_steam_reactor_entry',10),('pressure_ash_knockout_vessel',10),('CO_MS',3),('CO2_MS',3),('H2_MS',3),('CH4_MS',3)]
+        for p in self.control_plots:
+            self.control_plot(p[0],p[1])       
+
+         
+
+        #Need to get these from a database table so that it is configurable
         
         self.four_plot('mass_flow_brush_feeder',
                        ylabel='Biomass Flow Rate (lbs/hr)',
@@ -94,7 +101,7 @@ class GasifierReport:
         
         
     def _create_file_structure(self):
-        self.directory=r'C://Users/Ryan.Tracy/Documents/Reports/%s/' % str(self.run_info.info['run_id'])
+        self.directory='rpt/%s/' % str(self.run_info.info['run_id'])
         if not os.path.exists(self.directory):
             os.makedirs(self.directory)
         
@@ -191,11 +198,11 @@ class GasifierReport:
 
         return text        
         
-    def time_series_plot(self, colnames, ylabel=None, caption=None):
+    def time_series_plot(self, colnames, ylabel=None, caption=None, figsize = (12,6),fontsize ='x-large'):
         maxes=[]
         mins=[]
         legend=[]
-        plt.figure(figsize=(12,6))
+        plt.figure(figsize=figsize)
         for colname in colnames:
             if None or np.nan not in self.ts[colname]:
                 tsdata=self.ts[colname]
@@ -206,11 +213,11 @@ class GasifierReport:
                 if ylabel==None: ylabel=colname
 
                 plt.plot(tstime,tsdata)
-##                plt.plot(sstime,ssdata,'r')
-                plt.xlabel('Time', fontsize='x-large')
-                plt.ylabel(ylabel, fontsize='x-large')
-                plt.xticks(fontsize='x-large')
-                plt.yticks(fontsize='x-large')
+
+                plt.xlabel('Time', fontsize=fontsize)
+                plt.ylabel(ylabel, fontsize=fontsize)
+                plt.xticks(fontsize=fontsize)
+                plt.yticks(fontsize=fontsize)
                 
             else:
                 tsdata=[]
@@ -227,13 +234,13 @@ class GasifierReport:
                     if self.ss[colname][i] is not np.nan:
                         ssdata.append(self.ss[colname][i])
                         sstime.append(self.ss['timestamp'][i])
-##                plt.figure(figsize=(12,6))
+
                 plt.plot(tstime,tsdata,'o')
-##                plt.plot(sstime,ssdata,'o')
-                plt.xlabel('Time', fontsize='x-large')
-                plt.ylabel(ylabel, fontsize='x-large')
-                plt.xticks(fontsize='x-large')
-                plt.yticks(fontsize='x-large')
+
+                plt.xlabel('Time', fontsize=fontsize)
+                plt.ylabel(ylabel, fontsize=fontsize)
+                plt.xticks(fontsize=fontsize)
+                plt.yticks(fontsize=fontsize)
             maxes.append(np.max(tsdata[5:]))
             mins.append(np.min(tsdata[5:]))
                                   
@@ -242,12 +249,10 @@ class GasifierReport:
         maxy=int(maxy+0.03*maxy)+1
         miny=int(miny-0.03*miny)-1
         if miny<0: miny=0
-##        plt.ticklabel_format(useOffset=False)
-##        plt.vlines(self.ss['timestamp'][0],0,2000,'r', lw=2)
-##        plt.vlines(self.ss['timestamp'][-1],0,2000,'r', lw=2)
+
         plt.ylim((miny,maxy))
         plt.fill_between(self.ss['timestamp'],2000,0,facecolor='yellow',alpha=0.2)
-        plt.legend(legend)#, loc="upper left", bbox_to_anchor=(1,1))
+        plt.legend(legend)
         plt.tight_layout()
         filename=str(self.run_info.info['run_id'])+'_'+colname+'_time_series_plot.png'
         plt.savefig(self.directory+filename)
@@ -264,7 +269,7 @@ class GasifierReport:
 
         self.run_info.info['timeseriesplots']=self.timeseriesplottext
         
-    def four_plot(self, colname, ylabel=None, caption=None):
+    def four_plot(self, colname, ylabel=None, caption=None, figsize=(12,8)):
         if None or np.nan not in self.ss[colname]:
             timestamp=self.ss['timestamp']
             data=self.ss[colname]
@@ -277,7 +282,7 @@ class GasifierReport:
                         data.append(self.ss[colname][i])
                         timestamp.append(self.ss['timestamp'][i])
                         
-        plt.figure(figsize=(12,8))
+        plt.figure(figsize=figsize)
 
         plt.subplot(221)
         plt.plot(timestamp, data)
@@ -329,58 +334,7 @@ class GasifierReport:
 
         self.run_info.info['fourplots']=self.fourplottext
         
-##    def four_plot(self, colname, ylabel=None, caption=None):
-##        plt.figure(figsize=(12,8))
-##
-##        plt.subplot(221)
-##        plt.plot(self.ss['timestamp'], self.ss[colname])
-##        if ylabel==None: ylabel=colname
-##        plt.ylabel(ylabel)
-##        plt.ticklabel_format(axis='y',useOffset=False)
-##        plt.xlabel('Time')
-##
-##        plt.subplot(222)
-##        y=[None]
-##        for j in self.ss['counter'][1:]:
-##            y.append(self.ss[colname][j-1])
-##        plt.plot(y, self.ss[colname], ',')
-##        plt.ylabel(r'Y$_i$')
-##        plt.xlabel(r'Y$_{i-1}$')
-##        plt.ticklabel_format(useOffset=False)
-##
-##        plt.subplot(223)
-##        plt.hist(self.ss[colname],20)
-##        plt.ticklabel_format(useOffset=False)
-##        plt.xlabel(ylabel)
-##        plt.ylabel('Count')
-##
-##        plt.subplot(224)
-##        n=len(self.ss['counter'])
-##        U=[1-0.5**(1/n)]
-##        ordered=np.sort(self.ss[colname])
-##        for j in self.ss['counter'][1:-1]:
-##            U.append((j-0.3175)/(n+0.365))
-##        U.append(0.5**(1/n))
-##        plt.plot(U, ordered, ',')
-##        plt.ticklabel_format(useOffset=False)
-##        plt.xlabel('Normal Probability Plot')
-##        plt.ylabel('Ordered Response ' +ylabel)
-##        
-##        plt.tight_layout()
-##        filename=str(self.run_info.info['run_id'])+'_'+colname+'_four_plot.png'
-##        plt.savefig(self.directory+filename)
-##        plt.close()
-##
-##        if caption==None: caption='Four-plot for %s' % colname.replace('_', ' ')
-##        label=colname+'_four_plot'
-##
-##        text=self.plot_latex(caption, label, filename)
-##
-##        try: self.fourplottext=self.fourplottext.__add__(text)
-##        except AttributeError:
-##            self.fourplottext=text
-##
-##        self.run_info.info['fourplots']=self.fourplottext
+
 
     def control_factorial(self,x):
         count=int(x)
@@ -390,6 +344,9 @@ class GasifierReport:
                     product*=x-1*i
             return product
         else: return factorial(x)
+
+    
+
 
     def control_plot(self, colname, n):
         if None or np.nan not in self.ss[colname]:
@@ -552,6 +509,15 @@ class GasifierReport:
         with open(self.directory+filename,'w') as f:
             f.write(self.text)
         print 'LaTeX file created at %s\n' % self.directory+filename
+
+    def fit_ARIMA(self, col, order = (1,1)):
+        try:
+            model = ARIMA.ARMA(self.ss[col], order = order)
+            result = model.fit()
+            self.ss['%s_ARIMA_fitted' % col] = result.fittedvalues
+            self.ss['%s_ARIMA_resid' % col] = result.resid
+        except KeyError:
+            print "Warning: %s is a bad key, ignoring" % col
 
 
 if __name__ == '__main__':
