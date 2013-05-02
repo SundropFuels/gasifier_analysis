@@ -1,0 +1,126 @@
+\documentclass[11pt]{article}
+
+\usepackage{anysize}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{media9}
+\usepackage{subcaption}
+\usepackage{color}
+
+\marginsize{1in}{1in}{.5in}{.5in}
+\pagestyle{fancy}
+\rhead{\today}
+\lhead{\includegraphics[height=2.0cm]{../logo.jpg}}
+\rfoot{\thepage}
+\cfoot{}
+\renewcommand{\headrulewidth}{0pt} %removes line from fancy header
+\renewcommand{\thispagestyle}[1]{} %placers header and footer on first page 
+\date{}
+\title{Gasification Analysis Report\\Run ID run-id \vspace{-6ex}}
+
+\begin{document}
+\maketitle
+
+\section*{Run Setpoints and Process Values}
+\vspace{-2ex}
+
+\begin{table}[hb]
+\centering
+\begin{tabular}{r l c c c c}
+	Process Variable		& Units							& Setpoint					&Average						& St Dev					& \% St Dev						\\
+\hline 	Biomass Feed Rate 		& mass-flow-brush-feeder-units 				& biomass-rate				& mass-flow-brush-feeder-avg			& mass-flow-brush-feeder-std		& mass-flow-brush-feeder-pstd			\\
+	Cross Brush Flow Rate	& mass-flow-entrainment-units entrain-gas		& brush-flow					& mass-flow-entrainment-avg			& mass-flow-entrainment-std		& mass-flow-entrainment-pstd			\\
+	Down Bed Flow Rate	& L/min downbed-gas-type				& downbed-flow-rate			& mass-flow-down-brush-avg			& mass-flow-down-brush-std		& mass-flow-down-brush-pstd			\\	
+	Makeup Flow	Rate		& mass-flow-feed-vessel-pressure-units	 makeup-gas	& makeup-flow				& mass-flow-feed-vessel-pressure-avg		& mass-flow-feed-vessel-pressure-std	& mass-flow-feed-vessel-pressure-pstd		\\
+	Argon Flow Rate		& mass-flow-argon-tracer-units				& argon-flow			 		& mass-flow-argon-tracer-avg			& mass-flow-argon-tracer-std		& mass-flow-argon-tracer-pstd			\\
+	Steam Flow Rate		& mL/min							& fc310-sp 	 				& steam-flow-avg					& --- 						& --- 							\\
+	Ash Knockout Pressure	& pressure-ash-knockout-vessel-units			& system-p 					& pressure-ash-knockout-vessel-avg		& pressure-ash-knockout-vessel-std	& pressure-ash-knockout-vessel-pstd		\\
+	Furnace Skin Top 		& temp-skin-tube-top-units	 			& tic510-sp 					& temp-skin-tube-top-avg				& temp-skin-tube-top-std			& temp-skin-tube-top-pstd				\\
+	Furnace Skin Middle 	& temp-skin-tube-middle-units	 			& tic520-sp 					& temp-skin-tube-middle-avg			& temp-skin-tube-middle-std		& temp-skin-tube-middle-pstd			\\
+	Furnace Skin Bottom 	& temp-skin-tube-bottom-units	 			& tic530-sp					& temp-skin-tube-bottom-avg			& temp-skin-tube-bottom-std		& temp-skin-tube-bottom-pstd			\\
+	Steam Temperature		& temp-steam-reactor-entry-units 			& ht301-sp					& temp-steam-reactor-entry-avg			& temp-steam-reactor-entry-std		& temp-steam-reactor-entry-pstd		\\
+\end{tabular}
+\end{table}
+
+\vspace{-4ex}
+\section*{Normalized Average Product Gas Composition}
+\vspace{-4ex}
+
+\begin{table}[h]
+\begin{minipage}[th]{0.5\linewidth}
+\centering
+\begin{tabular}{r l c c}
+	Species		& Units				& Average				& St Dev				\\
+\hline 	Carbon Monoxide	& CO-normalized-units		& CO-normalized-avg		& CO-normalized-std		\\
+	Carbon Dioxide	& CO2-normalized-units		& CO2-normalized-avg		& CO2-normalized-std		\\
+	Methane		& CH4-normalized-units		& CH4-normalized-avg		& CH4-normalized-std		\\
+	Hydrogen		& H2-normalized-units		& H2-normalized-avg		& H2-normalized-std		\\
+	Ethane		& C2H6-normalized-units		& C2H6-normalized-avg		& C2H6-normalized-std		\\
+	Ethylene		& C2H4-normalized-units		& C2H4-normalized-avg		& C2H4-normalized-std		\\
+	Propane		& C3H8-normalized-units		& C3H8-normalized-avg		& C3H8-normalized-std		\\
+	Propylene		& C3H6-normalized-units		& C3H6-normalized-avg		& C3H6-normalized-std		\\
+	Benzene		& C6H6-normalized-units		& C6H6-normalized-avg		& C6H6-normalized-std		\\
+	Toluene		& C7H8-normalized-units		& C7H8-normalized-avg		& C7H8-normalized-std		\\
+	Napthalene		& C10H8-normalized-units		& C10H8-normalized-avg		& C10H8-normalized-std		\\
+	H2S 			& H2S-normalized-units		& H2S-normalized-avg		& H2S-normalized-std		\\
+\end{tabular}
+\end{minipage}
+\begin{minipage}[bh]{0.5\linewidth}
+\includegraphics[width=3in]{piegas}
+\end{minipage}
+\end{table}
+
+\vspace{-6ex}
+\section*{Results}
+\vspace{-2ex}
+
+\begin{table}[hb]
+\centering
+\begin{tabular}{r l c c c}
+	Calculated Variable	& Units		& Calculated Value		& Std Dev		& \% Std Dev	\\
+\hline 	Total Conversion	& \%			& X-tot-avg			& X-tot-std		& X-tot-pstd		\\
+	Std Conversion	& \%			& X-std-avg			& X-std-std		& X-std-pstd		\\
+	Good Conversion	& \%			& X-good-avg		& X-good-std		& X-good-pstd	\\
+\end{tabular}
+\end{table}
+
+\newpage
+
+\vspace{-4ex}
+\section*{Feedstock Information}
+\vspace{-2ex}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{c c c c c c c}
+	C \%wt$_{d}$	& H \%w$_{d}$	& N \%wt$_{d}$	& Moisture \%wt$_{w}$	& D10 ($\mu$m)	& D50 ($\mu$m)	& D90 ($\mu$m)	\\
+\hline 	w-c			& w-h			& w-n			& moisture			& d10			& d50			& d90		\\
+\end{tabular}
+\end{table}
+
+
+\section*{Picking Steady State}
+
+A steady state period for which to perform analysis on was chosen manually by selecting a segment of the run where biomass feed rate is near the setpoint, variation in feed rate is minimal and the CO reading from the mass spectrometer is level.
+
+Run Start Time: ts-start
+
+Run End Time: ts-stop
+
+Analysis Start Time: ss-start
+
+Analysis End Time: ss-stop
+
+\centering
+
+timeseriesplots
+
+\newpage
+
+controlplots
+
+\newpage
+
+fourplots
+
+\end{document}
