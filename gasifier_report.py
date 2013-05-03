@@ -476,7 +476,7 @@ class GasifierReport:
 class Plot:
     """Abstract Data Type for a Plot...this should never be instantiated by itself"""
 
-    def __init__(self, caption = None, figsize = (12,8), save_loc = None, fontsize = 'x-large'):
+    def __init__(self, caption = None, figsize = (12,8), save_loc = None, fontsize = 'x-large', subplot = False, subplot_num = 111):
         #Basic plot properties
         self.caption = caption
         self.figsize = figsize
@@ -485,8 +485,12 @@ class Plot:
 
 
         #May want to pull in a default dataset here -- we'll see how general this can be
+        if subplot:
 
-        plt.figure(figsize)
+            plt.subplot(subplot_num)
+
+        else:
+            plt.figure(figsize)
 
     def save(self, loc):
         plt.savefig(loc)
@@ -516,10 +520,94 @@ class PiePlot(Plot):
         loc = self.save_loc+"_gas_comp_pie_plot.png"
         Plot.save(self, loc)
 
-   
-
 class XYPlot(Plot):
-    """Plot in two dimensions -- This is an abstract data type, as well, for now, so don't directly instantiate it!"""
+    """This is the basic class for a simple XY plot (one X, many Y)"""
+    pass
+
+    def __init__(self, vals = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, **kwargs)
+        Plot.__init__(self, **kwargs)
+        #We should have taken care of whether this is a subplot already...just need to put the plotting machinery in place
+
+        if vals is None:
+            #vals must be a dataframe
+            vals = df.Dataframe()
+        if not isinstance(vals, df.Dataframe):
+            raise Exception, "XY chart values MUST be in the form of a dataframe            
+
+        self.data = vals
+
+        #More error checking may be appropriate later
+
+        self.X_col = X_col
+        self.Y_cols = Y_cols
+
+        if x_label is None:
+            self.x_label = X_col
+        if y_label is None:
+            self.y_label = Y_cols[0]
+
+
+    def plot(self):
+
+        max_val = None
+        min_val = None
+        legend = []
+        plt.xlabel(self.x_label, fontsize = self.fontsize)
+        plt.ylabel(self.y_label, fontsize = self.fontsize)
+        plt.xticks(fontsize = self.fontsize)
+        plt.yticks(fontsize = self.fontsize)
+
+        for y in Y_cols:
+            legend.append(y)
+            plt.plot(vals[X_col], vals[Y_col])   #may need a marker default here
+            
+            if max_val is None or np.max(vals[y]) > max_val:
+                max_val = np.max(vals[y])
+
+            if min_val is None or np.min(vals[y]) < max_val:
+                min_val = np.min(vals[y])
+
+            if self.auto_scale:
+                max_val=int(1.03*max_val)+1
+                min_val=int(0.97*min_val)-1
+                plt.ylim(min_val,max_val)
+
+            if self.legend:
+                plt.legend(legend)
+            
+            plt.tight_layout()
+
+class Histogram(Plot):
+    """Creates a histogram for the given data column -- works on a dataframe basis, to allow easy refiguring just by changing column name"""
+        
+    def __init__(self, vals = None, label = None, data_col = None, nbins = 5, useOffset = False, **kwargs):
+        Plot.__init__(**kwargs)
+        if vals is None:
+            vals = df.Dataframe()
+        if not isinstance(vals, df.Dataframe):
+            raise Exception, "vals must be a Dataframe!"
+
+        self.vals = vals
+        self.label = label
+        self.nbins = nbins
+        self.data_col = data_col
+
+    def plot():
+        plt.hist(vals[data_col])
+        plt.ticklabel_format(useOffset = useOffset)
+        plt.xlabel(label)
+        plt.ylabel("Count")
+
+    #inherits save() and close()
+
+class NormalProbabilityPlot(XYPlot):
+    pass
+
+class LagPlot(XYPlot):
+    pass
+
+class nXYPlot(Plot):
+    """Multiple XY subplots on the same plot"""
 
     def __init__(self, vals = None, x_labels = None, y_labels = None, plot_cols = None, h_plots = 1, auto_scale = True, **kwargs):
         """Initialize the XY Plot.  vals must be a dataframe.  plot_cols is a dict, with each key corresponding to an X and each val a dict of Y's to plot"""
@@ -550,57 +638,36 @@ class XYPlot(Plot):
             raise Exception, "x_labels must be a list of labels, equal to the length of vals"
         if not isinstance(y_labels, list):
             raise Exception, "y_labels must be a list of labels, equal to the length of vals"
-
+        """
         if len(x_labels) != len(vals) or len(y_labels) != len(vals):
             raise Exception, "x_labels and y_labels must be the same length as vals"
+        """
         self.x_labels = x_labels                
         self.y_labels = y_labels
         
 
     def plot(self):
-        """Plots the X's vs multiple Y's.  Current behavior is to plot each X series in a separate subplot"""
+        """Plots the X's vs multiple Y's.  Current behavior is to plot each X series in a separate subplot.  Creates separate subplots in a list"""
+        plot_list = []
+        
         if len(plot_cols) % self.h_plots != 0:
             v_plots = len(plot_cols)/self.h_plots + 1
         else:
             v_plots = len(plot_cols)/self.h_plots
-        p_index = 1
+        p_index = 0
         #run through and create each of the plots
         for x in plot_cols:
-            max_val = None
-            min_val = None
-
-            legend = []
-            subplot_num = v_plots * 100 + h_plots * 10 + p_index
-            plt.subplot(subplot_num)
+            #create a new subplot
             
-            #insert labels, format ticks
-            plt.xlabel(self.x_labels[p_index-1], fontsize = self.fontsize)
-            plt.ylabel(self.y_labels[p_index-1], fontsize = self.fontsize)
-            plt.xticks(fontsize = self.fontsize)
-            plt.yticks(fontsize = self.fontsize)
-
-            for y in plot_cols[x]:
-                legend.append(y)
-                plt.plot(vals[x], vals[y])
-                
-                if max_val is None or np.max(vals[y]) > max_val:
-                    max_val = np.max(vals[y])
-                
-                if min_val is None or np.min(vals[y]) < min_val:
-                    min_val = np.min(vals[y])
+            subplot_num = v_plots * 100 + h_plots * 10 + p_index+1
+            
+            plot_list.append(XYPlot(vals = vals, x_label = self.x_labels[p_index], y_label = self.y_label[p_index], X_col = x, Y_cols = plot_cols[x], subplot = True, subplot_num = subplot_num)
+            plot_list[p_index].plot()
+            p_index += 1
+                     
             
 
-            if self.auto_scale:
-                max_val=int(1.03*max_val)+1
-                min_val=int(0.97*min_val)-1
-                plt.ylim(min_val,max_val)
-
-            if self.legend:
-                plt.legend(legend)
-            
-            plt.tight_layout()
-
-class TimeSeriesPlot(XYPlot):
+class TimeSeriesPlot(nXYPlot):
     """Creates a plot specifically geared to a timeseries"""
 
     def __init__(self, vals = None, plot_cols = None, **kwargs):
