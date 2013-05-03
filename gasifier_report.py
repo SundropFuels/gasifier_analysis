@@ -10,6 +10,7 @@ import argparse
 import csv
 import subprocess
 import statsmodels.tsa.arima_model as ARIMA
+import dataFrame_v2 as df
 
 class GasifierReport:
     """The basic data analysis class for gasifier experiments"""
@@ -345,8 +346,10 @@ class GasifierReport:
             return product
         else: return factorial(x)
 
-    
 
+    #The way this SHOULD be implemented is through OBJECTS; a control plot is a THING, not a function to generate a control plot
+    
+    
 
     def control_plot(self, colname, n):
         if None or np.nan not in self.ss[colname]:
@@ -398,59 +401,7 @@ class GasifierReport:
                  'Avg = %.3f, UCL = %.3f, LCL = %.3f' %(sbar,sucl,slcl),
                  bbox={'facecolor':'white','alpha':0.85,'pad':10})
         
-##    def control_plot(self, colname, n):
-##        if None or np.nan not in self.ss[colname]:
-##            data=self.ss[colname]
-##            l=len(data)
-##            time=[self.ss['timestamp'][i] for i in range(0,l,n)[1:]]
-##            
-##        else:
-##            data=[]
-##            temptime=[]
-##            for i in self.ss['counter']:
-##                if self.ss[colname][i] is not None or np.nan:
-##                    data.append(self.ss[colname][i])
-##                    temptime.append(self.ss['timestamp'][i])
-##            l=len(data) 
-##            time=[temptime[i] for i in range(0,l,n)[1:]]
-##            
-##        m=l/n
-##        c=np.sqrt(2./(n-1))*self.control_factorial(n/2.-1)/self.control_factorial((n-1)/2.-1)
-##        data2=[data[i-n:i] for i in range(0,l,n)[1:]]
-##        
-##        si=[np.std(i) for i in data2]
-##        xi=[np.mean(i) for i in data2]
-##        sbar=np.mean(si)
-##        xbar=np.mean(xi)
-##        sucl=sbar+3*sbar/c*np.sqrt(1-c**2)
-##        slcl=sbar-3*sbar/c*np.sqrt(1-c**2)
-##        xucl=xbar+3*sbar/(c*np.sqrt(n))
-##        xlcl=xbar-3*sbar/(c*np.sqrt(n))
-##
-##        plt.subplot(211)
-##        plt.plot(time,xi,'o')
-##        plt.hlines(xbar,time[0],time[-1])
-##        plt.hlines(xucl,time[0],time[-1])
-##        plt.hlines(xlcl,time[0],time[-1])
-##        plt.ylabel('Mean Value (' + self.run_info.info[colname+'_units'] +') n=%s' %n)
-##        plt.text(time[4], np.max(xi)-(np.max(xi)-np.min(xi))*.1,
-##                 'Avg = %.3f, UCL = %.3f, LCL = %.3f' %(xbar,xucl,xlcl),
-##                 bbox={'facecolor':'white','alpha':0.85,'pad':10})
-##
-##        plt.subplot(212)
-##        plt.plot(time,si,'o')
-##        plt.hlines(sbar,time[0],time[-1])
-##        plt.hlines(sucl,time[0],time[-1])
-##        plt.hlines(slcl,time[0],time[-1])
-##        plt.ylabel('Standard Deviation (' + self.run_info.info[colname+'_units'] +') n=%s' %n)
-##        plt.xlabel('Time')
-##        plt.text(time[4], np.max(si)-(np.max(si)-np.min(si))*.1,
-##                 'Avg = %.3f, UCL = %.3f, LCL = %.3f' %(sbar,sucl,slcl),
-##                 bbox={'facecolor':'white','alpha':0.85,'pad':10})
 
-##        print len(time),len(xi),xi
-##        print len(time),len(si),si
-##        plt.ticklabel_format(useOffset=False)
         plt.tight_layout()
         filename=str(self.run_info.info['run_id'])+'_'+colname+'_control_plot.png'
         plt.savefig(self.directory+filename)
@@ -518,6 +469,147 @@ class GasifierReport:
             self.ss['%s_ARIMA_resid' % col] = result.resid
         except KeyError:
             print "Warning: %s is a bad key, ignoring" % col
+
+
+#Objects to hold plot types -- this should REALLY be built into a convenient library for matplotlib, but this is a project for another day
+
+class Plot:
+"""Abstract Data Type for a Plot...this should never be instantiated by itself"""
+
+    def __init__(self, caption = None, figsize = (12,8), save_loc = None, fontsize = 'x-large'):
+        #Basic plot properties
+        self.caption = caption
+        self.figsize = figsize
+        self.save_loc = save_loc
+        self.fontsize = fontsize
+
+
+        #May want to pull in a default dataset here -- we'll see how general this can be
+
+        plt.figure(figsize)
+
+    def save(self, loc):
+        plt.savefig(loc)
+
+    def close(self):
+        plt.close()
+
+class PiePlot(Plot):
+"""Pie Chart"""
+
+    def __init__(self, vals = None, **kwargs):
+        Plot.__init__(self,**kwargs)
+        if vals is None:
+            vals = OrderedDict()
+        if not isinstance(vals, OrderedDict):
+            raise Exception, "Pie chart values MUST be an ordered dictionary {label:value}"
+        self.vals = vals
+
+    def plot(self):
+        
+        plt.pie(self.vals.items())
+        plt.legend(self.vals.keys())
+        
+        plt.tight_layout()
+
+    def save(self):
+        loc = self.save_loc+"_gas_comp_pie_plot.png"
+        Plot.save(self, loc)
+
+    
+
+class XYPlot(Plot):
+"""Plot in two dimensions -- This is an abstract data type, as well, for now, so don't directly instantiate it!"""
+
+    def __init__(self, vals = None, x_labels = None, y_labels = None, plot_cols = None, h_plots = 1, auto_scale = True, **kwargs):
+        """Initialize the XY Plot.  vals must be a dataframe.  plot_cols is a dict, with each key corresponding to an X and each val a dict of Y's to plot"""
+
+        Plot.__init__(self,**kwargs)
+        if vals is None:
+            #Vals must be a dataframe
+            vals = df.Dataframe()
+        if not isinstance(vals, df.Dataframe):
+            raise Exception, "XY chart values MUST be a dataframe"
+        
+        self.data = vals
+        if plot_cols is None:
+            self.plot_cols = {}
+        self.plot_cols = plot_cols
+        
+        self.h_plots = h_plots			#For plots with multiple subplots, number of horizontal subplots
+
+
+        if x_labels is None:
+            x_labels = plot_cols.keys()
+        if y_labels is None:
+            y_labels = []
+            for y in plot_cols.items():
+                y_labels.append(y[0])
+
+        if not isinstance(x_labels, list):
+            raise Exception, "x_labels must be a list of labels, equal to the length of vals"
+        if not isinstance(y_labels, list):
+            raise Exception, "y_labels must be a list of labels, equal to the length of vals"
+
+        if len(x_labels) != len(vals) or len(y_labels) != len(vals):
+            raise Exception, "x_labels and y_labels must be the same length as vals"
+        self.x_labels = x_labels                
+        self.y_labels = y_labels
+        
+
+    def plot(self):
+        """Plots the X's vs multiple Y's.  Current behavior is to plot each X series in a separate subplot"""
+        if len(plot_cols) % self.h_plots != 0:
+            v_plots = len(plot_cols)/self.h_plots + 1
+        else:
+            v_plots = len(plot_cols)/self.h_plots
+        p_index = 1
+        #run through and create each of the plots
+        for x in plot_cols:
+            max_val = None
+            min_val = None
+
+            legend = []
+            subplot_num = v_plots * 100 + h_plots * 10 + p_index
+            plt.subplot(subplot_num)
+            
+            #insert labels, format ticks
+            plt.xlabel(self.x_labels[p_index-1], fontsize = self.fontsize)
+            plt.ylabel(self.y_labels[p_index-1], fontsize = self.fontsize)
+            plt.xticks(fontsize = self.fontsize)
+            plt.yticks(fontsize = self.fontsize)
+
+            for y in plot_cols[x]:
+                legend.append(y)
+                plt.plot(vals[x], vals[y])
+                
+                if max_val is None or np.max(vals[y]) > max_val:
+                    max_val = np.max(vals[y])
+                
+                if min_val is None or np.min(vals[y]) < min_val:
+                    min_val = np.min(vals[y])
+            
+
+            if self.auto_scale:
+                max_val=int(1.03*max_val)+1
+                min_val=int(0.97*min_val)-1
+                plt.ylim(min_val,max_val)
+
+            if self.legend:
+                plt.legend(legend)
+            
+            plt.tight_layout()
+
+class TimeSeriesPlot(XYPlot):
+    pass
+                    
+                
+class FourPlot(XYPlot):
+    pass
+
+class ControlChart(XYPlot):
+    pass        
+
 
 
 if __name__ == '__main__':

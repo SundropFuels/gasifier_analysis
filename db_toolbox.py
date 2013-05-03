@@ -54,7 +54,7 @@ class db_interface:
             self.cursor.execute(myQuery.getQuery())
             result = self.cursor.fetchall()
         except MySQLdb.Error, e:
-            print "This is the error I got: %s" % e
+            #print "This is the error I got: %s" % e
             raise DBToolboxError
         
         if isinstance(myQuery, use_Query):

@@ -362,6 +362,6 @@ if __name__ == '__main__':
         print "Data loaded"
         analyzer.calculate_standard_things()
         print "Standard things calculated"
-        #analyzer.generate_output_file('output1.csv')
+        analyzer.generate_output_file('run100.csv')
         analyzer.upload_to_database()
         print "Data uploaded to database"
