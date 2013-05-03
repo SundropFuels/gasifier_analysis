@@ -474,7 +474,7 @@ class GasifierReport:
 #Objects to hold plot types -- this should REALLY be built into a convenient library for matplotlib, but this is a project for another day
 
 class Plot:
-"""Abstract Data Type for a Plot...this should never be instantiated by itself"""
+    """Abstract Data Type for a Plot...this should never be instantiated by itself"""
 
     def __init__(self, caption = None, figsize = (12,8), save_loc = None, fontsize = 'x-large'):
         #Basic plot properties
@@ -495,7 +495,7 @@ class Plot:
         plt.close()
 
 class PiePlot(Plot):
-"""Pie Chart"""
+    """Pie Chart"""
 
     def __init__(self, vals = None, **kwargs):
         Plot.__init__(self,**kwargs)
@@ -516,10 +516,10 @@ class PiePlot(Plot):
         loc = self.save_loc+"_gas_comp_pie_plot.png"
         Plot.save(self, loc)
 
-    
+   
 
 class XYPlot(Plot):
-"""Plot in two dimensions -- This is an abstract data type, as well, for now, so don't directly instantiate it!"""
+    """Plot in two dimensions -- This is an abstract data type, as well, for now, so don't directly instantiate it!"""
 
     def __init__(self, vals = None, x_labels = None, y_labels = None, plot_cols = None, h_plots = 1, auto_scale = True, **kwargs):
         """Initialize the XY Plot.  vals must be a dataframe.  plot_cols is a dict, with each key corresponding to an X and each val a dict of Y's to plot"""
@@ -601,10 +601,49 @@ class XYPlot(Plot):
             plt.tight_layout()
 
 class TimeSeriesPlot(XYPlot):
-    pass
+    """Creates a plot specifically geared to a timeseries"""
+
+    def __init__(self, vals = None, plot_cols = None, **kwargs):
+        
+        XYPlot.__init__(self, **kwargs)
+
+        if not isinstance(vals, ts_data):
+            raise Exception, "vals for a timeseries plot must be an instance of a time series dataframe"
+
+        if not isinstance(plot_cols, list):
+            raise Exception, "plot_cols must be a list of columns to plot for a time series plot"
+
+        self.plot_cols = {'timestamp':plot_cols}
+
+        self.xlabels = ['Time']
+        
+
+    #No need to define plot
+
+    def save(self):
+        loc = self.save_loc + "_time_series_plot.png"
+        Plot.save(self, loc)
+
+    #Need to add fill function and latex interface functions, if necessary
+
+       
+        
                     
                 
-class FourPlot(XYPlot):
+class FourPlot(Plot):
+    """Creates a FourPlot from XY data.
+       The FourPlot consists of:
+       1) A run plot
+       2) A lag plot
+       3) A histogram
+       4) A normal probability plot"""
+
+    #Ideally, I would just build this up from four different plots (two XY, one histogram, ...) but the way I've done subplotting in XY precludes this -- refactoring!
+
+    def __init__(self, vals = None, x_label = None, y_label = None, plot_cols = None, h_plots = 1, auto_scale = True, **kwargs):
+        
+
+
     pass
 
 class ControlChart(XYPlot):
