@@ -601,7 +601,36 @@ class Histogram(Plot):
     #inherits save() and close()
 
 class NormalProbabilityPlot(XYPlot):
-    pass
+    """Creates a normal probability plot for the given data colum -- works on a dataframe basis, to allow easy refiguring just by changing column names"""
+    def __init__(self, vals, data_col = None, **kwargs):
+        XYPlot.__init__(self, vals = vals, **kwargs)
+        self.x_label = 'Normal probability plot'
+        self.y_label = 'Ordered response'
+        self.data_col = data_col
+        #Need to set vals before this will work
+
+    def _calc_normal_probs(self, data_col):
+        n = self.vals.numrows()
+        U=[1-np.power(0.5,(1/n))]
+        ordered=np.sort(self.vals[data_col])
+        for j in range(0,len(ordered),1)[1:-1]:
+            U.append((j-0.3175)/(n+0.365))
+        U.append(np.power(0.5,(1/n)))
+        self.vals['U_normal_prob'] = U
+        self.vals['ord_normal_prob'] = ordered
+
+    def plot():
+        self._calc_normal_probs(self.data_col)
+        self.X_col = 'U_normal_prob'
+        self.Y_cols = ['ord_normal_prob']
+        XYPlot.plot()
+
+    def save():
+        pass
+
+
+
+
 
 class LagPlot(XYPlot):
     """Creates a lag plot for the given data column -- works on a dataframe basis, to allow easy refiguring just by changing column names"""
