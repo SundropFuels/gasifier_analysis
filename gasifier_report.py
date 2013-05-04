@@ -604,7 +604,31 @@ class NormalProbabilityPlot(XYPlot):
     pass
 
 class LagPlot(XYPlot):
-    pass
+    """Creates a lag plot for the given data column -- works on a dataframe basis, to allow easy refiguring just by changing column names"""
+    def __init__(self, vals, data_col = None, lag = 1, **kwargs)
+
+        XYPlot.__init__(self, vals = vals, **kwargs)
+        
+        self.x_label = r'Y$_i$'
+        self.y_label = r'Y$_{i-1}$'
+        self.data_col = data_col
+        
+
+        
+    def _calc_lag(self, data_col):
+        if "%s_lag" % data_col not in self.vals:
+            lagged = np.delete(self.vals[data_col],0)
+            lagged = np.append(lagged, np.nan)
+            self.vals['%s_lag'] = lagged
+            
+
+    def plot(self):
+        self._calc_lag(self.data_col)
+        self.X_col = self.data_col
+        self.Y_cols = ['%s_lag' % self.data_col]
+        XYPlot.plot(self)
+
+
 
 class nXYPlot(Plot):
     """Multiple XY subplots on the same plot"""
