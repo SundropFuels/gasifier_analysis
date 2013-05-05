@@ -760,15 +760,96 @@ class FourPlot(Plot):
 
     #Ideally, I would just build this up from four different plots (two XY, one histogram, ...) but the way I've done subplotting in XY precludes this -- refactoring!
 
-    def __init__(self, vals = None, x_label = None, y_label = None, plot_cols = None, h_plots = 1, auto_scale = True, **kwargs):
-        
+    def __init__(self, vals = None, x_label = None, y_label = None, x_var = None, y_var = None, **kwargs):
+        #Should put in some x and y variable checking here
+        Plot.__init__(self, **kwargs)
+        self.x_label = x_label
+        self.y_label = y_label
+        self.vals = vals
+        self.x_var = x_var
+        self.y_var = y_var
+        #Need to either store the kwargs or set them for the other plots
 
 
-    pass
+    def plot(self):
+        """Builds and plots the 4-plot"""
 
-class ControlChart(XYPlot):
-    pass        
+        #Run plot
+        self.run_plot = XYPlot(vals = self.vals, x_label = self.x_label, y_label = self.y_label, X_col = self.x_var, Y_cols = [self.y_var], auto_scale = True, subplot = True, subplot_num = 221)
+        self.run_plot.plot()
 
+        #Lag plot
+        self.lag_plot = LagPlot(vals = self.vals, data_col = self.y_var, subplot = True, subplot_num = 222)
+        self.lag_plot.plot()
+
+        #Histogram
+        self.hist = Histogram(vals = self.vals, label = self.y_label, data_col = self.y_var, nbins = 20)
+        self.hist.plot()
+
+        #Normal probability plot
+        self.np_plot = NormalProbabilityPlot(vals = self.vals, data_col = self.y_var)
+        self.np_plot.plot()
+
+    def save(self):
+        pass  #Need to implement this
+
+
+
+class ControlChart(Plot):
+    #All control charts have:
+    #    1) Data - a single column to draw data from
+    #    2) Possibly UCL and LCL's
+    #    3) Subgroup size? -- really, the common functions are to plot lines given a UCL and LCL, then plot data given the appropriate points
+    #    There will always be two graphs, one for x-bar or similar and one for R or s
+
+
+   
+    def __init__(self, vals = None, y_col = None, x_col = None, **kwargs):
+        pass
+
+
+    def plot(self):
+        #set limits and draw horizontal lines
+        #plot data on graph from worked up sets
+        #common to all kinds of charts
+
+        pass        
+
+class XBarControlChart(ControlChart):
+    
+    def __init__(self, **kwargs):
+        pass
+
+    def _calcPlottedPoints(self):
+        pass
+
+    def plot(self):
+        pass
+
+    
+
+class XBarRControlChart(XBarControlChart):
+    
+    def __init__(self, **kwargs):
+        pass
+
+    def _calcControlLimits(self):
+        pass
+
+    def plot(self):
+        pass
+
+class XBarSControlChart(XBarControlChart):
+    
+    def __init__(self, **kwargs):
+        pass
+
+    def _calcControlLimits(self):
+
+        pass
+
+    def plot(self):
+        pass
 
 
 if __name__ == '__main__':
