@@ -46,15 +46,9 @@ class GasifierReport:
         self._convert_steam_flow_to_ml_min()
         
         ###TESTS OF NEW PLOT OBJECTS HERE!"""
-        #Test just an XYPlot
-
-        p = XYPlot(data = self.ts, x_label = "timestamp", y_label = 'Mass flow of brush feeder', X_col = 'timestamp', Y_cols = ['mass_flow_brush_feeder'])
-        p.plot()
-        p.show()
-        p.close()
-
+        
         #Test a timeseries plot
-        d = TimeSeriesPlot(data = self.ts, plot_cols = ['CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS'], markers = ['o'])
+        d = TimeSeriesPlot(data = self.ts, Y_cols = [['CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS'], ['C2H4_MS', 'C6H6_MS', 'C7H8_MS', 'C10H8_MS'],['mass_flow_brush_feeder']], markers = ['o', 'o', '-'])
 	d.plot()
         d.show()
         d.close()
@@ -133,7 +127,9 @@ class GasifierReport:
     def _load_ts_timeseries_data(self):
         """Loads raw gasifier data."""
         self.ts = GasifierProcTS(start = self.run_info.info['ts_start'], end = self.run_info.info['ts_stop'])
+        
         self.ts.SQL_load(self.interface_raw,'gasifier_lv_GC_view') #This line needs to automatically load the units
+        
         #Need to build the glossary using the SQL tools
         q = db.select_Query(objects = ['tag_number', 'simple_name', 'units'], table = "tag_glossary_tbl")
         glossary = self.interface_raw.query(q)
@@ -689,7 +685,7 @@ class nXYPlot(Plot):
     """Multiple XY subplots on the same plot"""
 
     def __init__(self, data = None, x_labels = None, y_labels = None, plot_cols = None, h_plots = 1, auto_scale = True, markers = None, **kwargs):
-        """Initialize the XY Plot.  data must be a dataframe.  plot_cols is a dict, with each key corresponding to an X and each val a dict of Y's to plot"""
+        """Initialize the XY Plot.  data must be a dataframe.  plot_cols is a list of tuples of string/list pairs, with each string corresponding to an X and each list the corresponding Y's to plot"""
 
         Plot.__init__(self,**kwargs)
         if data is None:
@@ -697,21 +693,26 @@ class nXYPlot(Plot):
             data = df.Dataframe()
         if not isinstance(data, df.Dataframe):
             raise Exception, "XY chart values MUST be a dataframe"
-        
         self.data = data
+
+
+        #plot_cols is a list of (string, []), representing (x,Y)
         if plot_cols is None:
-            self.plot_cols = {}
+            self.plot_cols = []
         self.plot_cols = plot_cols
         
         self.h_plots = h_plots			#For plots with multiple subplots, number of horizontal subplots
 
 
         if x_labels is None:
-            x_labels = plot_cols.keys()
+            x_labels = []
+            for row in plot_cols:
+                x_labels.append(row[0])
+            
         if y_labels is None:
             y_labels = []
-            for y in plot_cols.items():
-                y_labels.append(y[0])
+            for row in plot_cols:
+                y_labels.append(row[1][0])
 
         if not isinstance(x_labels, list):
             raise Exception, "x_labels must be a list of labels, equal to the length of data"
@@ -736,7 +737,7 @@ class nXYPlot(Plot):
         p_index = 0
         
         #run through and create each of the plots
-        for x in self.plot_cols:
+        for row in self.plot_cols:
             #create a new subplot
           
             subplot_num = v_plots * 100 + self.h_plots * 10 + p_index+1
@@ -747,7 +748,7 @@ class nXYPlot(Plot):
             else:
                 marker = self.markers[p_index]
 
-            plot_list.append(XYPlot(data = self.data, x_label = self.x_labels[p_index], y_label = self.y_labels[p_index], X_col = x, Y_cols = self.plot_cols[x], subplot = True, subplot_num = subplot_num, marker = marker))
+            plot_list.append(XYPlot(data = self.data, x_label = self.x_labels[p_index], y_label = self.y_labels[p_index], X_col = row[0], Y_cols = row[1], subplot = True, subplot_num = subplot_num, marker = marker))
             plot_list[p_index].plot()
             p_index += 1
                      
@@ -756,9 +757,23 @@ class nXYPlot(Plot):
 class TimeSeriesPlot(nXYPlot):
     """Creates a plot specifically geared to a timeseries"""
 
-    def __init__(self, data = None, plot_cols = None, **kwargs):
-        
-        nXYPlot.__init__(self, plot_cols = {'timestamp':plot_cols}, **kwargs)
+    def __init__(self, data = None, Y_cols = None, **kwargs):
+        #Y_cols is a list of tuples of the Y vars to be plotted, in the groups indicated by the tuples
+        #Put together plot_cols for nXYPlot
+        if not isinstance(Y_cols, list):
+            raise Exception, "Y_cols must be a list of lists"
+
+        plot_cols = []
+        for item in Y_cols:
+            if not isinstance(item, list):        
+                raise Exception, "Y_cols must be a list of lists"
+            for i in item:
+                if not isinstance(i, str):
+                    raise Exception, "Each item in the lists in Y_cols must be a string"
+            plot_cols.append(('timestamp',item))
+
+
+        nXYPlot.__init__(self, plot_cols = plot_cols, **kwargs)
 
         if data is not None and not isinstance(data, ts_data):
             raise Exception, "data for a timeseries plot must be an instance of a time series dataframe"
