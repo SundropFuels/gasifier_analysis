@@ -327,6 +327,10 @@ class Dataframe:
             self.replace_None_w_nan(column)
 
 
+    def finite_vals(self, key):
+        """Returns only the finite values -- will build on this later to add the ability to return indices as well, to allow for pairs indexed on finite only"""
+        return self[key][np.isfinite(self[key].astype(float))]
+
     def calc_uncertainty(self, function, uncertainty_dict = None, **kwargs):
         """Returns a column of uncertainty values for the given determining function, given the list of uncertainty objects for various tags"""
         #The uncertainty dict should have the form {'function argument': ('type', value)} where 'type' is column, abs, or rel

@@ -53,7 +53,12 @@ class GasifierReport:
         p.show()
         p.close()
 
-        #
+        #Test a timeseries plot
+        d = TimeSeriesPlot(vals = self.ts, plot_cols = ['CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS'])
+	d.plot()
+        d.show()
+        d.close()
+
         """
         self.gas_comp_pie_plot()
         
@@ -578,18 +583,22 @@ class XYPlot(Plot):
 
         for y in self.Y_cols:
             legend.append(y)
-            plt.plot(self.vals[self.X_col], self.vals[y])   #may need a marker default here
+            print y
+            print self.vals.finite_vals(y)
+            plt.plot(self.vals[self.X_col], self.vals[y],'o')   #may need a marker default here
             
-            if max_val is None or np.max(self.vals[y]) > max_val:
-                max_val = np.max(self.vals[y])
+            
+            if max_val is None or np.max(self.vals.finite_vals(y)) > max_val:
+                max_val = np.max(self.vals.finite_vals(y))
 
-            if min_val is None or np.min(self.vals[y]) < max_val:
-                min_val = np.min(self.vals[y])
+            if min_val is None or np.min(self.vals.finite_vals(y)) < max_val:
+                min_val = np.min(self.vals.finite_vals(y))
 
             if self.auto_scale:
                 max_val=int(1.03*max_val)+1
                 min_val=int(0.97*min_val)-1
                 plt.ylim(min_val,max_val)
+                
 
             if self.legend:
                 plt.legend(legend)
@@ -722,18 +731,18 @@ class nXYPlot(Plot):
         """Plots the X's vs multiple Y's.  Current behavior is to plot each X series in a separate subplot.  Creates separate subplots in a list"""
         plot_list = []
         
-        if len(plot_cols) % self.h_plots != 0:
-            v_plots = len(plot_cols)/self.h_plots + 1
+        if len(self.plot_cols) % self.h_plots != 0:
+            v_plots = len(self.plot_cols)/self.h_plots + 1
         else:
-            v_plots = len(plot_cols)/self.h_plots
+            v_plots = len(self.plot_cols)/self.h_plots
         p_index = 0
         #run through and create each of the plots
-        for x in plot_cols:
+        for x in self.plot_cols:
             #create a new subplot
             
-            subplot_num = v_plots * 100 + h_plots * 10 + p_index+1
+            subplot_num = v_plots * 100 + self.h_plots * 10 + p_index+1
             
-            plot_list.append(XYPlot(vals = vals, x_label = self.x_labels[p_index], y_label = self.y_label[p_index], X_col = x, Y_cols = plot_cols[x], subplot = True, subplot_num = subplot_num))
+            plot_list.append(XYPlot(vals = self.vals, x_label = self.x_labels[p_index], y_label = self.y_labels[p_index], X_col = x, Y_cols = self.plot_cols[x], subplot = True, subplot_num = subplot_num))
             plot_list[p_index].plot()
             p_index += 1
                      
@@ -744,15 +753,17 @@ class TimeSeriesPlot(nXYPlot):
 
     def __init__(self, vals = None, plot_cols = None, **kwargs):
         
-        XYPlot.__init__(self, **kwargs)
+        nXYPlot.__init__(self, plot_cols = {'timestamp':plot_cols}, **kwargs)
 
-        if not isinstance(vals, ts_data):
+        if vals is not None and not isinstance(vals, ts_data):
             raise Exception, "vals for a timeseries plot must be an instance of a time series dataframe"
 
         if not isinstance(plot_cols, list):
             raise Exception, "plot_cols must be a list of columns to plot for a time series plot"
+        
+        self.vals = vals
 
-        self.plot_cols = {'timestamp':plot_cols}
+        #self.plot_cols = {'timestamp':plot_cols}
 
         self.xlabels = ['Time']
         
@@ -891,7 +902,7 @@ if __name__ == '__main__':
             else:
                 run_id_list.append(int(sublist))  
 
-    run_id_list=[192]
+    run_id_list=[100]
         #49,50,51,52,53,54,56,57,58,59,
 ##                 60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,
 ##                 94,95,96,97,98,99,100,101,102,103,104,105,106,111,112,113,114,120,121,122,123,124,125,126,127,128,129,
