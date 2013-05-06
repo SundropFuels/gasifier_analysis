@@ -47,22 +47,12 @@ class GasifierReport:
         
         ###TESTS OF NEW PLOT OBJECTS HERE!"""
         
-        #Test a timeseries plot
-        d = TimeSeriesPlot(data = self.ts, Y_cols = [['CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS'], ['C2H4_MS', 'C6H6_MS', 'C7H8_MS', 'C10H8_MS'],['mass_flow_brush_feeder']], markers = ['o', 'o', '-'])
-	d.plot()
-        d.show()
-        d.close()
+        
 
-        #Test a Histogram Plot
-        p = Histogram(data = self.ss, label = "Histogram, be-achhes", data_col = 'mass_flow_brush_feeder', nbins = 20, useOffset = False)
-        p.plot()
-        p.show()
-        p.close()
-
-        l = NormalProbabilityPlot(data = self.ss, data_col = 'mass_flow_brush_feeder')
-        l.plot()
-        l.show()
-        l.close()
+        z = FourPlot(data = self.ss, x_label = 'Timestamp', y_label = 'Mass Feedrate (lb/hr)', x_var = 'timestamp', y_var = 'mass_flow_brush_feeder')
+        z.plot()
+        z.show()
+        z.close()
 
         """
         self.gas_comp_pie_plot()
@@ -590,7 +580,7 @@ class XYPlot(Plot):
 
         for y in self.Y_cols:
             legend.append(y)
-            print y
+            
             plt.plot(self.data[self.X_col], self.data[y],self.marker)   #may need a marker default here
             
             
@@ -851,11 +841,11 @@ class FourPlot(Plot):
         self.lag_plot.plot()
 
         #Histogram
-        self.hist = Histogram(data = self.data, label = self.y_label, data_col = self.y_var, nbins = 20)
+        self.hist = Histogram(data = self.data, label = self.y_label, data_col = self.y_var, nbins = 20, subplot = True, subplot_num = 223)
         self.hist.plot()
 
         #Normal probability plot
-        self.np_plot = NormalProbabilityPlot(data = self.data, data_col = self.y_var)
+        self.np_plot = NormalProbabilityPlot(data = self.data, data_col = self.y_var, subplot = True, subplot_num = 224)
         self.np_plot.plot()
 
     def save(self):
