@@ -54,6 +54,11 @@ class GasifierReport:
         z.show()
         z.close()
 
+
+        h = ControlChartfromDataframe(data = self.ss, y_col = 'mass_flow_brush_feeder', x_col = 'timestamp', sample_size = 10)
+        a = h.getDataframe()
+        
+        
         """
         self.gas_comp_pie_plot()
         
@@ -853,9 +858,43 @@ class FourPlot(Plot):
 
 
 
+class ControlChartfromDataframe:
+    """This is a helper class to take Dataframe data and put it into the appropriate form for a control chart"""
+
+    def __init__(self, data = None, y_col = None, x_col = None, sample_size = 1):
+        #Data is in the form of a dataframe
+        if data is None:
+            data = df.Dataframe()
+
+        if not isinstance(data, df.Dataframe):
+            raise Exception, "data must be in the form of a Dataframe"
+
+        self.data = data
+        self.y_col = y_col
+        self.x_col = x_col
+        self.sample_size = sample_size
+
+        
+
+    def getDataframe(self):
+            
+        grouped_data = [self.data[self.y_col][i-self.sample_size:i] for i in range(0,self.data.numrows(), self.sample_size)[1:]]
+        grouped_x = [self.data[self.x_col][i] for i in range(0, self.data.numrows(), self.sample_size)[1:]] # midpoints
+        #drop the last group if it is too small -- may want to make this optional
+        if len(grouped_data[-1]) != self.sample_size:
+            grouped_data.pop()
+        self.output_data = df.Dataframe()
+        p = 0
+        for group, x in zip(grouped_data,grouped_x):
+            self.output_data[x] = group
+            p += 1
+        return self.output_data
+
+
+
 class ControlChart(Plot):
     #All control charts have:
-    #    1) Data - a single column to draw data from
+    #    1) Data - a dataframe of the measurements for each sample group
     #    2) Possibly UCL and LCL's
     #    3) Subgroup size? -- really, the common functions are to plot lines given a UCL and LCL, then plot data given the appropriate points
     #    There will always be two graphs, one for x-bar or similar and one for R or s
@@ -878,8 +917,15 @@ class XBarControlChart(ControlChart):
     def __init__(self, **kwargs):
         pass
 
+    
+
     def _calcPlottedPoints(self):
-        pass
+        #calculate XBar points
+        
+        self.X_bar = np.array()
+        for group in self.grouped_data:
+            self.X_bar = np.append(self.X_bar, self.group.mean())   #This is unlikely to work if there are NaN's...need to fix later
+        
 
     def plot(self):
         pass
