@@ -54,7 +54,7 @@ class GasifierReport:
         p.close()
 
         #Test a timeseries plot
-        d = TimeSeriesPlot(vals = self.ts, plot_cols = ['CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS'])
+        d = TimeSeriesPlot(vals = self.ts, plot_cols = ['CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS'], markers = ['o'])
 	d.plot()
         d.show()
         d.close()
@@ -542,7 +542,7 @@ class XYPlot(Plot):
     """This is the basic class for a simple XY plot (one X, many Y)"""
     pass
 
-    def __init__(self, vals = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, legend = True, **kwargs):
+    def __init__(self, vals = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, legend = True, marker = '-', **kwargs):
         Plot.__init__(self, **kwargs)
         #We should have taken care of whether this is a subplot already...just need to put the plotting machinery in place
 
@@ -569,7 +569,7 @@ class XYPlot(Plot):
 
         self.auto_scale = auto_scale
         self.legend = legend
-
+        self.marker = marker
 
     def plot(self):
 
@@ -583,9 +583,7 @@ class XYPlot(Plot):
 
         for y in self.Y_cols:
             legend.append(y)
-            print y
-            print self.vals.finite_vals(y)
-            plt.plot(self.vals[self.X_col], self.vals[y],'o')   #may need a marker default here
+            plt.plot(self.vals[self.X_col], self.vals[y],self.marker)   #may need a marker default here
             
             
             if max_val is None or np.max(self.vals.finite_vals(y)) > max_val:
@@ -690,7 +688,7 @@ class LagPlot(XYPlot):
 class nXYPlot(Plot):
     """Multiple XY subplots on the same plot"""
 
-    def __init__(self, vals = None, x_labels = None, y_labels = None, plot_cols = None, h_plots = 1, auto_scale = True, **kwargs):
+    def __init__(self, vals = None, x_labels = None, y_labels = None, plot_cols = None, h_plots = 1, auto_scale = True, markers = None, **kwargs):
         """Initialize the XY Plot.  vals must be a dataframe.  plot_cols is a dict, with each key corresponding to an X and each val a dict of Y's to plot"""
 
         Plot.__init__(self,**kwargs)
@@ -719,6 +717,9 @@ class nXYPlot(Plot):
             raise Exception, "x_labels must be a list of labels, equal to the length of vals"
         if not isinstance(y_labels, list):
             raise Exception, "y_labels must be a list of labels, equal to the length of vals"
+        
+        self.markers = markers
+
         """
         if len(x_labels) != len(vals) or len(y_labels) != len(vals):
             raise Exception, "x_labels and y_labels must be the same length as vals"
@@ -736,13 +737,20 @@ class nXYPlot(Plot):
         else:
             v_plots = len(self.plot_cols)/self.h_plots
         p_index = 0
+        
         #run through and create each of the plots
         for x in self.plot_cols:
             #create a new subplot
-            
+          
             subplot_num = v_plots * 100 + self.h_plots * 10 + p_index+1
             
-            plot_list.append(XYPlot(vals = self.vals, x_label = self.x_labels[p_index], y_label = self.y_labels[p_index], X_col = x, Y_cols = self.plot_cols[x], subplot = True, subplot_num = subplot_num))
+            if self.markers == None:
+                marker = '-'
+           
+            else:
+                marker = self.markers[p_index]
+
+            plot_list.append(XYPlot(vals = self.vals, x_label = self.x_labels[p_index], y_label = self.y_labels[p_index], X_col = x, Y_cols = self.plot_cols[x], subplot = True, subplot_num = subplot_num, marker = marker))
             plot_list[p_index].plot()
             p_index += 1
                      
