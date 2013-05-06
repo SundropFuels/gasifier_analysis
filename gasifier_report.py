@@ -48,13 +48,13 @@ class GasifierReport:
         ###TESTS OF NEW PLOT OBJECTS HERE!"""
         #Test just an XYPlot
 
-        p = XYPlot(vals = self.ts, x_label = "timestamp", y_label = 'Mass flow of brush feeder', X_col = 'timestamp', Y_cols = ['mass_flow_brush_feeder'])
+        p = XYPlot(data = self.ts, x_label = "timestamp", y_label = 'Mass flow of brush feeder', X_col = 'timestamp', Y_cols = ['mass_flow_brush_feeder'])
         p.plot()
         p.show()
         p.close()
 
         #Test a timeseries plot
-        d = TimeSeriesPlot(vals = self.ts, plot_cols = ['CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS'], markers = ['o'])
+        d = TimeSeriesPlot(data = self.ts, plot_cols = ['CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS'], markers = ['o'])
 	d.plot()
         d.show()
         d.close()
@@ -519,18 +519,18 @@ class Plot:
 class PiePlot(Plot):
     """Pie Chart"""
 
-    def __init__(self, vals = None, **kwargs):
+    def __init__(self, data = None, **kwargs):
         Plot.__init__(self,**kwargs)
-        if vals is None:
-            vals = OrderedDict()
-        if not isinstance(vals, OrderedDict):
+        if data is None:
+            data = OrderedDict()
+        if not isinstance(data, OrderedDict):
             raise Exception, "Pie chart values MUST be an ordered dictionary {label:value}"
-        self.vals = vals
+        self.data = data
 
     def plot(self):
         
-        plt.pie(self.vals.items())
-        plt.legend(self.vals.keys())
+        plt.pie(self.data.items())
+        plt.legend(self.data.keys())
         
         plt.tight_layout()
 
@@ -542,17 +542,17 @@ class XYPlot(Plot):
     """This is the basic class for a simple XY plot (one X, many Y)"""
     pass
 
-    def __init__(self, vals = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, legend = True, marker = '-', **kwargs):
+    def __init__(self, data = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, legend = True, marker = '-', **kwargs):
         Plot.__init__(self, **kwargs)
         #We should have taken care of whether this is a subplot already...just need to put the plotting machinery in place
 
-        if vals is None:
-            #vals must be a dataframe
-            vals = df.Dataframe()
-        if not isinstance(vals, df.Dataframe):
+        if data is None:
+            #data must be a dataframe
+            data = df.Dataframe()
+        if not isinstance(data, df.Dataframe):
             raise Exception, "XY chart values MUST be in the form of a dataframe"            
 
-        self.vals = vals
+        self.data = data
 
         #More error checking may be appropriate later
 
@@ -583,14 +583,14 @@ class XYPlot(Plot):
 
         for y in self.Y_cols:
             legend.append(y)
-            plt.plot(self.vals[self.X_col], self.vals[y],self.marker)   #may need a marker default here
+            plt.plot(self.data[self.X_col], self.data[y],self.marker)   #may need a marker default here
             
             
-            if max_val is None or np.max(self.vals.finite_vals(y)) > max_val:
-                max_val = np.max(self.vals.finite_vals(y))
+            if max_val is None or np.max(self.data.finite_vals(y)) > max_val:
+                max_val = np.max(self.data.finite_vals(y))
 
-            if min_val is None or np.min(self.vals.finite_vals(y)) < max_val:
-                min_val = np.min(self.vals.finite_vals(y))
+            if min_val is None or np.min(self.data.finite_vals(y)) < max_val:
+                min_val = np.min(self.data.finite_vals(y))
 
             if self.auto_scale:
                 max_val=int(1.03*max_val)+1
@@ -606,20 +606,20 @@ class XYPlot(Plot):
 class Histogram(Plot):
     """Creates a histogram for the given data column -- works on a dataframe basis, to allow easy refiguring just by changing column name"""
         
-    def __init__(self, vals = None, label = None, data_col = None, nbins = 5, useOffset = False, **kwargs):
+    def __init__(self, data = None, label = None, data_col = None, nbins = 5, useOffset = False, **kwargs):
         Plot.__init__(**kwargs)
-        if vals is None:
-            vals = df.Dataframe()
-        if not isinstance(vals, df.Dataframe):
-            raise Exception, "vals must be a Dataframe!"
+        if data is None:
+            data = df.Dataframe()
+        if not isinstance(data, df.Dataframe):
+            raise Exception, "data must be a Dataframe!"
 
-        self.vals = vals
+        self.data = data
         self.label = label
         self.nbins = nbins
         self.data_col = data_col
 
     def plot():
-        plt.hist(vals[data_col])
+        plt.hist(data[data_col])
         plt.ticklabel_format(useOffset = useOffset)
         plt.xlabel(label)
         plt.ylabel("Count")
@@ -628,22 +628,22 @@ class Histogram(Plot):
 
 class NormalProbabilityPlot(XYPlot):
     """Creates a normal probability plot for the given data colum -- works on a dataframe basis, to allow easy refiguring just by changing column names"""
-    def __init__(self, vals, data_col = None, **kwargs):
-        XYPlot.__init__(self, vals = vals, **kwargs)
+    def __init__(self, data, data_col = None, **kwargs):
+        XYPlot.__init__(self, data = data, **kwargs)
         self.x_label = 'Normal probability plot'
         self.y_label = 'Ordered response'
         self.data_col = data_col
-        #Need to set vals before this will work
+        #Need to set data before this will work
 
     def _calc_normal_probs(self, data_col):
-        n = self.vals.numrows()
+        n = self.data.numrows()
         U=[1-np.power(0.5,(1/n))]
-        ordered=np.sort(self.vals[data_col])
+        ordered=np.sort(self.data[data_col])
         for j in range(0,len(ordered),1)[1:-1]:
             U.append((j-0.3175)/(n+0.365))
         U.append(np.power(0.5,(1/n)))
-        self.vals['U_normal_prob'] = U
-        self.vals['ord_normal_prob'] = ordered
+        self.data['U_normal_prob'] = U
+        self.data['ord_normal_prob'] = ordered
 
     def plot():
         self._calc_normal_probs(self.data_col)
@@ -660,9 +660,9 @@ class NormalProbabilityPlot(XYPlot):
 
 class LagPlot(XYPlot):
     """Creates a lag plot for the given data column -- works on a dataframe basis, to allow easy refiguring just by changing column names"""
-    def __init__(self, vals, data_col = None, lag = 1, **kwargs):
+    def __init__(self, data, data_col = None, lag = 1, **kwargs):
 
-        XYPlot.__init__(self, vals = vals, **kwargs)
+        XYPlot.__init__(self, data = data, **kwargs)
         
         self.x_label = r'Y$_i$'
         self.y_label = r'Y$_{i-1}$'
@@ -671,10 +671,10 @@ class LagPlot(XYPlot):
 
         
     def _calc_lag(self, data_col):
-        if "%s_lag" % data_col not in self.vals:
-            lagged = np.delete(self.vals[data_col],0)
+        if "%s_lag" % data_col not in self.data:
+            lagged = np.delete(self.data[data_col],0)
             lagged = np.append(lagged, np.nan)
-            self.vals['%s_lag'] = lagged
+            self.data['%s_lag'] = lagged
             
 
     def plot(self):
@@ -688,17 +688,17 @@ class LagPlot(XYPlot):
 class nXYPlot(Plot):
     """Multiple XY subplots on the same plot"""
 
-    def __init__(self, vals = None, x_labels = None, y_labels = None, plot_cols = None, h_plots = 1, auto_scale = True, markers = None, **kwargs):
-        """Initialize the XY Plot.  vals must be a dataframe.  plot_cols is a dict, with each key corresponding to an X and each val a dict of Y's to plot"""
+    def __init__(self, data = None, x_labels = None, y_labels = None, plot_cols = None, h_plots = 1, auto_scale = True, markers = None, **kwargs):
+        """Initialize the XY Plot.  data must be a dataframe.  plot_cols is a dict, with each key corresponding to an X and each val a dict of Y's to plot"""
 
         Plot.__init__(self,**kwargs)
-        if vals is None:
-            #Vals must be a dataframe
-            vals = df.Dataframe()
-        if not isinstance(vals, df.Dataframe):
+        if data is None:
+            #Data must be a dataframe
+            data = df.Dataframe()
+        if not isinstance(data, df.Dataframe):
             raise Exception, "XY chart values MUST be a dataframe"
         
-        self.data = vals
+        self.data = data
         if plot_cols is None:
             self.plot_cols = {}
         self.plot_cols = plot_cols
@@ -714,16 +714,13 @@ class nXYPlot(Plot):
                 y_labels.append(y[0])
 
         if not isinstance(x_labels, list):
-            raise Exception, "x_labels must be a list of labels, equal to the length of vals"
+            raise Exception, "x_labels must be a list of labels, equal to the length of data"
         if not isinstance(y_labels, list):
-            raise Exception, "y_labels must be a list of labels, equal to the length of vals"
+            raise Exception, "y_labels must be a list of labels, equal to the length of data"
         
         self.markers = markers
 
-        """
-        if len(x_labels) != len(vals) or len(y_labels) != len(vals):
-            raise Exception, "x_labels and y_labels must be the same length as vals"
-        """
+       
         self.x_labels = x_labels                
         self.y_labels = y_labels
         
@@ -750,7 +747,7 @@ class nXYPlot(Plot):
             else:
                 marker = self.markers[p_index]
 
-            plot_list.append(XYPlot(vals = self.vals, x_label = self.x_labels[p_index], y_label = self.y_labels[p_index], X_col = x, Y_cols = self.plot_cols[x], subplot = True, subplot_num = subplot_num, marker = marker))
+            plot_list.append(XYPlot(data = self.data, x_label = self.x_labels[p_index], y_label = self.y_labels[p_index], X_col = x, Y_cols = self.plot_cols[x], subplot = True, subplot_num = subplot_num, marker = marker))
             plot_list[p_index].plot()
             p_index += 1
                      
@@ -759,17 +756,17 @@ class nXYPlot(Plot):
 class TimeSeriesPlot(nXYPlot):
     """Creates a plot specifically geared to a timeseries"""
 
-    def __init__(self, vals = None, plot_cols = None, **kwargs):
+    def __init__(self, data = None, plot_cols = None, **kwargs):
         
         nXYPlot.__init__(self, plot_cols = {'timestamp':plot_cols}, **kwargs)
 
-        if vals is not None and not isinstance(vals, ts_data):
-            raise Exception, "vals for a timeseries plot must be an instance of a time series dataframe"
+        if data is not None and not isinstance(data, ts_data):
+            raise Exception, "data for a timeseries plot must be an instance of a time series dataframe"
 
         if not isinstance(plot_cols, list):
             raise Exception, "plot_cols must be a list of columns to plot for a time series plot"
         
-        self.vals = vals
+        self.data = data
 
         #self.plot_cols = {'timestamp':plot_cols}
 
@@ -798,12 +795,12 @@ class FourPlot(Plot):
 
     #Ideally, I would just build this up from four different plots (two XY, one histogram, ...) but the way I've done subplotting in XY precludes this -- refactoring!
 
-    def __init__(self, vals = None, x_label = None, y_label = None, x_var = None, y_var = None, **kwargs):
+    def __init__(self, data = None, x_label = None, y_label = None, x_var = None, y_var = None, **kwargs):
         #Should put in some x and y variable checking here
         Plot.__init__(self, **kwargs)
         self.x_label = x_label
         self.y_label = y_label
-        self.vals = vals
+        self.data = data
         self.x_var = x_var
         self.y_var = y_var
         #Need to either store the kwargs or set them for the other plots
@@ -813,19 +810,19 @@ class FourPlot(Plot):
         """Builds and plots the 4-plot"""
 
         #Run plot
-        self.run_plot = XYPlot(vals = self.vals, x_label = self.x_label, y_label = self.y_label, X_col = self.x_var, Y_cols = [self.y_var], auto_scale = True, subplot = True, subplot_num = 221)
+        self.run_plot = XYPlot(data = self.data, x_label = self.x_label, y_label = self.y_label, X_col = self.x_var, Y_cols = [self.y_var], auto_scale = True, subplot = True, subplot_num = 221)
         self.run_plot.plot()
 
         #Lag plot
-        self.lag_plot = LagPlot(vals = self.vals, data_col = self.y_var, subplot = True, subplot_num = 222)
+        self.lag_plot = LagPlot(data = self.data, data_col = self.y_var, subplot = True, subplot_num = 222)
         self.lag_plot.plot()
 
         #Histogram
-        self.hist = Histogram(vals = self.vals, label = self.y_label, data_col = self.y_var, nbins = 20)
+        self.hist = Histogram(data = self.data, label = self.y_label, data_col = self.y_var, nbins = 20)
         self.hist.plot()
 
         #Normal probability plot
-        self.np_plot = NormalProbabilityPlot(vals = self.vals, data_col = self.y_var)
+        self.np_plot = NormalProbabilityPlot(data = self.data, data_col = self.y_var)
         self.np_plot.plot()
 
     def save(self):
@@ -842,7 +839,7 @@ class ControlChart(Plot):
 
 
    
-    def __init__(self, vals = None, y_col = None, x_col = None, **kwargs):
+    def __init__(self, data = None, y_col = None, x_col = None, **kwargs):
         pass
 
 
