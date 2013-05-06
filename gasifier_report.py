@@ -59,7 +59,7 @@ class GasifierReport:
         p.show()
         p.close()
 
-        l = LagPlot(data = self.ss, data_col = 'mass_flow_brush_feeder')
+        l = LagPlot(data = self.ss, data_col = 'mass_flow_brush_feeder', lag = 6)
         l.plot()
         l.show()
         l.close()
@@ -674,17 +674,20 @@ class LagPlot(XYPlot):
         XYPlot.__init__(self, data = data, marker = 'o', **kwargs)
         
         self.x_label = r'Y$_i$'
-        self.y_label = r'Y$_{i-1}$'
+        self.y_label = r'Y$_{i-%s}$' % lag
         self.data_col = data_col
-        
+        self.lag = lag
 
         
     def _calc_lag(self, data_col):
-        if "%s_lag" % data_col not in self.data.data:
-            
-            lagged = np.delete(self.data[data_col],0)
+        for i in range(0, self.lag):
+            if i == 0:
+                lagged = np.delete(self.data[data_col],0)
+            else:
+                lagged = np.delete(lagged, 0)
             lagged = np.append(lagged, np.nan)
-            self.data['%s_lag' % data_col] = lagged
+        self.data['%s_lag' % data_col] = lagged
+        
             
 
     def plot(self):
