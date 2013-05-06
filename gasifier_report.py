@@ -45,6 +45,16 @@ class GasifierReport:
         self._add_std_percent()
         self._convert_steam_flow_to_ml_min()
         
+        ###TESTS OF NEW PLOT OBJECTS HERE!"""
+        #Test just an XYPlot
+
+        p = XYPlot(vals = self.ts, x_label = "timestamp", y_label = 'Mass flow of brush feeder', X_col = 'timestamp', Y_cols = ['mass_flow_brush_feeder'])
+        p.plot()
+        p.show()
+        p.close()
+
+        #
+        """
         self.gas_comp_pie_plot()
         
         self.time_series_plot(['mass_flow_brush_feeder'])
@@ -99,7 +109,7 @@ class GasifierReport:
                        caption='Four-plot for methane readings from the mass spectrometer.')
 
         self.generate_standard_report()
-        
+        """
         
     def _create_file_structure(self):
         self.directory='rpt/%s/' % str(self.run_info.info['run_id'])
@@ -490,13 +500,16 @@ class Plot:
             plt.subplot(subplot_num)
 
         else:
-            plt.figure(figsize)
+            plt.figure(figsize=self.figsize)
 
     def save(self, loc):
         plt.savefig(loc)
 
     def close(self):
         plt.close()
+
+    def show(self):
+        plt.show()
 
 class PiePlot(Plot):
     """Pie Chart"""
@@ -524,7 +537,7 @@ class XYPlot(Plot):
     """This is the basic class for a simple XY plot (one X, many Y)"""
     pass
 
-    def __init__(self, vals = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, **kwargs)
+    def __init__(self, vals = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, legend = True, **kwargs):
         Plot.__init__(self, **kwargs)
         #We should have taken care of whether this is a subplot already...just need to put the plotting machinery in place
 
@@ -532,9 +545,9 @@ class XYPlot(Plot):
             #vals must be a dataframe
             vals = df.Dataframe()
         if not isinstance(vals, df.Dataframe):
-            raise Exception, "XY chart values MUST be in the form of a dataframe            
+            raise Exception, "XY chart values MUST be in the form of a dataframe"            
 
-        self.data = vals
+        self.vals = vals
 
         #More error checking may be appropriate later
 
@@ -542,9 +555,15 @@ class XYPlot(Plot):
         self.Y_cols = Y_cols
 
         if x_label is None:
-            self.x_label = X_col
+            x_label = X_col
         if y_label is None:
-            self.y_label = Y_cols[0]
+            y_label = Y_cols[0]
+
+        self.x_label = x_label
+        self.y_label = y_label
+
+        self.auto_scale = auto_scale
+        self.legend = legend
 
 
     def plot(self):
@@ -557,15 +576,15 @@ class XYPlot(Plot):
         plt.xticks(fontsize = self.fontsize)
         plt.yticks(fontsize = self.fontsize)
 
-        for y in Y_cols:
+        for y in self.Y_cols:
             legend.append(y)
-            plt.plot(vals[X_col], vals[Y_col])   #may need a marker default here
+            plt.plot(self.vals[self.X_col], self.vals[y])   #may need a marker default here
             
-            if max_val is None or np.max(vals[y]) > max_val:
-                max_val = np.max(vals[y])
+            if max_val is None or np.max(self.vals[y]) > max_val:
+                max_val = np.max(self.vals[y])
 
-            if min_val is None or np.min(vals[y]) < max_val:
-                min_val = np.min(vals[y])
+            if min_val is None or np.min(self.vals[y]) < max_val:
+                min_val = np.min(self.vals[y])
 
             if self.auto_scale:
                 max_val=int(1.03*max_val)+1
@@ -634,7 +653,7 @@ class NormalProbabilityPlot(XYPlot):
 
 class LagPlot(XYPlot):
     """Creates a lag plot for the given data column -- works on a dataframe basis, to allow easy refiguring just by changing column names"""
-    def __init__(self, vals, data_col = None, lag = 1, **kwargs)
+    def __init__(self, vals, data_col = None, lag = 1, **kwargs):
 
         XYPlot.__init__(self, vals = vals, **kwargs)
         
@@ -714,7 +733,7 @@ class nXYPlot(Plot):
             
             subplot_num = v_plots * 100 + h_plots * 10 + p_index+1
             
-            plot_list.append(XYPlot(vals = vals, x_label = self.x_labels[p_index], y_label = self.y_label[p_index], X_col = x, Y_cols = plot_cols[x], subplot = True, subplot_num = subplot_num)
+            plot_list.append(XYPlot(vals = vals, x_label = self.x_labels[p_index], y_label = self.y_label[p_index], X_col = x, Y_cols = plot_cols[x], subplot = True, subplot_num = subplot_num))
             plot_list[p_index].plot()
             p_index += 1
                      
