@@ -54,10 +54,15 @@ class GasifierReport:
         d.close()
 
         #Test a Histogram Plot
-        p = Histogram(data = self.ss, label = "Histogram, be-achhes", data_col = 'mass_flow_brush_feeder', nbins = 5, useOffset = False)
+        p = Histogram(data = self.ss, label = "Histogram, be-achhes", data_col = 'mass_flow_brush_feeder', nbins = 20, useOffset = False)
         p.plot()
         p.show()
         p.close()
+
+        l = LagPlot(data = self.ss, data_col = 'mass_flow_brush_feeder')
+        l.plot()
+        l.show()
+        l.close()
 
         """
         self.gas_comp_pie_plot()
@@ -561,9 +566,9 @@ class XYPlot(Plot):
         self.X_col = X_col
         self.Y_cols = Y_cols
 
-        if x_label is None:
+        if x_label is None and X_col is not None:
             x_label = X_col
-        if y_label is None:
+        if y_label is None and Y_cols is not None:
             y_label = Y_cols[0]
 
         self.x_label = x_label
@@ -585,6 +590,7 @@ class XYPlot(Plot):
 
         for y in self.Y_cols:
             legend.append(y)
+            print y
             plt.plot(self.data[self.X_col], self.data[y],self.marker)   #may need a marker default here
             
             
@@ -595,8 +601,8 @@ class XYPlot(Plot):
                 min_val = np.min(self.data.finite_vals(y))
 
             if self.auto_scale:
-                max_val=int(1.03*max_val)+1
-                min_val=int(0.97*min_val)-1
+                max_val=1.03*max_val
+                min_val=0.97*min_val
                 plt.ylim(min_val,max_val)
                 
 
@@ -622,7 +628,7 @@ class Histogram(Plot):
         self.useOffset = useOffset
 
     def plot(self):
-        plt.hist(self.data[self.data_col])
+        plt.hist(self.data[self.data_col], self.nbins)
         plt.ticklabel_format(useOffset = self.useOffset)
         plt.xlabel(self.label)
         plt.ylabel("Count")
@@ -665,7 +671,7 @@ class LagPlot(XYPlot):
     """Creates a lag plot for the given data column -- works on a dataframe basis, to allow easy refiguring just by changing column names"""
     def __init__(self, data, data_col = None, lag = 1, **kwargs):
 
-        XYPlot.__init__(self, data = data, **kwargs)
+        XYPlot.__init__(self, data = data, marker = 'o', **kwargs)
         
         self.x_label = r'Y$_i$'
         self.y_label = r'Y$_{i-1}$'
@@ -674,10 +680,11 @@ class LagPlot(XYPlot):
 
         
     def _calc_lag(self, data_col):
-        if "%s_lag" % data_col not in self.data:
+        if "%s_lag" % data_col not in self.data.data:
+            
             lagged = np.delete(self.data[data_col],0)
             lagged = np.append(lagged, np.nan)
-            self.data['%s_lag'] = lagged
+            self.data['%s_lag' % data_col] = lagged
             
 
     def plot(self):
