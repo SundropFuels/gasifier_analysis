@@ -166,6 +166,10 @@ class Dataframe:
         """Returns a list of the row names"""
         return self.rows_dict.keys()
 
+    def cols(self):
+        """Returns a list of the column names"""
+        return self.data.keys()
+
     def numrows(self):
         return self.nRows
        

@@ -57,6 +57,11 @@ class GasifierReport:
 
         h = ControlChartfromDataframe(data = self.ss, y_col = 'mass_flow_brush_feeder', x_col = 'timestamp', sample_size = 10)
         a = h.getDataframe()
+
+        c = XBarRControlChart(data = a, y_label = 'Mass Flow Brush Feeder', x_label = 'Time')
+        c.plot()
+        c.show()
+        c.close()
         
         
         """
@@ -893,6 +898,14 @@ class ControlChartfromDataframe:
 
 
 class ControlChart(Plot):
+    
+    #Basic constants
+    d2 = [1.128,1.693,2.059,2.326,2.534,2.704,2.847,2.970,3.078,3.173,3.258,3.336,3.407,3.472,3.532,3.588,3.640,3.689,3.735,3.778,3.819,3.858,3.895,3.931]
+    d3 = [0.853,0.888,0.880,0.864,0.848,0.833,0.820,0.808,0.797,0.787,0.778,0.770,0.763,0.756,0.750,0.744,0.739,0.734,0.729,0.724,0.720,0.716,0.712,0.708]
+    c4 = [0.7979,0.8862,0.9213,0.9400,0.9515,0.9594,0.9650,0.9693,0.9727,0.9754,0.9776,0.9794,0.9810,0.9823,0.9835,0.9845,0.9854,0.9862,0.9869,0.9876,0.9882,0.9887,0.8792,0.9896]
+
+
+
     #All control charts have:
     #    1) Data - a dataframe of the measurements for each sample group
     #    2) Possibly UCL and LCL's
@@ -901,8 +914,13 @@ class ControlChart(Plot):
 
 
    
-    def __init__(self, data = None, y_col = None, x_col = None, **kwargs):
-        pass
+    def __init__(self, data = None, y_label = None, x_label = None, **kwargs):
+        Plot.__init__(self, **kwargs)
+        self.data = data
+        self.y_label = y_label
+        self.x_label = x_label
+        self.sample_size = self.data.numrows()
+        
 
 
     def plot(self):
@@ -913,19 +931,23 @@ class ControlChart(Plot):
         pass        
 
 class XBarControlChart(ControlChart):
-    
+        
+
+
     def __init__(self, **kwargs):
-        pass
+        ControlChart.__init__(self, **kwargs),
 
     
 
-    def _calcPlottedPoints(self):
+    def _calcXBarPoints(self):
         #calculate XBar points
         
-        self.X_bar = np.array()
-        for group in self.grouped_data:
-            self.X_bar = np.append(self.X_bar, self.group.mean())   #This is unlikely to work if there are NaN's...need to fix later
-        
+        self.X_bar = np.array([])
+        self.ord_pts = np.array([])
+        for col in self.data.cols():
+            self.X_bar = np.append(self.X_bar, self.data[col].mean())   #This is unlikely to work if there are NaN's...need to fix later
+            self.ord_pts = np.append(self.ord_pts,col)
+        self.X_bar_bar = self.X_bar.mean()
 
     def plot(self):
         pass
@@ -935,13 +957,45 @@ class XBarControlChart(ControlChart):
 class XBarRControlChart(XBarControlChart):
     
     def __init__(self, **kwargs):
-        pass
+        XBarControlChart.__init__(self, **kwargs)
+
+    
 
     def _calcControlLimits(self):
-        pass
+        self.R = np.array([])
+        for col in self.ord_pts:
+            self.R = np.append(self.R,np.max(self.data[col]) - np.min(self.data[col]))
+        self.R_bar = self.R.mean()
+        #UCL/LCL
+        # These could be made adjustable in the future for other than 3-sigma control
+        self.x_UCL = self.X_bar_bar + 3./(ControlChart.d2[self.sample_size-1]*np.sqrt(self.sample_size))*self.R_bar
+        self.x_LCL = self.X_bar_bar - 3./(ControlChart.d2[self.sample_size-1]*np.sqrt(self.sample_size))*self.R_bar
+
+        self.R_UCL = self.R_bar + 3.*ControlChart.d3[self.sample_size-1]/ControlChart.d2[self.sample_size-1]*self.R_bar
+        self.R_LCL = max(0, self.R_bar - 3.*ControlChart.d3[self.sample_size-1]/ControlChart.d2[self.sample_size-1]*self.R_bar)
+            
 
     def plot(self):
-        pass
+        #Generate both plots using an nXYPlot; this is a PITA, because I have constrained these to be dataframes -- ugh
+        self._calcXBarPoints()
+        self._calcControlLimits()
+        data = df.Dataframe(array_dict = {'x-bar':self.X_bar,'R':self.R, 'x':self.ord_pts})
+        self.x_bar_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')        
+        self.x_bar_plot.plot()
+        self.R_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'R', X_col = 'x', Y_cols = ['R'], auto_scale = True, subplot = True, subplot_num = 212, marker = 'o')
+        self.R_plot.plot()
+        
+        plt.subplot(211)
+        plt.hlines(self.X_bar_bar, min(self.ord_pts),max(self.ord_pts), colors='blue')
+        plt.hlines(self.x_UCL, min(self.ord_pts), max(self.ord_pts), colors = 'red')
+        plt.hlines(self.x_LCL, min(self.ord_pts), max(self.ord_pts), colors = 'red')
+        plt.subplot(212)
+        plt.hlines(self.R_bar, min(self.ord_pts), max(self.ord_pts), colors = 'blue')
+        plt.hlines(self.R_UCL, min(self.ord_pts), max(self.ord_pts), colors = 'red')
+        if self.R_LCL > 0:
+            plt.hlines(self.R_LCL, self.ord_pts[0], self.ord_pts[-1])
+
+        
 
 class XBarSControlChart(XBarControlChart):
     
