@@ -53,6 +53,12 @@ class GasifierReport:
         d.show()
         d.close()
 
+        #Test a Histogram Plot
+        p = Histogram(data = self.ss, label = "Histogram, be-achhes", data_col = 'mass_flow_brush_feeder', nbins = 5, useOffset = False)
+        p.plot()
+        p.show()
+        p.close()
+
         """
         self.gas_comp_pie_plot()
         
@@ -603,7 +609,7 @@ class Histogram(Plot):
     """Creates a histogram for the given data column -- works on a dataframe basis, to allow easy refiguring just by changing column name"""
         
     def __init__(self, data = None, label = None, data_col = None, nbins = 5, useOffset = False, **kwargs):
-        Plot.__init__(**kwargs)
+        Plot.__init__(self,**kwargs)
         if data is None:
             data = df.Dataframe()
         if not isinstance(data, df.Dataframe):
@@ -613,11 +619,12 @@ class Histogram(Plot):
         self.label = label
         self.nbins = nbins
         self.data_col = data_col
+        self.useOffset = useOffset
 
-    def plot():
-        plt.hist(data[data_col])
-        plt.ticklabel_format(useOffset = useOffset)
-        plt.xlabel(label)
+    def plot(self):
+        plt.hist(self.data[self.data_col])
+        plt.ticklabel_format(useOffset = self.useOffset)
+        plt.xlabel(self.label)
         plt.ylabel("Count")
 
     #inherits save() and close()
