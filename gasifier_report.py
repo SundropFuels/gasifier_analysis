@@ -59,7 +59,7 @@ class GasifierReport:
         p.show()
         p.close()
 
-        l = LagPlot(data = self.ss, data_col = 'mass_flow_brush_feeder', lag = 6)
+        l = NormalProbabilityPlot(data = self.ss, data_col = 'mass_flow_brush_feeder')
         l.plot()
         l.show()
         l.close()
@@ -651,14 +651,15 @@ class NormalProbabilityPlot(XYPlot):
         for j in range(0,len(ordered),1)[1:-1]:
             U.append((j-0.3175)/(n+0.365))
         U.append(np.power(0.5,(1/n)))
+        U = np.array(U)
         self.data['U_normal_prob'] = U
         self.data['ord_normal_prob'] = ordered
 
-    def plot():
+    def plot(self):
         self._calc_normal_probs(self.data_col)
         self.X_col = 'U_normal_prob'
         self.Y_cols = ['ord_normal_prob']
-        XYPlot.plot()
+        XYPlot.plot(self)
 
     def save():
         pass
