@@ -427,13 +427,21 @@ class ControlChart(Plot):
         self.y_label = y_label
         self.x_label = x_label
         self.sample_size = self.data.numrows()
-        
+        self.chart1_UCL = None
+        self.chart1_LCL = None
+        self.chart1_target = None
+
+        self.chart2_UCL = None
+        self.chart2_LCL = None
+        self.chart2_target = None
 
 
     def plot(self):
         #set limits and draw horizontal lines
         #plot data on graph from worked up sets
         #common to all kinds of charts
+
+        
 
         pass        
 
@@ -457,9 +465,17 @@ class XBarControlChart(ControlChart):
         self.X_bar_bar = self.X_bar.mean()
 
     def plot(self):
-        pass
-
-    
+        self.colors = {'UCL':'red', 'LCL':'red', 'target':'blue'}
+        for suf in ['UCL', 'LCL', 'target']:
+            
+            for ch_num in [1,2]:
+                plotnum = 210 + ch_num
+                plt.subplot(plotnum)
+                val = getattr(self, "chart%s_%s" % (ch_num,suf))
+                if val is not None:
+                    if suf is not 'LCL' or val > 0:
+                        plt.hlines(getattr(self, "chart%s_%s" % (ch_num,suf)), min(self.ord_pts), max(self.ord_pts), colors = self.colors[suf])
+          
 
 class XBarRControlChart(XBarControlChart):
     
@@ -473,14 +489,17 @@ class XBarRControlChart(XBarControlChart):
         for col in self.ord_pts:
             self.R = np.append(self.R,np.max(self.data[col]) - np.min(self.data[col]))
         self.R_bar = self.R.mean()
+        
         #UCL/LCL
         # These could be made adjustable in the future for other than 3-sigma control
-        self.x_UCL = self.X_bar_bar + 3./(ControlChart.d2[self.sample_size-1]*np.sqrt(self.sample_size))*self.R_bar
-        self.x_LCL = self.X_bar_bar - 3./(ControlChart.d2[self.sample_size-1]*np.sqrt(self.sample_size))*self.R_bar
+        self.chart1_target = self.X_bar_bar
+        self.chart1_UCL = self.X_bar_bar + 3./(ControlChart.d2[self.sample_size-1]*np.sqrt(self.sample_size))*self.R_bar
+        self.chart1_LCL = self.X_bar_bar - 3./(ControlChart.d2[self.sample_size-1]*np.sqrt(self.sample_size))*self.R_bar
 
-        self.R_UCL = self.R_bar + 3.*ControlChart.d3[self.sample_size-1]/ControlChart.d2[self.sample_size-1]*self.R_bar
-        self.R_LCL = max(0, self.R_bar - 3.*ControlChart.d3[self.sample_size-1]/ControlChart.d2[self.sample_size-1]*self.R_bar)
-            
+        self.chart2_target = self.R_bar
+        self.chart2_UCL = self.R_bar + 3.*ControlChart.d3[self.sample_size-1]/ControlChart.d2[self.sample_size-1]*self.R_bar
+        self.chart2_LCL = max(0, self.R_bar - 3.*ControlChart.d3[self.sample_size-1]/ControlChart.d2[self.sample_size-1]*self.R_bar)
+        
 
     def plot(self):
         #Generate both plots using an nXYPlot; this is a PITA, because I have constrained these to be dataframes -- ugh
@@ -492,15 +511,7 @@ class XBarRControlChart(XBarControlChart):
         self.R_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'R', X_col = 'x', Y_cols = ['R'], auto_scale = True, subplot = True, subplot_num = 212, marker = 'o')
         self.R_plot.plot()
         
-        plt.subplot(211)
-        plt.hlines(self.X_bar_bar, min(self.ord_pts),max(self.ord_pts), colors='blue')
-        plt.hlines(self.x_UCL, min(self.ord_pts), max(self.ord_pts), colors = 'red')
-        plt.hlines(self.x_LCL, min(self.ord_pts), max(self.ord_pts), colors = 'red')
-        plt.subplot(212)
-        plt.hlines(self.R_bar, min(self.ord_pts), max(self.ord_pts), colors = 'blue')
-        plt.hlines(self.R_UCL, min(self.ord_pts), max(self.ord_pts), colors = 'red')
-        if self.R_LCL > 0:
-            plt.hlines(self.R_LCL, self.ord_pts[0], self.ord_pts[-1])
+        XBarControlChart.plot(self)
 
         
 
