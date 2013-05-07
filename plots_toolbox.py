@@ -503,12 +503,12 @@ class XBarRControlChart(XBarControlChart):
         #UCL/LCL
         # These could be made adjustable in the future for other than 3-sigma control
         self.chart1_target = self.X_bar_bar
-        self.chart1_UCL = self.X_bar_bar + 3./(ControlChart.d2[self.sample_size-1]*np.sqrt(self.sample_size))*self.R_bar
-        self.chart1_LCL = self.X_bar_bar - 3./(ControlChart.d2[self.sample_size-1]*np.sqrt(self.sample_size))*self.R_bar
+        self.chart1_UCL = self.X_bar_bar + 3./(ControlChart.d2[self.sample_size-2]*np.sqrt(self.sample_size))*self.R_bar
+        self.chart1_LCL = self.X_bar_bar - 3./(ControlChart.d2[self.sample_size-2]*np.sqrt(self.sample_size))*self.R_bar
 
         self.chart2_target = self.R_bar
-        self.chart2_UCL = self.R_bar + 3.*ControlChart.d3[self.sample_size-1]/ControlChart.d2[self.sample_size-1]*self.R_bar
-        self.chart2_LCL = max(0, self.R_bar - 3.*ControlChart.d3[self.sample_size-1]/ControlChart.d2[self.sample_size-1]*self.R_bar)
+        self.chart2_UCL = self.R_bar + 3.*ControlChart.d3[self.sample_size-2]/ControlChart.d2[self.sample_size-2]*self.R_bar
+        self.chart2_LCL = max(0, self.R_bar - 3.*ControlChart.d3[self.sample_size-2]/ControlChart.d2[self.sample_size-2]*self.R_bar)
         
 
     def plot(self):
@@ -533,12 +533,39 @@ class XBarSControlChart(XBarControlChart):
         #UCL/LCL
         # These could be made adjustable in the future for other than 3-sigma control
         self.chart1_target = self.X_bar_bar
-        self.chart1_UCL = self.X_bar_bar + 3./(ControlChart.c4[self.sample_size-1]*np.sqrt(self.sample_size))*self.s_bar
-        self.chart1_LCL = self.X_bar_bar - 3./(ControlChart.c4[self.sample_size-1]*np.sqrt(self.sample_size))*self.s_bar
+        self.chart1_UCL = self.X_bar_bar + 3./(ControlChart.c4[self.sample_size-2]*np.sqrt(self.sample_size))*self.s_bar
+        self.chart1_LCL = self.X_bar_bar - 3./(ControlChart.c4[self.sample_size-2]*np.sqrt(self.sample_size))*self.s_bar
 
         self.chart2_target = self.s_bar
-        self.chart2_UCL = self.s_bar + 3./ControlChart.c4[self.sample_size-1]*np.sqrt(1-np.power(ControlChart.c4[self.sample_size-1],2))*self.s_bar
-        self.chart2_LCL = max(0, self.s_bar - 3./ControlChart.c4[self.sample_size-1]*np.sqrt(1-np.power(ControlChart.c4[self.sample_size-1],2))*self.s_bar)
+        self.chart2_UCL = self.s_bar + 3./ControlChart.c4[self.sample_size-2]*np.sqrt(1-np.power(ControlChart.c4[self.sample_size-2],2))*self.s_bar
+        self.chart2_LCL = max(0, self.s_bar - 3./ControlChart.c4[self.sample_size-2]*np.sqrt(1-np.power(ControlChart.c4[self.sample_size-2],2))*self.s_bar)
 
     def plot(self):
         XBarControlChart.plot(self, chart2 = 's')
+
+class IndividualsXBarControlChart(XBarControlChart):
+
+    def __init__(self, **kwargs):
+        XBarControlChart.__init__(self, **kwargs)
+
+    def _calcControlLimits(self):
+        self.MR = np.array([])
+        for index in range(1,len(self.ord_pts)):
+            self.MR = np.append(self.MR, np.abs(self.data[self.ord_pts[index]] - self.data[self.ord_pts[index-1]]))
+        self.MR_bar = self.MR.mean()
+        self.MR = np.insert(self.MR, 0, np.nan) #Need to tack a NaN at the front of the Moving Range, so that it does not plot
+        
+
+        #UCL/LCL
+        #These could be made adjustable in the future for other than 3-sigma control
+        self.chart1_target = self.X_bar_bar
+        self.chart1_UCL = self.X_bar_bar + 3.*self.MR_bar/ControlChart.d2[0]
+        self.chart1_LCL = self.X_bar_bar - 3.*self.MR_bar/ControlChart.d2[0]
+
+        self.chart2_target = self.MR_bar
+        self.chart2_UCL = self.MR_bar + 3.*ControlChart.d3[0]/ControlChart.d2[0]*self.MR_bar
+        self.chart2_LCL = max(0, self.MR_bar - 3.*ControlChart.d3[0]/ControlChart.d2[0]*self.MR_bar)
+
+    def plot(self):
+        XBarControlChart.plot(self, chart2 = 'MR')
+        

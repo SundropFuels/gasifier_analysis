@@ -57,10 +57,10 @@ class GasifierReport:
         z.close()
 
 
-        h = ControlChartfromDataframe(data = self.ss, y_col = 'mass_flow_brush_feeder', x_col = 'timestamp', sample_size = 10)
+        h = ControlChartfromDataframe(data = self.ss, y_col = 'mass_flow_brush_feeder', x_col = 'timestamp', sample_size = 1)
         a = h.getDataframe()
 
-        c = XBarSControlChart(data = a, y_label = 'Mass Flow Brush Feeder', x_label = 'Time')
+        c = IndividualsXBarControlChart(data = a, y_label = 'Mass Flow Brush Feeder', x_label = 'Time')
         c.plot()
         c.show()
         c.close()
