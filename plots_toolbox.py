@@ -12,6 +12,9 @@ class Plot:
         self.save_loc = save_loc
         self.fontsize = fontsize
 
+        self.subplot = subplot
+        self.subplot_num = subplot_num
+
 
         #May want to pull in a default dataset here -- we'll see how general this can be
         if subplot:
@@ -56,7 +59,7 @@ class XYPlot(Plot):
     """This is the basic class for a simple XY plot (one X, many Y)"""
     pass
 
-    def __init__(self, data = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, legend = True, marker = '-', **kwargs):
+    def __init__(self, data = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, legend = True, marker = '-', y_min = None, y_max = None, **kwargs):
         Plot.__init__(self, **kwargs)
         #We should have taken care of whether this is a subplot already...just need to put the plotting machinery in place
 
@@ -85,6 +88,9 @@ class XYPlot(Plot):
         self.legend = legend
         self.marker = marker
 
+        self.y_min = y_min
+        self.y_max = y_max
+
     def plot(self):
 
         max_val = None
@@ -108,15 +114,34 @@ class XYPlot(Plot):
                 min_val = np.min(self.data.finite_vals(y))
 
             if self.auto_scale:
-                max_val=1.03*max_val
-                min_val=0.97*min_val
-                plt.ylim(min_val,max_val)
+                              
+                #set max and min vals to be data members, so that we can get to them later
+                self.y_min = 0.97*min_val
+                self.y_max = 1.03*max_val
+
+                plt.ylim(self.y_min, self.y_max)
                 
 
             if self.legend:
                 plt.legend(legend)
             
             plt.tight_layout()
+
+    def rescale(self, ymin = None, ymax = None, padded=False, padding = 0.03):
+        
+        if self.subplot:
+            plt.subplot(self.subplot_num)
+        min_p = 1.0
+        max_p = 1.0
+
+        if padded:
+            min_p = 1.0-padding
+            max_p = 1.0+padding
+        if ymin is not None:
+            self.y_min = ymin * min_p
+        if ymax is not None:
+            self.y_max = ymax * min_p
+        plt.ylim(self.y_min, self.y_max)
 
 class Histogram(Plot):
     """Creates a histogram for the given data column -- works on a dataframe basis, to allow easy refiguring just by changing column name"""
@@ -468,8 +493,9 @@ class XBarControlChart(ControlChart):
         self._calcXBarPoints()
         self._calcControlLimits()
         data = df.Dataframe(array_dict = {'x-bar':self.X_bar, chart2:getattr(self,chart2), 'x':self.ord_pts})
-        self.x_bar_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')        
-        self.x_bar_plot.plot()
+        self.chart1_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')        
+        self.chart1_plot.plot()
+        
         if chart2 is not None:
             self.chart2_plot = XYPlot(data = data, x_label = self.x_label, y_label = chart2, X_col = 'x', Y_cols = [chart2], auto_scale = True, subplot = True, subplot_num = 212, marker = 'o')
             self.chart2_plot.plot()
@@ -485,7 +511,21 @@ class XBarControlChart(ControlChart):
                 if val is not None:
                     if suf is not 'LCL' or val > 0:
                         plt.hlines(getattr(self, "chart%s_%s" % (ch_num,suf)), min(self.ord_pts), max(self.ord_pts), colors = self.colors[suf])
-          
+                        if suf == 'LCL':
+                            if getattr(self, "chart%s_LCL" % ch_num) < getattr(self, "chart%s_plot" % ch_num).y_min:
+                                getattr(self, "chart%s_plot" % ch_num).rescale(ymin=0.9*getattr(self,"chart%s_LCL" % ch_num), padded = False)
+                                
+                        elif suf == 'UCL':
+                            if getattr(self, "chart%s_UCL" % ch_num) > getattr(self, "chart%s_plot" % ch_num).y_max:
+                                getattr(self, "chart%s_plot" % ch_num).rescale(ymax=1.1*getattr(self,"chart%s_UCL" % ch_num), padded = False)
+
+                                    
+        
+
+                          
+                            
+        
+  
 
 class XBarRControlChart(XBarControlChart):
     
