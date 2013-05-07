@@ -464,7 +464,17 @@ class XBarControlChart(ControlChart):
             self.ord_pts = np.append(self.ord_pts,col)
         self.X_bar_bar = self.X_bar.mean()
 
-    def plot(self):
+    def plot(self, chart2 = None):
+        self._calcXBarPoints()
+        self._calcControlLimits()
+        data = df.Dataframe(array_dict = {'x-bar':self.X_bar, chart2:getattr(self,chart2), 'x':self.ord_pts})
+        self.x_bar_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')        
+        self.x_bar_plot.plot()
+        if chart2 is not None:
+            self.chart2_plot = XYPlot(data = data, x_label = self.x_label, y_label = chart2, X_col = 'x', Y_cols = [chart2], auto_scale = True, subplot = True, subplot_num = 212, marker = 'o')
+            self.chart2_plot.plot()
+
+
         self.colors = {'UCL':'red', 'LCL':'red', 'target':'blue'}
         for suf in ['UCL', 'LCL', 'target']:
             
@@ -502,27 +512,33 @@ class XBarRControlChart(XBarControlChart):
         
 
     def plot(self):
-        #Generate both plots using an nXYPlot; this is a PITA, because I have constrained these to be dataframes -- ugh
-        self._calcXBarPoints()
-        self._calcControlLimits()
-        data = df.Dataframe(array_dict = {'x-bar':self.X_bar,'R':self.R, 'x':self.ord_pts})
-        self.x_bar_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')        
-        self.x_bar_plot.plot()
-        self.R_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'R', X_col = 'x', Y_cols = ['R'], auto_scale = True, subplot = True, subplot_num = 212, marker = 'o')
-        self.R_plot.plot()
+        XBarControlChart.plot(self, chart2 = 'R')
         
-        XBarControlChart.plot(self)
+        
 
         
 
 class XBarSControlChart(XBarControlChart):
     
     def __init__(self, **kwargs):
-        pass
+        XBarControlChart.__init__(self, **kwargs)
 
     def _calcControlLimits(self):
 
-        pass
+        self.s = np.array([])
+        for col in self.ord_pts:
+            self.s = np.append(self.s,self.data[col].std())
+        self.s_bar = self.s.mean()
+        
+        #UCL/LCL
+        # These could be made adjustable in the future for other than 3-sigma control
+        self.chart1_target = self.X_bar_bar
+        self.chart1_UCL = self.X_bar_bar + 3./(ControlChart.c4[self.sample_size-1]*np.sqrt(self.sample_size))*self.s_bar
+        self.chart1_LCL = self.X_bar_bar - 3./(ControlChart.c4[self.sample_size-1]*np.sqrt(self.sample_size))*self.s_bar
+
+        self.chart2_target = self.s_bar
+        self.chart2_UCL = self.s_bar + 3./ControlChart.c4[self.sample_size-1]*np.sqrt(1-np.power(ControlChart.c4[self.sample_size-1],2))*self.s_bar
+        self.chart2_LCL = max(0, self.s_bar - 3./ControlChart.c4[self.sample_size-1]*np.sqrt(1-np.power(ControlChart.c4[self.sample_size-1],2))*self.s_bar)
 
     def plot(self):
-        pass
+        XBarControlChart.plot(self, chart2 = 's')
