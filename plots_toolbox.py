@@ -33,6 +33,20 @@ class Plot:
     def show(self):
         plt.show()
 
+    def LaTeX_insert(self, label):
+        """Outputs text to include this figure in a LaTeX document"""
+        text=r"""
+	\begin{figure}[hb]
+    		\centering
+    		\includegraphics[width=0.9\textwidth]{%s}
+    		\caption{%s}
+    		\label{%s}
+	\end{figure}
+        
+        """ % (self.save_loc, self.caption, label)
+
+        return text        
+
 class PiePlot(Plot):
     """Pie Chart"""
 
@@ -59,8 +73,8 @@ class PiePlot(Plot):
         plt.tight_layout()
 
     def save(self):
-        loc = self.save_loc+"_gas_comp_pie_plot.png"
-        Plot.save(self, loc)
+        self.save_loc = "%s_gas_comp_pie_plot.png" % self.save_loc
+        Plot.save(self, self.save_loc)
 
 class XYPlot(Plot):
     """This is the basic class for a simple XY plot (one X, many Y)"""
@@ -320,6 +334,7 @@ class TimeSeriesPlot(nXYPlot):
         if not isinstance(Y_cols, list):
             raise Exception, "Y_cols must be a list of lists"
 
+
         plot_cols = []
         for item in Y_cols:
             if not isinstance(item, list):        
@@ -348,7 +363,7 @@ class TimeSeriesPlot(nXYPlot):
     #No need to define plot
 
     def save(self):
-        loc = self.save_loc + "_time_series_plot.png"
+        loc = "%s_%s_time_series_plot.png" % (self.save_loc, self.y_labels[0])
         Plot.save(self, loc)
 
     #Need to add fill function and latex interface functions, if necessary

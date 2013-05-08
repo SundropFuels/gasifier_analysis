@@ -213,18 +213,7 @@ class GasifierReport:
         for i in l:
             self.run_info.info[i]*=100
         
-    def plot_latex(self, caption, label, filename):
-        text=r"""
-\begin{figure}[hb]
-    \centering
-    \includegraphics[width=0.9\textwidth]{%s}
-    \caption{%s}
-    \label{%s}
-\end{figure}
-        
-        """ % (filename, caption, label)
-
-        return text        
+    
       
     def gas_comp_pie_plot(self):
         gasdict={}
@@ -241,16 +230,13 @@ class GasifierReport:
         goodgas.append('C2+')
         plotgasvals = np.append(plotgasvals,tar)
 
-        self.gas_pie_plot = PiePlot(data = plotgasvals, keys = goodgas, figsize = (7,7))
+        self.gas_pie_plot = PiePlot(data = plotgasvals, keys = goodgas, figsize = (7,7), save_loc = "%s%s" % (self.directory, str(self.run_info.info['run_id'])))
         self.gas_pie_plot.plot()
-        self.gas_pie_plot.show()
+        self.gas_pie_plot.save()
         self.gas_pie_plot.close()  
-        #
-        #filename=str(self.run_info.info['run_id'])+'_gas_comp_pie_plot.png'
-        #plt.savefig(self.directory+filename)
-        #plt.close()
-
-        #self.run_info.info['piegas']=filename
+        
+        self.run_info.info['piegas']=self.gas_pie_plot.save_loc
+        print self.gas_pie_plot.LaTeX_insert('pie_plot_1')
         
     def _load_report_template(self):
         with open('GasificationAnalysisReportTemplate.tex', 'r') as f:
