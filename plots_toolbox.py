@@ -454,7 +454,7 @@ class FourPlot(Plot):
 class ControlChartfromDataframe:
     """This is a helper class to take Dataframe data and put it into the appropriate form for a control chart"""
 
-    def __init__(self, data = None, y_col = None, x_col = None, sample_size = 1):
+    def __init__(self, data = None, y_col = None, x_col = None, sample_size = 1, ignore_nan = False):
         #Data is in the form of a dataframe
         if data is None:
             data = df.Dataframe()
@@ -466,13 +466,19 @@ class ControlChartfromDataframe:
         self.y_col = y_col
         self.x_col = x_col
         self.sample_size = sample_size
+        self.ignore_nan = ignore_nan
 
         
 
     def getDataframe(self):
-            
-        grouped_data = [self.data[self.y_col][i-self.sample_size:i] for i in range(0,self.data.numrows(), self.sample_size)[1:]]
-        grouped_x = [self.data[self.x_col][i] for i in range(0, self.data.numrows(), self.sample_size)[1:]] # midpoints
+        
+        if self.ignore_nan:
+            working_data = self.data.finite_set(self.y_col, cols = [self.x_col])
+        else:
+            working_data = self.data
+        
+        grouped_data = [working_data[self.y_col][i-self.sample_size:i] for i in range(0,working_data.numrows(), self.sample_size)[1:]]
+        grouped_x = [working_data[self.x_col][i] for i in range(0, working_data.numrows(), self.sample_size)[1:]] # midpoints
         #drop the last group if it is too small -- may want to make this optional
         if len(grouped_data[-1]) != self.sample_size:
             grouped_data.pop()

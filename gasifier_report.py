@@ -46,7 +46,7 @@ class GasifierReport:
    
         
         #Generate pie plot
-      
+        """
         self.gas_comp_pie_plot()
         ts_plots = {}
         #Generate time series plots
@@ -75,20 +75,31 @@ class GasifierReport:
             fp_plots[key].plot()
             fp_plots[key].show()
             fp_plots[key].close()
-           
+        """
         """        
         #Create ARIMA fits as necessary
         ARIMA_list = ['mass_flow_brush_feeder', 'temp_skin_tube_middle', 'temp_steam_reactor_entry']
         for col in ARIMA_list:
             self.fit_ARIMA(col)
-
-
-
-        self.control_plots = [('mass_flow_brush_feeder',10),('temp_skin_tube_middle',10),('temp_steam_reactor_entry',10),('pressure_ash_knockout_vessel',10),('CO_MS',3),('CO2_MS',3),('H2_MS',3),('CH4_MS',3)]
-        for p in self.control_plots:
-            self.control_plot(p[0],p[1])       
+        """
+        cp_plots = {}
+        cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS']
+        cp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS']
+        cp_caption = []
+        items = ['biomass flow rate', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)']
+        for item in items:
+            cp_caption.append("Individuals control chart for %s" % item)
         
-         
+        for key, Y, caption in zip(cp_keys, cp_Y, cp_caption):
+            input_df = ControlChartfromDataframe(data = self.ss, y_col = Y, x_col = 'timestamp', ignore_nan = True)
+            cp_plots[key] = IndividualsXBarControlChart(data = input_df.getDataframe(), caption = caption)
+            cp_plots[key].plot()
+            cp_plots[key].show()
+            cp_plots[key].close()
+
+           
+        
+        """ 
 
         
         self.generate_standard_report()

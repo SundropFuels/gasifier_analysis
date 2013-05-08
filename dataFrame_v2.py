@@ -335,6 +335,15 @@ class Dataframe:
         """Returns only the finite values -- will build on this later to add the ability to return indices as well, to allow for pairs indexed on finite only"""
         return self[key][np.isfinite(self[key].astype(float))]
 
+    def finite_set(self, key, cols = None):
+        """Returns a dataframe built up from only the finite values for key"""
+        array_dict = {}
+        array_dict[key] = self[key][np.isfinite(self[key].astype(float))]
+        if cols is not None:
+            for col in cols:
+                array_dict[col] = self[col][np.isfinite(self[key].astype(float))]
+        return Dataframe(array_dict = array_dict)
+
     def calc_uncertainty(self, function, uncertainty_dict = None, **kwargs):
         """Returns a column of uncertainty values for the given determining function, given the list of uncertainty objects for various tags"""
         #The uncertainty dict should have the form {'function argument': ('type', value)} where 'type' is column, abs, or rel
