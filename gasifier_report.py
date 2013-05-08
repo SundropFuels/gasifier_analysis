@@ -65,6 +65,7 @@ class GasifierReport:
         c.show()
         c.close()
         
+        self.gas_comp_pie_plot()
         
         """
         self.gas_comp_pie_plot()
@@ -140,7 +141,6 @@ class GasifierReport:
     def _load_ts_timeseries_data(self):
         """Loads raw gasifier data."""
         self.ts = GasifierProcTS(start = self.run_info.info['ts_start'], end = self.run_info.info['ts_stop'])
-        
         self.ts.SQL_load(self.interface_raw,'gasifier_lv_GC_view') #This line needs to automatically load the units
         
         #Need to build the glossary using the SQL tools
@@ -153,7 +153,6 @@ class GasifierReport:
             self.gl_units[row['simple_name']] = row['units']
         
         self.ts.glossary_replace(self.glossary)
-        
         self.ts.set_units(self.gl_units)
         self.ts.replace_None_w_nan_all()
 
@@ -161,6 +160,7 @@ class GasifierReport:
         """Loads processed steady state data including calculated columns"""
         self.ss = ts_data(start = self.run_info.info['ss_start'], end = self.run_info.info['ss_stop'])
         self.ss.SQL_load(self.interface_proc,'gas_proc_data_tbl')
+        
         self.ss.replace_None_w_nan_all()
 
     def _add_units_to_run_info(self):
@@ -182,6 +182,7 @@ class GasifierReport:
                 except ZeroDivisionError:
                     self.run_info.info[i[:-4]+'_pstd']=0
 
+    ##CHANGE -- USE UNIT CONVERTER
     def _convert_gas_units_run_info(self):
         gaslist=[]
         for i in self.run_info.info:
@@ -201,7 +202,9 @@ class GasifierReport:
         self.run_info.info['H2S_normalized_avg']=self.run_info.info['H2S_MS_avg']*normprod
         self.run_info.info['H2S_normalized_std']=self.run_info.info['H2S_MS_std']*normprod
         self.run_info.info['H2S_normalized_units']='ppm'
-            
+    
+
+    ##CHANGE        
     def _convert_steam_flow_to_ml_min(self):
         self.run_info.info['steam_flow_avg']*=7.55987283
 
@@ -222,226 +225,7 @@ class GasifierReport:
         """ % (filename, caption, label)
 
         return text        
-        
-    def time_series_plot(self, colnames, ylabel=None, caption=None, figsize = (12,6),fontsize ='x-large'):
-        maxes=[]
-        mins=[]
-        legend=[]
-        plt.figure(figsize=figsize)
-        for colname in colnames:
-            if None or np.nan not in self.ts[colname]:
-                tsdata=self.ts[colname]
-                tstime=self.ts['timestamp']
-                ssdata=self.ss[colname]
-                sstime=self.ss['timestamp']
-                legend.append(colname)
-                if ylabel==None: ylabel=colname
-
-                plt.plot(tstime,tsdata)
-
-                plt.xlabel('Time', fontsize=fontsize)
-                plt.ylabel(ylabel, fontsize=fontsize)
-                plt.xticks(fontsize=fontsize)
-                plt.yticks(fontsize=fontsize)
-                
-            else:
-                tsdata=[]
-                tstime=[]
-                ssdata=[]
-                sstime=[]
-                legend.append(colname)
-                if ylabel==None: ylabel=colname
-                for i in self.ts['counter']:
-                    if self.ts[colname][i] is not np.nan:
-                        tsdata.append(self.ts[colname][i])
-                        tstime.append(self.ts['timestamp'][i])
-                for i in self.ss['counter']:
-                    if self.ss[colname][i] is not np.nan:
-                        ssdata.append(self.ss[colname][i])
-                        sstime.append(self.ss['timestamp'][i])
-
-                plt.plot(tstime,tsdata,'o')
-
-                plt.xlabel('Time', fontsize=fontsize)
-                plt.ylabel(ylabel, fontsize=fontsize)
-                plt.xticks(fontsize=fontsize)
-                plt.yticks(fontsize=fontsize)
-            maxes.append(np.max(tsdata[5:]))
-            mins.append(np.min(tsdata[5:]))
-                                  
-        maxy=np.max(maxes)
-        miny=np.min(mins)
-        maxy=int(maxy+0.03*maxy)+1
-        miny=int(miny-0.03*miny)-1
-        if miny<0: miny=0
-
-        plt.ylim((miny,maxy))
-        plt.fill_between(self.ss['timestamp'],2000,0,facecolor='yellow',alpha=0.2)
-        plt.legend(legend)
-        plt.tight_layout()
-        filename=str(self.run_info.info['run_id'])+'_'+colname+'_time_series_plot.png'
-        plt.savefig(self.directory+filename)
-        plt.close()
-
-        if caption==None: caption='Time series plot for %s' % colname.replace('_', ' ')
-        label=colname+'_time_series_plot'
-
-        text=self.plot_latex(caption, label, filename)
-
-        try: self.timeseriesplottext=self.timeseriesplottext.__add__(text)
-        except AttributeError:
-            self.timeseriesplottext=text
-
-        self.run_info.info['timeseriesplots']=self.timeseriesplottext
-        
-    def four_plot(self, colname, ylabel=None, caption=None, figsize=(12,8)):
-        if None or np.nan not in self.ss[colname]:
-            timestamp=self.ss['timestamp']
-            data=self.ss[colname]
-
-        else:
-            timestamp=[]
-            data=[]
-            for i in self.ss['counter']:
-                    if self.ss[colname][i] is not np.nan:
-                        data.append(self.ss[colname][i])
-                        timestamp.append(self.ss['timestamp'][i])
-                        
-        plt.figure(figsize=figsize)
-
-        plt.subplot(221)
-        plt.plot(timestamp, data)
-        if ylabel==None: ylabel=colname
-        plt.ylabel(ylabel)
-        plt.ticklabel_format(axis='y',useOffset=False)
-        plt.xlabel('Time')
-
-        plt.subplot(222)
-        y=[None]
-        for j in range(0,len(data),1)[1:]:
-            y.append(data[j-1])
-        plt.plot(y, data, ',')
-        plt.ylabel(r'Y$_i$')
-        plt.xlabel(r'Y$_{i-1}$')
-        plt.ticklabel_format(useOffset=False)
-
-        plt.subplot(223)
-        plt.hist(data,20)
-        plt.ticklabel_format(useOffset=False)
-        plt.xlabel(ylabel)
-        plt.ylabel('Count')
-
-        plt.subplot(224)
-        n=len(data)
-        U=[1-0.5**(1/n)]
-        ordered=np.sort(data)
-        for j in range(0,len(data),1)[1:-1]:
-            U.append((j-0.3175)/(n+0.365))
-        U.append(0.5**(1/n))
-        plt.plot(U, ordered, ',')
-        plt.ticklabel_format(useOffset=False)
-        plt.xlabel('Normal Probability Plot')
-        plt.ylabel('Ordered Response ' +ylabel)
-        
-        plt.tight_layout()
-        filename=str(self.run_info.info['run_id'])+'_'+colname+'_four_plot.png'
-        plt.savefig(self.directory+filename)
-        plt.close()
-
-        if caption==None: caption='Four-plot for %s' % colname.replace('_', ' ')
-        label=colname+'_four_plot'
-
-        text=self.plot_latex(caption, label, filename)
-
-        try: self.fourplottext=self.fourplottext.__add__(text)
-        except AttributeError:
-            self.fourplottext=text
-
-        self.run_info.info['fourplots']=self.fourplottext
-        
-
-
-    def control_factorial(self,x):
-        count=int(x)
-        product=0.5*1.77246
-        if x!=int(x):
-            for i in range(count):
-                    product*=x-1*i
-            return product
-        else: return factorial(x)
-
-
-    #The way this SHOULD be implemented is through OBJECTS; a control plot is a THING, not a function to generate a control plot
-    
-    
-
-    def control_plot(self, colname, n):
-        if None or np.nan not in self.ss[colname]:
-            data=self.ss[colname]
-            l=len(data)
-            time=[self.ss['timestamp'][i] for i in range(0,l,n)[1:]]
-            
-        else:
-            time=[]
-            data=[]
-            for i in self.ss['counter']:
-                    if self.ss[colname][i] is not np.nan:
-                        data.append(self.ss[colname][i])
-                        time.append(self.ss['timestamp'][i])
-            l=len(data)
-            time=[time[i] for i in range(0,l,n)[1:]]
-            
-        m=l/n
-        c=np.sqrt(2./(n-1))*self.control_factorial(n/2.-1)/self.control_factorial((n-1)/2.-1)
-        data2=[data[i-n:i] for i in range(0,l,n)[1:]]
-        
-        si=[np.std(i) for i in data2]
-        xi=[np.mean(i) for i in data2]
-        sbar=np.mean(si)
-        xbar=np.mean(xi)
-        sucl=sbar+3*sbar/c*np.sqrt(1-c**2)
-        slcl=sbar-3*sbar/c*np.sqrt(1-c**2)
-        xucl=xbar+3*sbar/(c*np.sqrt(n))
-        xlcl=xbar-3*sbar/(c*np.sqrt(n))
-
-        plt.subplot(211)
-        plt.plot(time,xi,'o')
-        plt.hlines(xbar,time[0],time[-1])
-        plt.hlines(xucl,time[0],time[-1])
-        plt.hlines(xlcl,time[0],time[-1])
-        plt.ylabel('Mean Value (' + self.run_info.info[colname+'_units'] +') n=%s' %n)
-        plt.text(time[1], np.max(xi)-(np.max(xi)-np.min(xi))*.1,
-                 'Avg = %.3f, UCL = %.3f, LCL = %.3f' %(xbar,xucl,xlcl),
-                 bbox={'facecolor':'white','alpha':0.85,'pad':10})
-
-        plt.subplot(212)
-        plt.plot(time,si,'o')
-        plt.hlines(sbar,time[0],time[-1])
-        plt.hlines(sucl,time[0],time[-1])
-        plt.hlines(slcl,time[0],time[-1])
-        plt.ylabel('Standard Deviation (' + self.run_info.info[colname+'_units'] +') n=%s' %n)
-        plt.xlabel('Time')
-        plt.text(time[4], np.max(si)-(np.max(si)-np.min(si))*.1,
-                 'Avg = %.3f, UCL = %.3f, LCL = %.3f' %(sbar,sucl,slcl),
-                 bbox={'facecolor':'white','alpha':0.85,'pad':10})
-        
-
-        plt.tight_layout()
-        filename=str(self.run_info.info['run_id'])+'_'+colname+'_control_plot.png'
-        plt.savefig(self.directory+filename)
-        plt.close()
-
-        caption='Control plot for %s' % colname.replace('_', ' ')
-        label=colname+'_control_plot'
-
-        text=self.plot_latex(caption, label, filename)
-
-        try: self.controlplottext=self.controlplottext.__add__(text)
-        except AttributeError:
-            self.controlplottext=text
-
-        self.run_info.info['controlplots']=self.controlplottext
-        
+      
     def gas_comp_pie_plot(self):
         gasdict={}
         for i in self.run_info.info:
@@ -449,23 +233,24 @@ class GasifierReport:
                 gasdict[i]=self.run_info.info[i]
         goodgas=['CO', 'CO2', 'CH4', 'H2']
         targas=['C2H6', 'C2H4', 'C2H2', 'C3H8', 'C3H6', 'C6H6', 'C7H8', 'C10H8']
-        plotgasvals=[]
+        plotgasvals=np.array([])
         tar=100-gasdict['N2_MS_avg']-gasdict['H2O_MS_avg']-gasdict['Ar_MS_avg']
         for i in goodgas:
-            tar-=gasdict[i+'_MS_avg']
-            plotgasvals.append(gasdict[i+'_MS_avg'])
+            tar-=gasdict['%s_MS_avg' % i]
+            plotgasvals = np.append(plotgasvals, gasdict['%s_MS_avg' % i])
         goodgas.append('C2+')
-        plotgasvals.append(tar)
-        plt.figure(figsize=(7,7))
-        plt.pie(plotgasvals)
-        plt.legend(goodgas)
-        
-        plt.tight_layout()
-        filename=str(self.run_info.info['run_id'])+'_gas_comp_pie_plot.png'
-        plt.savefig(self.directory+filename)
-        plt.close()
+        plotgasvals = np.append(plotgasvals,tar)
 
-        self.run_info.info['piegas']=filename
+        self.gas_pie_plot = PiePlot(data = plotgasvals, keys = goodgas, figsize = (7,7))
+        self.gas_pie_plot.plot()
+        self.gas_pie_plot.show()
+        self.gas_pie_plot.close()  
+        #
+        #filename=str(self.run_info.info['run_id'])+'_gas_comp_pie_plot.png'
+        #plt.savefig(self.directory+filename)
+        #plt.close()
+
+        #self.run_info.info['piegas']=filename
         
     def _load_report_template(self):
         with open('GasificationAnalysisReportTemplate.tex', 'r') as f:
@@ -494,8 +279,6 @@ class GasifierReport:
         except KeyError:
             print "Warning: %s is a bad key, ignoring" % col
 
-
-#Objects to hold plot types -- this should REALLY be built into a convenient library for matplotlib, but this is a project for another day
 
 
 if __name__ == '__main__':

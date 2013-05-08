@@ -36,18 +36,25 @@ class Plot:
 class PiePlot(Plot):
     """Pie Chart"""
 
-    def __init__(self, data = None, **kwargs):
+    def __init__(self, data = None, keys = None, **kwargs):
         Plot.__init__(self,**kwargs)
         if data is None:
-            data = OrderedDict()
-        if not isinstance(data, OrderedDict):
-            raise Exception, "Pie chart values MUST be an ordered dictionary {label:value}"
+            data = np.array([])
+        if not isinstance(data, np.ndarray):
+            raise Exception, "Pie chart values MUST be a numpy array"
+        
         self.data = data
+
+        if keys is not None:
+            if not isinstance(keys, list) or len(keys) != len(self.data):
+                raise Exception, "keys must be a list of the same length as the data"
+
+        self.keys = keys                
 
     def plot(self):
         
-        plt.pie(self.data.items())
-        plt.legend(self.data.keys())
+        plt.pie(self.data)
+        plt.legend(self.keys)
         
         plt.tight_layout()
 
