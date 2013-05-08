@@ -1,6 +1,7 @@
 import numpy as np
 import dataFrame_v2 as df
 import matplotlib.pyplot as plt
+import LabFunctionLib as lfl
 
 class Plot:
     """Abstract Data Type for a Plot...this should never be instantiated by itself"""
@@ -347,24 +348,25 @@ class TimeSeriesPlot(nXYPlot):
 
         nXYPlot.__init__(self, plot_cols = plot_cols, **kwargs)
 
-        if data is not None and not isinstance(data, ts_data):
+        if data is not None and not isinstance(data, lfl.ts_data):
             raise Exception, "data for a timeseries plot must be an instance of a time series dataframe"
 
         if not isinstance(plot_cols, list):
             raise Exception, "plot_cols must be a list of columns to plot for a time series plot"
         
         self.data = data
-
-        #self.plot_cols = {'timestamp':plot_cols}
-
-        self.xlabels = ['Time']
         
+        self.xlabels = ['Time']
 
-    #No need to define plot
-
+    
     def save(self):
         loc = "%s_%s_time_series_plot.png" % (self.save_loc, self.y_labels[0])
         Plot.save(self, loc)
+
+    def fill(self, times, subplot_num = 1, color = 'yellow', alpha = 0.2):
+        """Fills in the space between the times in the numpy array given as times"""
+        plt.subplot(len(self.plot_cols), 1, subplot_num)
+        plt.fill_between(times,2000,0,facecolor=color,alpha=alpha)
 
     #Need to add fill function and latex interface functions, if necessary
 
@@ -413,7 +415,8 @@ class FourPlot(Plot):
         self.np_plot.plot()
 
     def save(self):
-        pass  #Need to implement this
+        self.save_loc = "%s_four_plot.png" % self.save_loc
+        Plot.save(self.save_loc)
 
 
 
@@ -488,9 +491,34 @@ class ControlChart(Plot):
         #plot data on graph from worked up sets
         #common to all kinds of charts
 
-        
+        pass
 
-        pass        
+    def save(self):
+        self.save_loc = "%sControlChart.png" % self.save_loc
+        Plot.save(self.save_loc)   
+
+    def annotate(self, ch_num):
+        #This will annotate the Control Chart
+        #Do nothing if locations do not exist
+        try:
+            if getattr(self, "chart%s_plot" % ch_num).y_min is None or getattr(self, "chart%s_plot").y_min is None:
+                pass
+            else:
+                y_pos = getattr(self, "chart%s_plot" % ch_num).y_max - 0.1*(getattr(self, "chart%s_plot" % ch_num).y_max-getattr(self, "chart%s_plot" % ch_num).y_min)
+                x_pos = self.ord_pts[4]
+                for suf in ['target', 'LCL', 'UCL']:
+                    if getattr(self, "chart%s_%s" % (ch_num, suf)) is None:
+                        setattr(self, "txt_chart%s_%s" % (ch_num, suf), "N/A") 
+                    else:
+                        setattr(self, "txt_chart%s_%s" % (ch_num, suf), "%s = %.3f" % getattr(self, "chart%s_%s" % (ch_num, suf)))
+                plt.subplot(2,1,ch_num)
+                plt.text(x_pos, y_pos, "%s, %s, %s" % (getattr(self, "%txt_chart%s_%s" % (ch_num, 'target')), getattr(self, "%txt_chart%s_%s" % (ch_num, 'UCL')),getattr(self, "%txt_chart%s_%s" % (ch_num, 'LCL'))),bbox={'facecolor':'white','alpha':0.85,'pad':10})
+
+        except Exception:
+            print "Warning: Control Chart underdefined for annotation"
+
+            pass		#Fail without doing anything     
+
 
 class XBarControlChart(ControlChart):
         
@@ -576,7 +604,9 @@ class XBarRControlChart(XBarControlChart):
     def plot(self):
         XBarControlChart.plot(self, chart2 = 'R')
         
-        
+    def save(self):
+        self.save_loc = "%s_XBarR" % self.save_loc
+        ControlChart.save(self)        
 
         
 
@@ -604,6 +634,10 @@ class XBarSControlChart(XBarControlChart):
 
     def plot(self):
         XBarControlChart.plot(self, chart2 = 's')
+    
+    def save(self):
+        self.save_loc = "%s_XBarS" % self.save_loc
+        ControlChart.save(self)
 
 class IndividualsXBarControlChart(XBarControlChart):
 
@@ -630,4 +664,8 @@ class IndividualsXBarControlChart(XBarControlChart):
 
     def plot(self):
         XBarControlChart.plot(self, chart2 = 'MR')
+
+    def save(self):
+        self.save_loc = "%s_Individuals" % self.save_loc
+        ControlChart.save(self)
         

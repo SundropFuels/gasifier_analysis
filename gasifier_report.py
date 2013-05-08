@@ -23,7 +23,6 @@ class GasifierReport:
         self.interface_raw.connect()
         q = db.use_Query("lab_run_db")
         self.interface_raw.query(q)
-
         self.interface_proc = db.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
         self.interface_proc.connect()
         q = db.use_Query("lab_proc_db")
@@ -31,8 +30,6 @@ class GasifierReport:
 
 
         self.run_id = run_id
-
-
         self.run_info = RunInformation()
         self.run_integrals = RunInformation()
         #self.run_info.info = run_information
@@ -46,41 +43,40 @@ class GasifierReport:
         self._convert_conversions_to_percent()
         self._add_std_percent()
         self._convert_steam_flow_to_ml_min()
+   
         
-        ###TESTS OF NEW PLOT OBJECTS HERE!"""
-        
-        
-
-        z = FourPlot(data = self.ss, x_label = 'Timestamp', y_label = 'Mass Feedrate (lb/hr)', x_var = 'timestamp', y_var = 'mass_flow_brush_feeder')
-        z.plot()
-        z.show()
-        z.close()
-
-
-        h = ControlChartfromDataframe(data = self.ss, y_col = 'mass_flow_brush_feeder', x_col = 'timestamp', sample_size = 1)
-        a = h.getDataframe()
-
-        c = IndividualsXBarControlChart(data = a, y_label = 'Mass Flow Brush Feeder', x_label = 'Time')
-        c.plot()
-        c.show()
-        c.close()
-        
+        #Generate pie plot
+      
         self.gas_comp_pie_plot()
+        ts_plots = {}
+        #Generate time series plots
+        ts_keys = ['mass_feed','main_comp','trace_comp','tube_temps']
+        ts_Ycols = [['mass_flow_brush_feeder'],['CO_MS','CO2_MS', 'H2_MS', 'CH4_MS','Ar_MS'],['C2H4_MS', 'C6H6_MS', 'C7H8_MS', 'C10H8_MS'],['temp_skin_tube_top','temp_skin_tube_middle','temp_skin_tube_bottom']]
+        ts_ylabels = ['Biomass feed rate (lb/hr)', 'Gas Composition (% vol)','Gas Composition (ppm)', 'Tube Skin Temperatures ($^\circ$C)']
+        ts_captions = ['Time series plot for biomass flowrate', 'Time series plot for gas composition', 'Time series plot for gas composition', 'Time series plot for reactor tube skin temperatures']
+        ts_markers = ['-','o','o','-']
+
+        for key, cols, label, caption, marker in zip(ts_keys,ts_Ycols, ts_ylabels, ts_captions, ts_markers):
+            ts_plots[key] = TimeSeriesPlot(data = self.ts, Y_cols = [cols], y_labels = [label], caption = caption, save_loc = "%s%s" % (self.directory, self.run_id), markers =[marker])
+            ts_plots[key].plot()
+            ts_plots[key].fill(self.ss['timestamp'])
+            ts_plots[key].show()
+            ts_plots[key].close()
+
+        #Generate four plots
+        fp_plots = {}
+        fp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS']
+        fp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS']
+        fp_label = ['Biomass Flow Rate (lbs/hr)','Reactor Skin Middle ($^\circ$C)','Steam Temperature ($^\circ$C)','Ash Knockout Pressure (psig)','Carbon Monoxide (mol%)','Hydrogen (mol%)','Carbon Dioxide (mol%)', 'Methane (mol%)']
+        fp_caption = ['Four-plot for biomass flow rate','Four-plot for reactor skin temperature','Four-plot for temperature of steam at reactor inlet', 'Four-plot for ash knockout pressure', 'Four-plot for carbon monoxide readings from the mass spectrometer','Four-plot for hydrogen readings from the mass spectrometer','Four-plot for carbon dioxide readings from the mass spectrometer','Four-plot for methane readings from the mass spectrometer']
         
-        """
-        self.gas_comp_pie_plot()
-        
-        self.time_series_plot(['mass_flow_brush_feeder'])
-        self.time_series_plot(['CO_MS','CO2_MS', 'H2_MS', 'CH4_MS','Ar_MS'],
-                              ylabel='Gas Composition (% vol)',
-                              caption='Time series plot for gas composition.')
-        self.time_series_plot(['C2H4_MS', 'C6H6_MS', 'C7H8_MS', 'C10H8_MS'],
-                              ylabel='Gas Composition (ppm)',
-                              caption='Time series plot for gas composition.')
-        self.time_series_plot(['temp_skin_tube_top','temp_skin_tube_middle','temp_skin_tube_bottom'],
-                              ylabel='Tube Skin Temperatures ($^\circ$C)',
-                              caption='Time series plot for reactor tube skin temperatures.')
-        
+        for key, Y, label, caption in zip(fp_keys, fp_Y, fp_label, fp_caption):
+            fp_plots[key] = FourPlot(data = self.ss, x_label = 'Time', y_label = label, x_var = 'timestamp', y_var = Y, caption = caption)
+            fp_plots[key].plot()
+            fp_plots[key].show()
+            fp_plots[key].close()
+           
+        """        
         #Create ARIMA fits as necessary
         ARIMA_list = ['mass_flow_brush_feeder', 'temp_skin_tube_middle', 'temp_steam_reactor_entry']
         for col in ARIMA_list:
@@ -91,38 +87,13 @@ class GasifierReport:
         self.control_plots = [('mass_flow_brush_feeder',10),('temp_skin_tube_middle',10),('temp_steam_reactor_entry',10),('pressure_ash_knockout_vessel',10),('CO_MS',3),('CO2_MS',3),('H2_MS',3),('CH4_MS',3)]
         for p in self.control_plots:
             self.control_plot(p[0],p[1])       
-
+        
          
 
-        #Need to get these from a database table so that it is configurable
         
-        self.four_plot('mass_flow_brush_feeder',
-                       ylabel='Biomass Flow Rate (lbs/hr)',
-                       caption='Four-plot for biomass flow rate')
-        self.four_plot('temp_skin_tube_middle',
-                       ylabel='Reactor Skin Middle ($^\circ$C)',
-                       caption='Four-plot for reactor skin temperature.')
-        self.four_plot('temp_steam_reactor_entry',
-                       ylabel='Steam Temperature ($^\circ$C)',
-                       caption='Four-plot for temperature of steam at reactor inlet.')
-        self.four_plot('pressure_ash_knockout_vessel',
-                       ylabel='Ash Knockout Pressure (psig)',
-                       caption='Four-plot for ash knockout pressure.')
-        self.four_plot('CO_MS',
-                       ylabel='Carbon Monoxide (%vol)',
-                       caption='Four-plot for carbon monoxide readings from the mass spectrometer.')
-        self.four_plot('H2_MS',
-                       ylabel='Hydrogen (%vol)',
-                       caption='Four-plot for hydrogen readings from the mass spectrometer.')
-        self.four_plot('CO2_MS',
-                       ylabel='Carbon Dioxide (%vol)',
-                       caption='Four-plot for carbon dioxide readings from the mass spectrometer.')
-        self.four_plot('CH4_MS',
-                       ylabel='Methane (%vol)',
-                       caption='Four-plot for methane readings from the mass spectrometer.')
-
         self.generate_standard_report()
         """
+        
         
     def _create_file_structure(self):
         self.directory='rpt/%s/' % str(self.run_info.info['run_id'])
@@ -265,8 +236,6 @@ class GasifierReport:
         except KeyError:
             print "Warning: %s is a bad key, ignoring" % col
 
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = "Run a gasifier analysis")
     parser.add_argument('--run_range', type=str, action = 'store')
@@ -288,14 +257,10 @@ if __name__ == '__main__':
                 run_id_list.append(int(sublist))  
 
     run_id_list=[100]
-        #49,50,51,52,53,54,56,57,58,59,
-##                 60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,
-##                 94,95,96,97,98,99,100,101,102,103,104,105,106,111,112,113,114,120,121,122,123,124,125,126,127,128,129,
-##                 130,131,132,133,135,136,137,138,139,140,141,
-##                 142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157]
+        
     for run_id in run_id_list:
         print "Generating a Report for run %s..." % run_id
         report = GasifierReport(run_id = run_id)
-##    subprocess.call('pdflatex -aux-directory=C:/Users/Ryan.Tracy/Documents/Reports/192 -output-directory=C:/Users/Ryan.Tracy/Desktop C:/Users/Ryan.Tracy/Documents/Reports/192/192_report.tex')
+
 
 
