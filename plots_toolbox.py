@@ -6,7 +6,7 @@ import LabFunctionLib as lfl
 class Plot:
     """Abstract Data Type for a Plot...this should never be instantiated by itself"""
 
-    def __init__(self, caption = None, figsize = (12,8), save_loc = None, fontsize = 'x-large', subplot = False, subplot_num = 111):
+    def __init__(self, caption = None, figsize = (12,8), save_loc = None, fontsize = 'x-large', subplot = False, subplot_num = 111, ignore_nan = False):
         #Basic plot properties
         self.caption = caption
         self.figsize = figsize
@@ -16,6 +16,7 @@ class Plot:
         self.subplot = subplot
         self.subplot_num = subplot_num
 
+        self.ignore_nan = ignore_nan
 
         #May want to pull in a default dataset here -- we'll see how general this can be
         if subplot:
@@ -79,7 +80,7 @@ class PiePlot(Plot):
 
 class XYPlot(Plot):
     """This is the basic class for a simple XY plot (one X, many Y)"""
-    pass
+    
 
     def __init__(self, data = None, x_label = None, y_label = None, X_col = None, Y_cols = None, auto_scale = True, legend = True, marker = '-', y_min = None, y_max = None, **kwargs):
         Plot.__init__(self, **kwargs)
@@ -182,7 +183,12 @@ class Histogram(Plot):
         self.useOffset = useOffset
 
     def plot(self):
-        plt.hist(self.data[self.data_col], self.nbins)
+        if self.ignore_nan:
+            #reshape plotted data
+            plotted = self.data.finite_vals(self.data_col)
+        else:
+            plotted = self.data[self.data_col]
+        plt.hist(plotted)
         plt.ticklabel_format(useOffset = self.useOffset)
         plt.xlabel(self.label)
         plt.ylabel("Count")
@@ -199,13 +205,27 @@ class NormalProbabilityPlot(XYPlot):
         #Need to set data before this will work
 
     def _calc_normal_probs(self, data_col):
-        n = self.data.numrows()
+        
+        finite_data = self.data.finite_vals(data_col)
+        n = len(finite_data)
+               
         U=[1-np.power(0.5,(1/n))]
-        ordered=np.sort(self.data[data_col])
-        for j in range(0,len(ordered),1)[1:-1]:
+        
+        ordered=np.sort(finite_data)
+        
+        
+        for j in range(0,n,1)[1:-1]:
             U.append((j-0.3175)/(n+0.365))
         U.append(np.power(0.5,(1/n)))
         U = np.array(U)
+
+        if len(U) != self.data.numrows():
+            fill_nans = np.ones(self.data.numrows() - len(U))
+            fill_nans.fill(np.nan)
+            U = np.append(U, fill_nans)
+            ordered = np.append(ordered, fill_nans)
+
+        
         self.data['U_normal_prob'] = U
         self.data['ord_normal_prob'] = ordered
 
@@ -235,19 +255,30 @@ class LagPlot(XYPlot):
 
         
     def _calc_lag(self, data_col):
+        if self.ignore_nan:
+            lag_data = self.data.finite_vals(data_col)
+            end_nans = np.ones(self.data.numrows() - len(lag_data))
+            end_nans.fill(np.nan)
+            lag_data = np.append(lag_data, end_nans)
+        else:
+            lag_data = self.data[data_col]
+
+
+
         for i in range(0, self.lag):
             if i == 0:
-                lagged = np.delete(self.data[data_col],0)
+                lagged = np.delete(lag_data,0)
             else:
                 lagged = np.delete(lagged, 0)
             lagged = np.append(lagged, np.nan)
+        self.data['%s_lagsource' % data_col] = lag_data
         self.data['%s_lag' % data_col] = lagged
         
             
 
     def plot(self):
         self._calc_lag(self.data_col)
-        self.X_col = self.data_col
+        self.X_col = "%s_lagsource" % self.data_col
         self.Y_cols = ['%s_lag' % self.data_col]
         XYPlot.plot(self)
 
@@ -399,15 +430,15 @@ class FourPlot(Plot):
         """Builds and plots the 4-plot"""
 
         #Run plot
-        self.run_plot = XYPlot(data = self.data, x_label = self.x_label, y_label = self.y_label, X_col = self.x_var, Y_cols = [self.y_var], auto_scale = True, subplot = True, subplot_num = 221)
+        self.run_plot = XYPlot(data = self.data, x_label = self.x_label, y_label = self.y_label, X_col = self.x_var, Y_cols = [self.y_var], auto_scale = True, subplot = True, subplot_num = 221, marker = 'o')
         self.run_plot.plot()
 
         #Lag plot
-        self.lag_plot = LagPlot(data = self.data, data_col = self.y_var, subplot = True, subplot_num = 222)
+        self.lag_plot = LagPlot(data = self.data, data_col = self.y_var, subplot = True, subplot_num = 222, ignore_nan = True)
         self.lag_plot.plot()
 
         #Histogram
-        self.hist = Histogram(data = self.data, label = self.y_label, data_col = self.y_var, nbins = 20, subplot = True, subplot_num = 223)
+        self.hist = Histogram(data = self.data, label = self.y_label, data_col = self.y_var, nbins = 20, subplot = True, subplot_num = 223, ignore_nan = True)
         self.hist.plot()
 
         #Normal probability plot
