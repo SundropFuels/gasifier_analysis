@@ -2,6 +2,7 @@ import numpy as np
 import dataFrame_v2 as df
 import matplotlib.pyplot as plt
 import LabFunctionLib as lfl
+import os
 
 class Plot:
     """Abstract Data Type for a Plot...this should never be instantiated by itself"""
@@ -27,7 +28,10 @@ class Plot:
             plt.figure(figsize=self.figsize)
 
     def save(self, loc):
-        plt.savefig(loc)
+        try:
+            plt.savefig(loc)
+        except Exception:
+            os.system("cp ./plot_not_available.png %s" % loc)
 
     def close(self):
         plt.close()
@@ -129,26 +133,31 @@ class XYPlot(Plot):
             
             plt.plot(self.data[self.X_col], self.data[y],self.marker)   #may need a marker default here
             
-            
-            if max_val is None or np.max(self.data.finite_vals(y)) > max_val:
-                max_val = np.max(self.data.finite_vals(y))
+            try:
+                if max_val is None or np.max(self.data.finite_vals(y)) > max_val:
+                    max_val = np.max(self.data.finite_vals(y))
 
-            if min_val is None or np.min(self.data.finite_vals(y)) < max_val:
-                min_val = np.min(self.data.finite_vals(y))
+                if min_val is None or np.min(self.data.finite_vals(y)) < max_val:
+                    min_val = np.min(self.data.finite_vals(y))
 
-            if self.auto_scale:
+                if self.auto_scale:
                               
-                #set max and min vals to be data members, so that we can get to them later
-                self.y_min = 0.97*min_val
-                self.y_max = 1.03*max_val
+                    #set max and min vals to be data members, so that we can get to them later
+                    self.y_min = 0.97*min_val
+                    self.y_max = 1.03*max_val
 
-                plt.ylim(self.y_min, self.y_max)
-                
-
-            if self.legend:
-                plt.legend(legend)
+                    plt.ylim(self.y_min, self.y_max)
             
-            plt.tight_layout()
+
+                if self.legend:
+                    plt.legend(legend)
+            
+                plt.tight_layout()
+
+            except ValueError:
+                print "Warning: Could not plot -- no finite values"
+
+            
 
     def rescale(self, ymin = None, ymax = None, padded=False, padding = 0.03):
         
@@ -188,10 +197,13 @@ class Histogram(Plot):
             plotted = self.data.finite_vals(self.data_col)
         else:
             plotted = self.data[self.data_col]
-        plt.hist(plotted)
-        plt.ticklabel_format(useOffset = self.useOffset)
-        plt.xlabel(self.label)
-        plt.ylabel("Count")
+        try:
+            plt.hist(plotted)
+            plt.ticklabel_format(useOffset = self.useOffset)
+            plt.xlabel(self.label)
+            plt.ylabel("Count")
+        except ValueError:
+            print "Warning: Could not plot histogram -- no finite values"
 
     #inherits save() and close()
 
@@ -208,32 +220,39 @@ class NormalProbabilityPlot(XYPlot):
         
         finite_data = self.data.finite_vals(data_col)
         n = len(finite_data)
-               
-        U=[1-np.power(0.5,(1/n))]
+        #don't want to do anything if n == 0
+        if n != 0:       
+            U=[1-np.power(0.5,(1/n))]
         
-        ordered=np.sort(finite_data)
+            ordered=np.sort(finite_data)
         
         
-        for j in range(0,n,1)[1:-1]:
-            U.append((j-0.3175)/(n+0.365))
-        U.append(np.power(0.5,(1/n)))
-        U = np.array(U)
+            for j in range(0,n,1)[1:-1]:
+                U.append((j-0.3175)/(n+0.365))
+            U.append(np.power(0.5,(1/n)))
+            U = np.array(U)
 
-        if len(U) != self.data.numrows():
-            fill_nans = np.ones(self.data.numrows() - len(U))
-            fill_nans.fill(np.nan)
-            U = np.append(U, fill_nans)
-            ordered = np.append(ordered, fill_nans)
+            if len(U) != self.data.numrows():
+                fill_nans = np.ones(self.data.numrows() - len(U))
+                fill_nans.fill(np.nan)
+                U = np.append(U, fill_nans)
+                ordered = np.append(ordered, fill_nans)
 
         
-        self.data['U_normal_prob'] = U
-        self.data['ord_normal_prob'] = ordered
+            self.data['U_normal_prob'] = U
+            self.data['ord_normal_prob'] = ordered
+            self.plot_flag = True
+        else:
+            self.plot_flag = False
 
     def plot(self):
         self._calc_normal_probs(self.data_col)
-        self.X_col = 'U_normal_prob'
-        self.Y_cols = ['ord_normal_prob']
-        XYPlot.plot(self)
+        if self.plot_flag:
+            self.X_col = 'U_normal_prob'
+            self.Y_cols = ['ord_normal_prob']
+            XYPlot.plot(self)
+        else:
+            print "Warning: Not plotting normal probability plot due to zero set size"
 
     def save():
         pass
@@ -480,14 +499,17 @@ class ControlChartfromDataframe:
         grouped_data = [working_data[self.y_col][i-self.sample_size:i] for i in range(0,working_data.numrows(), self.sample_size)[1:]]
         grouped_x = [working_data[self.x_col][i] for i in range(0, working_data.numrows(), self.sample_size)[1:]] # midpoints
         #drop the last group if it is too small -- may want to make this optional
-        if len(grouped_data[-1]) != self.sample_size:
-            grouped_data.pop()
-        self.output_data = df.Dataframe()
-        p = 0
-        for group, x in zip(grouped_data,grouped_x):
-            self.output_data[x] = group
-            p += 1
-        return self.output_data
+        if len(grouped_data) > 0:
+            if len(grouped_data[-1]) != self.sample_size:
+                grouped_data.pop()
+            self.output_data = df.Dataframe()
+            p = 0
+            for group, x in zip(grouped_data,grouped_x):
+                self.output_data[x] = group
+                p += 1
+            return self.output_data
+        else:
+            return df.Dataframe()
 
 
 
@@ -581,33 +603,36 @@ class XBarControlChart(ControlChart):
     def plot(self, chart2 = None):
         self._calcXBarPoints()
         self._calcControlLimits()
-        data = df.Dataframe(array_dict = {'x-bar':self.X_bar, chart2:getattr(self,chart2), 'x':self.ord_pts})
-        self.chart1_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')        
-        self.chart1_plot.plot()
+        try:
+            data = df.Dataframe(array_dict = {'x-bar':self.X_bar, chart2:getattr(self,chart2), 'x':self.ord_pts})
+            self.chart1_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')        
+            self.chart1_plot.plot()
         
-        if chart2 is not None:
-            self.chart2_plot = XYPlot(data = data, x_label = self.x_label, y_label = chart2, X_col = 'x', Y_cols = [chart2], auto_scale = True, subplot = True, subplot_num = 212, marker = 'o')
-            self.chart2_plot.plot()
+            if chart2 is not None:
+                self.chart2_plot = XYPlot(data = data, x_label = self.x_label, y_label = chart2, X_col = 'x', Y_cols = [chart2], auto_scale = True, subplot = True, subplot_num = 212, marker = 'o')
+                self.chart2_plot.plot()
 
 
-        self.colors = {'UCL':'red', 'LCL':'red', 'target':'blue'}
-        for suf in ['UCL', 'LCL', 'target']:
-            
-            for ch_num in [1,2]:
-                plotnum = 210 + ch_num
-                plt.subplot(plotnum)
-                val = getattr(self, "chart%s_%s" % (ch_num,suf))
-                if val is not None:
-                    if suf is not 'LCL' or ch_num == 1 or val > 0:
-                        plt.hlines(getattr(self, "chart%s_%s" % (ch_num,suf)), min(self.ord_pts), max(self.ord_pts), colors = self.colors[suf])
-                        if suf == 'LCL':
-                            if getattr(self, "chart%s_LCL" % ch_num) < getattr(self, "chart%s_plot" % ch_num).y_min or getattr(self, "chart%s_plot" % ch_num).y_min is not np.nan:
-                                getattr(self, "chart%s_plot" % ch_num).rescale(ymin=getattr(self,"chart%s_LCL" % ch_num)-0.05*(getattr(self, "chart%s_UCL" % ch_num) - getattr(self, "chart%s_LCL" % ch_num)), padded = False)
+            self.colors = {'UCL':'red', 'LCL':'red', 'target':'blue'}
+            for suf in ['UCL', 'LCL', 'target']:
+                
+                for ch_num in [1,2]:
+                    plotnum = 210 + ch_num
+                    plt.subplot(plotnum)
+                    val = getattr(self, "chart%s_%s" % (ch_num,suf))
+                    if val is not None:
+                        if suf is not 'LCL' or ch_num == 1 or val > 0:
+                            plt.hlines(getattr(self, "chart%s_%s" % (ch_num,suf)), min(self.ord_pts), max(self.ord_pts), colors = self.colors[suf])
+                            if suf == 'LCL':
+                                if getattr(self, "chart%s_LCL" % ch_num) < getattr(self, "chart%s_plot" % ch_num).y_min or getattr(self, "chart%s_plot" % ch_num).y_min is not np.nan:
+                                    getattr(self, "chart%s_plot" % ch_num).rescale(ymin=getattr(self,"chart%s_LCL" % ch_num)-0.05*(getattr(self, "chart%s_UCL" % ch_num) - getattr(self, "chart%s_LCL" % ch_num)), padded = False)
                                 
-                        elif suf == 'UCL':
-                            if getattr(self, "chart%s_UCL" % ch_num) > getattr(self, "chart%s_plot" % ch_num).y_max or getattr(self, "chart%s_plot" % ch_num).y_max is not np.nan:
-                                getattr(self, "chart%s_plot" % ch_num).rescale(ymax=getattr(self,"chart%s_UCL" % ch_num)+0.05*(getattr(self, "chart%s_UCL" % ch_num) - getattr(self, "chart%s_LCL" % ch_num)), padded = False)
+                            elif suf == 'UCL':
+                                if getattr(self, "chart%s_UCL" % ch_num) > getattr(self, "chart%s_plot" % ch_num).y_max or getattr(self, "chart%s_plot" % ch_num).y_max is not np.nan:
+                                    getattr(self, "chart%s_plot" % ch_num).rescale(ymax=getattr(self,"chart%s_UCL" % ch_num)+0.05*(getattr(self, "chart%s_UCL" % ch_num) - getattr(self, "chart%s_LCL" % ch_num)), padded = False)
 
+        except Exception:
+            print "Warning: Could not plot control chart due to empty dataframe"
                                     
         
 

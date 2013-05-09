@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from math import *
 import os
 from LabFunctionLib import *
@@ -96,17 +98,28 @@ class GasifierReport:
         #Create ARIMA fits as necessary - will not work for NaN data (i.e. raw MS data -- that should not be autocorrellated anyway)
         ARIMA_list = ['mass_flow_brush_feeder','temp_steam_reactor_entry']
         for col in ARIMA_list:
-            self.fit_ARIMA(col)
-        print self.ss['mass_flow_brush_feeder_ARIMA_resid']
-        
-        print self.ss['temp_steam_reactor_entry_ARIMA_resid']
+            try:
+                self.fit_ARIMA(col)
+            except Exception:
+                ARIMA_list.remove(col)
+
+        ARIMA_captions = {'mass_flow_brush_feeder':'biomass flow rate','temp_steam_reactor_entry':'reactor inlet steam temperature'}        
+
         cp_plots = {}
         cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS', 'mass_feed_ARIMA','temp_steam_ARIMA']
-        cp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS', 'mass_flow_brush_feeder_ARIMA_resid','temp_steam_reactor_entry_ARIMA_resid']
+        cp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS']
         cp_caption = []
-        items = ['biomass flow rate', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)', 'ARIMA(1,1) residuals for biomass feed','ARIMA(1,1) residuals for entry steam temperature']
+        items = ['biomass flow rate', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)']
+        for col in ARIMA_list:
+            cp_keys.append('%s_ARIMA' % col)
+            cp_Y.append(col)
+            items.append(ARIMA_captions[col])
         for item in items:
             cp_caption.append("Individuals control chart for %s" % item)
+        
+            
+
+
         LaTeX_cp = ""
         for key, Y, caption in zip(cp_keys, cp_Y, cp_caption):
             input_df = ControlChartfromDataframe(data = self.ss, y_col = Y, x_col = 'timestamp', ignore_nan = True)

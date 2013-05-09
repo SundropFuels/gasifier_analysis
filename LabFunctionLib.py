@@ -837,7 +837,11 @@ class ProcTS(ts_data):
             if basis == "Molar" or basis == "Mass":         #Mass not working yet
                 
                 total_tracer_in += getattr(stream, "calcSpecies%sFlowrate" % basis)(tracer_species)
-          
+
+                 
+        #try to break the error around outlet_tracer_concentration == 0
+        outlet_tracer_concentration[outlet_tracer_concentration<=0] = np.nan
+  
         total_outlet_flowrate = total_tracer_in/outlet_tracer_concentration
         
         #create the return Stream
