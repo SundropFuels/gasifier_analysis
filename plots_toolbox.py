@@ -38,7 +38,7 @@ class Plot:
     def LaTeX_insert(self, label):
         """Outputs text to include this figure in a LaTeX document"""
         text=r"""
-	\begin{figure}[hb]
+	\begin{figure}[hbp]
     		\centering
     		\includegraphics[width=0.9\textwidth]{%s}
     		\caption{%s}
@@ -391,13 +391,13 @@ class TimeSeriesPlot(nXYPlot):
 
     
     def save(self):
-        loc = "%s_%s_time_series_plot.png" % (self.save_loc, self.y_labels[0])
-        Plot.save(self, loc)
+        self.save_loc = "%s_time_series_plot.png" % (self.save_loc)
+        Plot.save(self, self.save_loc)
 
     def fill(self, times, subplot_num = 1, color = 'yellow', alpha = 0.2):
         """Fills in the space between the times in the numpy array given as times"""
         plt.subplot(len(self.plot_cols), 1, subplot_num)
-        plt.fill_between(times,2000,0,facecolor=color,alpha=alpha)
+        plt.fill_between(times,2000,-2000,facecolor=color,alpha=alpha)
 
     #Need to add fill function and latex interface functions, if necessary
 
@@ -447,7 +447,7 @@ class FourPlot(Plot):
 
     def save(self):
         self.save_loc = "%s_four_plot.png" % self.save_loc
-        Plot.save(self.save_loc)
+        Plot.save(self, self.save_loc)
 
 
 
@@ -532,28 +532,30 @@ class ControlChart(Plot):
 
     def save(self):
         self.save_loc = "%sControlChart.png" % self.save_loc
-        Plot.save(self.save_loc)   
+        Plot.save(self, self.save_loc)   
 
     def annotate(self, ch_num):
         #This will annotate the Control Chart
         #Do nothing if locations do not exist
         try:
-            if getattr(self, "chart%s_plot" % ch_num).y_min is None or getattr(self, "chart%s_plot").y_min is None:
+            if getattr(self, "chart%s_plot" % ch_num).y_min is None or getattr(self, "chart%s_plot" % ch_num).y_min is None:
                 pass
             else:
                 y_pos = getattr(self, "chart%s_plot" % ch_num).y_max - 0.1*(getattr(self, "chart%s_plot" % ch_num).y_max-getattr(self, "chart%s_plot" % ch_num).y_min)
-                x_pos = self.ord_pts[4]
+                
+                x_pos = np.sort(self.ord_pts)[4]
                 for suf in ['target', 'LCL', 'UCL']:
                     if getattr(self, "chart%s_%s" % (ch_num, suf)) is None:
                         setattr(self, "txt_chart%s_%s" % (ch_num, suf), "N/A") 
                     else:
-                        setattr(self, "txt_chart%s_%s" % (ch_num, suf), "%s = %.3f" % getattr(self, "chart%s_%s" % (ch_num, suf)))
+                        setattr(self, "txt_chart%s_%s" % (ch_num, suf), "%s = %.3f" % (suf,getattr(self, "chart%s_%s" % (ch_num, suf))))
                 plt.subplot(2,1,ch_num)
-                plt.text(x_pos, y_pos, "%s, %s, %s" % (getattr(self, "%txt_chart%s_%s" % (ch_num, 'target')), getattr(self, "%txt_chart%s_%s" % (ch_num, 'UCL')),getattr(self, "%txt_chart%s_%s" % (ch_num, 'LCL'))),bbox={'facecolor':'white','alpha':0.85,'pad':10})
+                plt.text(x_pos, y_pos, "%s, %s, %s" % (getattr(self, "txt_chart%s_%s" % (ch_num, 'target')), getattr(self, "txt_chart%s_%s" % (ch_num, 'UCL')),getattr(self, "txt_chart%s_%s" % (ch_num, 'LCL'))),bbox={'facecolor':'white','alpha':0.85,'pad':10})
 
-        except Exception:
+        
+        except Exception, e:
             print "Warning: Control Chart underdefined for annotation"
-
+            
             pass		#Fail without doing anything     
 
 
@@ -596,15 +598,15 @@ class XBarControlChart(ControlChart):
                 plt.subplot(plotnum)
                 val = getattr(self, "chart%s_%s" % (ch_num,suf))
                 if val is not None:
-                    if suf is not 'LCL' or val > 0:
+                    if suf is not 'LCL' or ch_num == 1 or val > 0:
                         plt.hlines(getattr(self, "chart%s_%s" % (ch_num,suf)), min(self.ord_pts), max(self.ord_pts), colors = self.colors[suf])
                         if suf == 'LCL':
-                            if getattr(self, "chart%s_LCL" % ch_num) < getattr(self, "chart%s_plot" % ch_num).y_min:
-                                getattr(self, "chart%s_plot" % ch_num).rescale(ymin=0.9*getattr(self,"chart%s_LCL" % ch_num), padded = False)
+                            if getattr(self, "chart%s_LCL" % ch_num) < getattr(self, "chart%s_plot" % ch_num).y_min or getattr(self, "chart%s_plot" % ch_num).y_min is not np.nan:
+                                getattr(self, "chart%s_plot" % ch_num).rescale(ymin=getattr(self,"chart%s_LCL" % ch_num)-0.05*(getattr(self, "chart%s_UCL" % ch_num) - getattr(self, "chart%s_LCL" % ch_num)), padded = False)
                                 
                         elif suf == 'UCL':
-                            if getattr(self, "chart%s_UCL" % ch_num) > getattr(self, "chart%s_plot" % ch_num).y_max:
-                                getattr(self, "chart%s_plot" % ch_num).rescale(ymax=1.1*getattr(self,"chart%s_UCL" % ch_num), padded = False)
+                            if getattr(self, "chart%s_UCL" % ch_num) > getattr(self, "chart%s_plot" % ch_num).y_max or getattr(self, "chart%s_plot" % ch_num).y_max is not np.nan:
+                                getattr(self, "chart%s_plot" % ch_num).rescale(ymax=getattr(self,"chart%s_UCL" % ch_num)+0.05*(getattr(self, "chart%s_UCL" % ch_num) - getattr(self, "chart%s_LCL" % ch_num)), padded = False)
 
                                     
         

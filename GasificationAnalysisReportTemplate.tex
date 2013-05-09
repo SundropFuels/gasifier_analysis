@@ -1,16 +1,16 @@
 \documentclass[11pt]{article}
-
+\usepackage{caption}
 \usepackage{anysize}
 \usepackage{fancyhdr}
 \usepackage{graphicx}
-\usepackage{media9}
+%\usepackage{media9}
 \usepackage{subcaption}
 \usepackage{color}
 
 \marginsize{1in}{1in}{.5in}{.5in}
 \pagestyle{fancy}
 \rhead{\today}
-\lhead{\includegraphics[height=2.0cm]{../logo.jpg}}
+\lhead{\includegraphics[height=2.0cm]{./logo.jpg}}
 \rfoot{\thepage}
 \cfoot{}
 \renewcommand{\headrulewidth}{0pt} %removes line from fancy header
@@ -112,15 +112,15 @@ Analysis Start Time: ss-start
 Analysis End Time: ss-stop
 
 \centering
-
+\clearpage
 timeseriesplots
-
-\newpage
-
-controlplots
-
+\clearpage
 \newpage
 
 fourplots
+\clearpage
+\newpage
 
+controlplots
+\clearpage
 \end{document}

@@ -46,8 +46,18 @@ class GasifierReport:
    
         
         #Generate pie plot
-        """
-        self.gas_comp_pie_plot()
+        
+        self.calc_gas_comp_pie_plot()
+        self.gas_pie_plot = PiePlot(data = self.pie_gasvals, keys = self.pie_goodgas, figsize = (7,7), save_loc = "%s%s" % (self.directory, str(self.run_info.info['run_id'])))
+        self.gas_pie_plot.plot()
+        self.gas_pie_plot.save()
+        pie_LaTeX = self.gas_pie_plot.save_loc
+        self.gas_pie_plot.close()
+          
+        
+        self.run_info.info['piegas']=pie_LaTeX
+
+
         ts_plots = {}
         #Generate time series plots
         ts_keys = ['mass_feed','main_comp','trace_comp','tube_temps']
@@ -55,12 +65,15 @@ class GasifierReport:
         ts_ylabels = ['Biomass feed rate (lb/hr)', 'Gas Composition (% vol)','Gas Composition (ppm)', 'Tube Skin Temperatures ($^\circ$C)']
         ts_captions = ['Time series plot for biomass flowrate', 'Time series plot for gas composition', 'Time series plot for gas composition', 'Time series plot for reactor tube skin temperatures']
         ts_markers = ['-','o','o','-']
+        
+        LaTeX_ts = ""
 
         for key, cols, label, caption, marker in zip(ts_keys,ts_Ycols, ts_ylabels, ts_captions, ts_markers):
-            ts_plots[key] = TimeSeriesPlot(data = self.ts, Y_cols = [cols], y_labels = [label], caption = caption, save_loc = "%s%s" % (self.directory, self.run_id), markers =[marker])
+            ts_plots[key] = TimeSeriesPlot(data = self.ts, Y_cols = [cols], y_labels = [label], caption = caption, save_loc = "%s%s_%s" % (self.directory, self.run_id, key), markers =[marker])
             ts_plots[key].plot()
             ts_plots[key].fill(self.ss['timestamp'])
-            ts_plots[key].show()
+            ts_plots[key].save()
+            LaTeX_ts += ts_plots[key].LaTeX_insert("ts_%s" % key)
             ts_plots[key].close()
 
         #Generate four plots
@@ -70,40 +83,51 @@ class GasifierReport:
         fp_label = ['Biomass Flow Rate (lbs/hr)','Reactor Skin Middle ($^\circ$C)','Steam Temperature ($^\circ$C)','Ash Knockout Pressure (psig)','Carbon Monoxide (mol%)','Hydrogen (mol%)','Carbon Dioxide (mol%)', 'Methane (mol%)']
         fp_caption = ['Four-plot for biomass flow rate','Four-plot for reactor skin temperature','Four-plot for temperature of steam at reactor inlet', 'Four-plot for ash knockout pressure', 'Four-plot for carbon monoxide readings from the mass spectrometer','Four-plot for hydrogen readings from the mass spectrometer','Four-plot for carbon dioxide readings from the mass spectrometer','Four-plot for methane readings from the mass spectrometer']
         
+        LaTeX_fp = ""
+
         for key, Y, label, caption in zip(fp_keys, fp_Y, fp_label, fp_caption):
-            fp_plots[key] = FourPlot(data = self.ss, x_label = 'Time', y_label = label, x_var = 'timestamp', y_var = Y, caption = caption)
+            fp_plots[key] = FourPlot(data = self.ss, x_label = 'Time', y_label = label, x_var = 'timestamp', y_var = Y, caption = caption,save_loc = "%s%s_%s" % (self.directory, self.run_id, key))
             fp_plots[key].plot()
-            fp_plots[key].show()
+            fp_plots[key].save()
+            LaTeX_fp += fp_plots[key].LaTeX_insert("fp_%s" % key)
             fp_plots[key].close()
-        """
-        """        
-        #Create ARIMA fits as necessary
-        ARIMA_list = ['mass_flow_brush_feeder', 'temp_skin_tube_middle', 'temp_steam_reactor_entry']
+        
+                
+        #Create ARIMA fits as necessary - will not work for NaN data (i.e. raw MS data -- that should not be autocorrellated anyway)
+        ARIMA_list = ['mass_flow_brush_feeder','temp_steam_reactor_entry']
         for col in ARIMA_list:
             self.fit_ARIMA(col)
-        """
+        print self.ss['mass_flow_brush_feeder_ARIMA_resid']
+        
+        print self.ss['temp_steam_reactor_entry_ARIMA_resid']
         cp_plots = {}
-        cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS']
-        cp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS']
+        cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS', 'mass_feed_ARIMA','temp_steam_ARIMA']
+        cp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS', 'mass_flow_brush_feeder_ARIMA_resid','temp_steam_reactor_entry_ARIMA_resid']
         cp_caption = []
-        items = ['biomass flow rate', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)']
+        items = ['biomass flow rate', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)', 'ARIMA(1,1) residuals for biomass feed','ARIMA(1,1) residuals for entry steam temperature']
         for item in items:
             cp_caption.append("Individuals control chart for %s" % item)
-        
+        LaTeX_cp = ""
         for key, Y, caption in zip(cp_keys, cp_Y, cp_caption):
             input_df = ControlChartfromDataframe(data = self.ss, y_col = Y, x_col = 'timestamp', ignore_nan = True)
-            cp_plots[key] = IndividualsXBarControlChart(data = input_df.getDataframe(), caption = caption)
+            cp_plots[key] = IndividualsXBarControlChart(data = input_df.getDataframe(), caption = caption, save_loc = "%s%s_%s" % (self.directory, self.run_id, key))
             cp_plots[key].plot()
-            cp_plots[key].show()
+            cp_plots[key].annotate(1)
+            cp_plots[key].annotate(2)
+            cp_plots[key].save()
+            LaTeX_cp += cp_plots[key].LaTeX_insert("cp_%s" % key)
             cp_plots[key].close()
 
+        self.run_info.info['timeseriesplots'] =  LaTeX_ts
+        self.run_info.info['fourplots'] = LaTeX_fp
+        self.run_info.info['controlplots'] = LaTeX_cp
            
         
-        """ 
+       
 
         
         self.generate_standard_report()
-        """
+        
         
         
     def _create_file_structure(self):
@@ -197,7 +221,7 @@ class GasifierReport:
         
     
       
-    def gas_comp_pie_plot(self):
+    def calc_gas_comp_pie_plot(self):
         gasdict={}
         for i in self.run_info.info:
             if i.endswith('_MS_avg'):
@@ -210,15 +234,10 @@ class GasifierReport:
             tar-=gasdict['%s_MS_avg' % i]
             plotgasvals = np.append(plotgasvals, gasdict['%s_MS_avg' % i])
         goodgas.append('C2+')
-        plotgasvals = np.append(plotgasvals,tar)
-
-        self.gas_pie_plot = PiePlot(data = plotgasvals, keys = goodgas, figsize = (7,7), save_loc = "%s%s" % (self.directory, str(self.run_info.info['run_id'])))
-        self.gas_pie_plot.plot()
-        self.gas_pie_plot.save()
-        self.gas_pie_plot.close()  
+        self.pie_gasvals = np.append(plotgasvals,tar)
+        self.pie_goodgas = goodgas
         
-        self.run_info.info['piegas']=self.gas_pie_plot.save_loc
-        print self.gas_pie_plot.LaTeX_insert('pie_plot_1')
+        
         
     def _load_report_template(self):
         with open('GasificationAnalysisReportTemplate.tex', 'r') as f:
@@ -234,9 +253,9 @@ class GasifierReport:
             else: self.variables[i]=str(self.variables[i])
             self.text=self.text.replace(i, self.variables[i])
         filename=str(self.run_info.info['run_id'])+'_report.tex'
-        with open(self.directory+filename,'w') as f:
+        with open('./'+filename,'w') as f:
             f.write(self.text)
-        print 'LaTeX file created at %s\n' % self.directory+filename
+        print 'LaTeX file created at %s\n' % '/.'+filename
 
     def fit_ARIMA(self, col, order = (1,1)):
         try:
