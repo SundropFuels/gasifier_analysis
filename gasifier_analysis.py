@@ -329,39 +329,50 @@ class GasifierDataAnalysis:
         #generate a standard report -- maybe given an xml format file to direct what goes into the report
         pass
 
+def parse_list(txt):
+    main_list = txt.split(",")
+    run_id_list = []
+    for sublist in main_list:
+        if ":" in sublist:
+            left = sublist.split(":")[0]
+            right = sublist.split(":")[1]
+            run_id_list.extend(range(int(left), int(right)+1))
+        else:
+            run_id_list.append(int(sublist))
+
+
+    return run_id_list  
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = "Run a gasifier analysis")
     parser.add_argument('--run_range', type=str, action = 'store')
     parser.add_argument('--run_id',type=int, action ='store')
+    parser.add_argument('--file',type=str,action = 'store')
     args = parser.parse_args()
-
-    print args.run_range
-    print args.run_id
 
     if args.run_id is not None:
         run_id_list = [args.run_id]
 
-    #should really use a mutually exclusive group here, but no biggie
     elif args.run_range is not None:
-        #need to parse the list -- should do some usage checking here
-        main_list = args.run_range.split(",")
-        run_id_list = []
-        for sublist in main_list:
-            if ":" in sublist:
-                left = sublist.split(":")[0]
-                right = sublist.split(":")[1]
-                run_id_list.extend(range(int(left), int(right)+1))
-            else:
-                run_id_list.append(int(sublist))
+        run_id_list = parse_list(args.run_range)
+
+    elif args.file is not None:
+        f = open(args.file)
+        a = f.readline()
+        a = a[:-1]
+        
+        run_id_list = parse_list(a)
         
 
     for run_id in run_id_list:
         print "Analyzing run %s..." % run_id
         analyzer = GasifierDataAnalysis(run_id = run_id)
-        print "Data loaded"
+        #print "Data loaded"
         analyzer.calculate_standard_things()
-        print "Standard things calculated"
-        analyzer.generate_output_file('run100.csv')
+        #print "Standard things calculated"
+        #analyzer.generate_output_file('run100.csv')
         analyzer.upload_to_database()
-        print "Data uploaded to database"
+        #print "Data uploaded to database"
+
+
+
