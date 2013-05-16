@@ -112,10 +112,10 @@ class GasifierReport:
         items = ['biomass flow rate', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)']
         for col in ARIMA_list:
             cp_keys.append('%s_ARIMA' % col)
-            cp_Y.append(col)
+            cp_Y.append('%s_ARIMA_resid' % col)
             items.append(ARIMA_captions[col])
         for item in items:
-            cp_caption.append("Individuals control chart for %s" % item)
+            cp_caption.append("Individuals control chart for %s ARIMA(1,1) residuals" % item)
         
             
 
