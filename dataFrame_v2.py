@@ -214,7 +214,8 @@ class Dataframe:
 
         #Build the arrays row by row
         for row in results:
-            self.append(row, row_name=datetime.datetime.strftime(row['timestamp'], '%Y-%m-%d %H:%M:%S'))
+            try: self.append(row, row_name=datetime.datetime.strftime(row['timestamp'], '%Y-%m-%d %H:%M:%S'))
+            except: self.append(row, row_name=row['run_id'])
 
     def SQL_upload_data(self, db_interface, table = "", conditions = None):
         """Allows the user to upload data to a MySQL database; tries an INSERT command first, then an UPDATE if an error is received"""
