@@ -49,6 +49,20 @@ class ssFinder:
         self.ts.glossary_replace(self.glossary)
         self.ts.set_units(self.gl_units)
         self.ts.replace_None_w_nan_all()
+        
+def parse_list(txt):
+    main_list = txt.split(",")
+    run_id_list = []
+    for sublist in main_list:
+        if ":" in sublist:
+            left = sublist.split(":")[0]
+            right = sublist.split(":")[1]
+            run_id_list.extend(range(int(left), int(right)+1))
+        else:
+            run_id_list.append(int(sublist))
+
+
+    return run_id_list 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = "Find Steady State Estimates")
