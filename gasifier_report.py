@@ -98,10 +98,11 @@ class GasifierReport:
         #Create ARIMA fits as necessary - will not work for NaN data (i.e. raw MS data -- that should not be autocorrellated anyway)
         ARIMA_list = ['mass_flow_brush_feeder','temp_steam_reactor_entry']
         for col in ARIMA_list:
-            try:
+            #try:
                 self.fit_ARIMA(col)
-            except Exception:
-                ARIMA_list.remove(col)
+                
+            #except Exception:
+            #    ARIMA_list.remove(col)
 
         ARIMA_captions = {'mass_flow_brush_feeder':'biomass flow rate','temp_steam_reactor_entry':'reactor inlet steam temperature'}        
 
@@ -272,8 +273,10 @@ class GasifierReport:
 
     def fit_ARIMA(self, col, order = (1,1)):
         try:
-            model = ARIMA.ARMA(self.ss[col], order = order)
-            result = model.fit()
+            
+            model = ARIMA.ARMA(self.ss[col])
+            
+            result = model.fit(order=order)
             self.ss['%s_ARIMA_fitted' % col] = result.fittedvalues
             self.ss['%s_ARIMA_resid' % col] = result.resid
         except KeyError:
@@ -315,8 +318,9 @@ if __name__ == '__main__':
 
            
     for run_id in run_id_list:
-        print "Generating a Report for run %s..." % run_id
-        report = GasifierReport(run_id = run_id)
+        print "Generating a Report for Run %s..." % run_id
+        try: report = GasifierReport(run_id = run_id)
+        except: print "Report Generation Failed for Run %s" %run_id
 
 
 
