@@ -783,7 +783,9 @@ class Mixer(Stream):
             
         self.ct_inlets=[ct.GRI30() for inlet in self.inlets]
         for i in range(len(self.inlets)):
-            ct_inlets[i].set(T = self.inlets[i].temperature, P = self.inlets[i].pressure, X = self.inlets[i].ct_comp_string())
+            ct_inlets[i].set(T = conv.convert_units(self.inlets[i].temperature[0], self.inlets[i].temperature[1], 'K'), 
+                             P = conv.convert_units(self.inlets[i].pressure[0], self.inlets[i].pressure[1], 'kg/s^2/m',
+                             X = self.inlets[i].ct_comp_string())
         
         
         self.inlet_enthalpies=[stream.enthalpy_mass() for stream in self.ct_inlets]
@@ -800,18 +802,19 @@ class Mixer(Stream):
                 if sp not in speciesflowrates:
                     speciesflowrates[sp]=0
                 speciesflowrates[sp]+=stream.calcSpeciesMolarFlowrate(sp)
+                
+        # Generate Cantera mixer object.  Mass basis for input into Cantera.
+        # Find temperature of mixed inlets by using average inlet enthalpy as mixer enthalpy.        
         self.flowrate=(np.sum(speciesflowrates.values()), 'mol/s')
         self.composition=dict(zip(speciesflowrates.keys(),np.array(speciesflowrates.values())/self.flowrate[0]))
         
         self.ct_mixer=ct.GRI30()
-        self.ct_mixer.set(X = self.ct_comp_string(), P = self.pressure, H=np.average(self.inlet_enthalpies))
-        self.temperature=self.ct_mixer.temperature()
+        self.ct_mixer.set(X = self.ct_comp_string(), 
+                          P = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m'),
+                          H=np.average(self.inlet_enthalpies))
+        self.temperature=(conv.convert_units(self.ct_mixer.temperature(), 'K', 'C'), 'C')
+        self.enthalpy=(ct_mixer.enthalpy_mole()*conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s'), 'J/s')
         
-        def calc_temperature(self)
-            #Calculate mixer enthalpy with average of inlet enthalpies.  Mass basis so input into Cantera works.
-            
-            
-            self.mixer_enthalpy=np.mean(self.inlet_enthalpies)
         
 class Reactor:
     """Reactor Class..."""
