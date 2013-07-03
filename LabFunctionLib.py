@@ -400,6 +400,15 @@ class Stream:
 
         self.special_species = {}
         
+        #Create Cantera object for the stream
+        self.ctstream = ct.GRI30()
+        if self.temperature is not None:
+            self.ctstream.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+        if self.pressure is not None:
+            self.ctstream.set(P = conv.convert_units(self.pressure[0], self.pressure[1], 'K')
+        if self.composition is not None:
+            self.ctStream.set(X = self.ct_comp_string())    
+        
     def elementalFactor(self, element):
         """Returns the units of element/basis unit of a given element in the feed"""
         factor = 0.0
@@ -635,12 +644,7 @@ class Stream:
             raise BadStreamError, 'Stream temperature is not defined.'
         if self.pressure==None:
             raise BadStreamError, 'Stream pressure is not defined.'
-        conv=uc.UnitConverter()
-        ctstream=ct.GRI30()
-        ctstream.setMoleFractions(self.ct_comp_string())
-        ctstream.setTemperature(conv.convert_units(self.temperature[0], self.temperature[1], 'K'))
-        ctstream.setPressure(conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
-        self.specific_enthalpy=(ctstream.enthalpy_mole(), 'J/kmol')
+        self.specific_enthalpy=(self.ctstream.enthalpy_mole(), 'J/kmol')
         self.enthalpy=(self.specific_enthalpy[0]*conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s'), 'J/s')
         
 #        tg = Thermo.ThermoGenerator()
@@ -697,12 +701,7 @@ class Stream:
             raise BadStreamError, 'Stream temperature is not defined.'
         if self.pressure==None:
             raise BadStreamError, 'Stream pressure is not defined.'
-        conv=uc.UnitConverter()
-        ctstream=ct.GRI30()
-        ctstream.setMoleFractions(self.ct_comp_string())
-        ctstream.setTemperature(conv.convert_units(self.temperature[0], self.temperature[1], 'K'))
-        ctstream.setPressure(conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
-        self.specific_entropy=(ctstream.entropy_mole(), 'J/kmol/K')
+        self.specific_entropy=(self.ctstream.entropy_mole(), 'J/kmol/K')
         self.entropy=(self.specific_entropy[0]*conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s'), 'J/s/K')
         
 #        tg = Thermo.ThermoGenerator()
@@ -757,7 +756,36 @@ class Stream:
 #        
 #        self.entropy = (S, 'J/mol/K')
 
+class MixingPoint:
+    
+    def __init__(self, inlets, outlets):
+        
+        #Inlet Checks
+        if type(inlets) != list:
+            raise BadStreamError, 'Inlets must be input as a list of Stream objects.'
+        for inlet in inlets:
+            if not isinstance(inlet, Stream):
+                raise BadStreamError, 'Inlet %s is not a Stream object.' %inlet
+            if inlet.temperature = None:
+                raise BadStreamError, 'Inlet %s temperature is not defined.' %inlet
+            if inlet.pressure = None:
+                raise BadStreamError, 'Inlet %s pressure is not defined.' %inlet
+            if inlet.composition = None:
+                raise BadStreamError, 'Inlet %s composition is not defined.' %inlet
+            if inlet.flowrate = None:
+                raise BadStreamError, 'Inelet %s flow rate is not defined.' %inlet
+            
+                
+        #Outlet Checks
+        if type(outlets) != list:
+            raise BadStreamError, 'Inlets must be input as a list of Stream objects.'
+        for outlet in outlets:
+            if not isinstance(outlet, Stream):
+                raise BadStreamError, 'Outlet %s is not a Stream object.' %inlet
+       
+    
 class Mixer(Stream):
+    # May no longer be needed after MixingPoint class is complete.
     """Class to mix inlet streams and create a new outlet stream"""
     def __init__(self, name, inlets, basis = "molar",
                  temperature = None, pressure = None,
