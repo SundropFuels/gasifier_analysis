@@ -17,6 +17,7 @@ import Thermo
 import matplotlib.pyplot as plt
 import collections
 import element_parser as ep
+import scipy.optimize as spo
 
 conv = uc.UnitConverter()
 
@@ -757,6 +758,8 @@ class ProcessObject:
         for inlet in inlets:
             if not isinstance(inlet, Stream):
                 raise BadStreamError, 'Inlet %s is not a Stream object.' %inlet.name
+            #I'm going to relax this condition -- maybe we want the ProcessObject to SOLVE for T, P, or other
+            """
             if inlet.temperature = None:
                 raise BadStreamError, 'Inlet %s temperature is not defined.' %inlet.name
             if inlet.pressure = None:
@@ -765,6 +768,7 @@ class ProcessObject:
                 raise BadStreamError, 'Inlet %s composition is not defined.' %inlet.name
             if inlet.flowrate = None:
                 raise BadStreamError, 'Inlet %s flow rate is not defined.' %inlet.name
+            """
             
                 
         #Outlet Checks
@@ -773,7 +777,9 @@ class ProcessObject:
         for outlet in outlets:
             if not isinstance(outlet, Stream):
                 raise BadStreamError, 'Outlet %s is not a Stream object.' %outlet.name
-        
+
+        #Probably don't want this as general behavior, either
+        """        
         #Find total flowrates for all species in inlets
         self.inspeciesflowrates={}        
         for inlet in self.inlets:
@@ -782,34 +788,105 @@ class ProcessObject:
                     self.inspeciesflowrates[sp]=0
                 self.inspeciesflowrates[sp]+=inlet.calcSpeciesMolarFlowrate(sp)
        
-       
+        """
+    #There has GOT to be a way to generalize this with decorators or similar
+    def totalInletEnthalpy(self, units):
+        H = 0
+        for stream in self.inlets:
+            H += stream.get_enthalpy(units)
+        return H
+
+    def totalOutletEnthalpy(self, units):
+        H = 0
+        for stream in self.outlets:
+            H += stream.get_enthalpy(units)
+        return H
+
+    def totalInletEntropy(self,units):
+        S = 0
+        for stream in self.inlets:
+            S += stream.get_entropy(units)
+        return S
+
+    def totalOutletEntropy(self,units):
+        S = 0
+        for stream in self.outlets:
+            S += stream.get_entropy(units)
+        return S
+
+    def deltaH(self, units):
+        return self.totalOutletEnthalpy(units) - self.totalInletEnthalpy(units)
+    
+    def deltaS(self, units):
+        return self.totalOutletEntropy(units) - self.totalInletEnthalpy(units)
             
 class Mixer(ProcessObject):
     
-    def __init__(self, outletsplits={}, **kwargs):
+    """A mixer blends multiple inlet streams into one outlet stream"""
+
+    def __init__(self, name, outlet_pressure = None, **kwargs):
         ProcessObject.__init__(**kwargs)
         
-        self.inlet_enthalpies = [stream.enthalpy_mass() for stream in self.ct_inlets]
-        self.outlet_enthalpy = np.mean(self.inlet_enthalpies)
-        self.outletsplits = outletsplits
-        self.outlet_composition = dict(zip(self.inspeciesflowrates.keys(),np.array(self.inspeciesflowrates.values())/
-                                                                          np.sum(self.inspeciesflowrates.values())))
+        self.outlets = [Stream(name = '%s_outlet' % name)]
         
-        # If outlet splits are not specified, split the flow evenly between the outlets.
-        if self.outletsplits == {}:
-            for outlet in self.outlets:
-                outletsplits[outlet] = 1./len(outlets)
-        for outlet in self.outlets:
-            if outlet.pressure is None:
-                raise BadStreamError, 'Outlet %s pressure must be defined', %outlet.name
-            outlet.composition = self.outlet_composition
-            outlet.flowrate = (np.sum(self.inspeciesflowrates.values())*outletsplits[outlets], 'mol/s')
-            outlet.ctstream.set(X = outlet.ct_comp_string(), 
-                                P = conv.convert_units(outlet.pressure[0], outlet.pressure[1], 'kg/s^2/m'),
-                                H = np.average(self.inlet_enthalpies))
-            outlet.temperature = (conv.convert_units(outlet.ctstream.temperature(), 'K', 'C'), 'C')
-            outlet.enthalpy = (outlet.ctstream.enthalpy_mole()*conv.convert_units(outlet.flowrate[0], outlet.flowrate[1], 'kmol/s')
-                               'J/s')
+        #Need to solve for the outlet stream pressure, temperature, and composition
+        #pressure is easy -- it is assumed that the pressure drops to the LOWEST stream pressure entering the mixer if an outlet pressure is not specified
+        self._calc_outlet_pressure(outlet_pressure)
+        self._calc_outlet_flowrate()
+        self._calc_outlet_temperature()
+
+    def recalc(self, outlet_pressure = None):
+        self._calc_outlet_pressure(outlet_pressure)
+        self._calc_outlet_flowrate()
+        self._calc_outlet_temperature()
+
+    def _calc_outlet_pressure(self, outlet_pressure):
+        conv = uc.UnitConverter()
+        minP = None
+        if outlet_pressure is None:
+            for stream in self.inlets:
+                if minP is None or conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa') < minP:
+                    minP = conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa')
+            else:
+                minP = outlet_pressure
+        self.outlets[0].pressure = [minP, 'Pa']
+
+    def _calc_outlet_flowrate(self):
+        conv = uc.UnitConverter()
+        #Need to put everything on a consistent basis - if everything the same, just add them all together; otherwise use mass
+        c = True
+        basis_fl_dict = {'molar':'mol/s', 'mass':'kg/s', 'gas_volume':'m^3/s', 'std_gas_volume':'m^3/s'}
+        basis_choice = self.inlets[0].basis
+        for inlet in self.inlets:
+            if inlet.basis != basis_choice:
+                c = False
+
+        if c:
+            self.outlets[0].basis = basis_choice
+            fl_sum = 0
+            for inlet in self.inlets:
+                fl_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])
+            self.outlets[0].flowrate = [fl_sum, basis_fl_dict[basis_choice])
+
+        else:
+            pass
+            #implement this later
+
+
+    def _calc_outlet_temperature(self):
+        #Solving the equation dH = 0 (not a heat exchanger, so Q and W are both 0)
+        #guess a temperature for the outlet as a mean of the inlet temperatures
+        conv = uc.UnitConverter()
+        temp_sum = 0.0
+        for inlet in self.inlets:
+            temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
+        temp_avg = temp_sum/len(self.inlets)
+        outlet_temp = spo.newton(func = self.deltaH, x0 = temp_avg, args = ('J/s'))
+        self.outlets[0].temperature = [outlet_temp, 'K'] 
+
+
+
+    
         
 class Reactor(ProcessObject):
     """Reactor Class..."""
@@ -819,10 +896,10 @@ class Reactor(ProcessObject):
         pass
     def calc_species_consumption(self):
         pass
-    def calc_enthalpy_change(self):
-        pass
-    def calc_entropy_change(self):
-        pass
+    def calc_enthalpy_change(self, units):
+        return self.deltaH(units)
+    def calc_entropy_change(self, units):
+        return self.deltaS(units)
         
 class Condensor(ProcessObject:
     def __init__(self, **kwargs):
@@ -1023,11 +1100,12 @@ class ProcTS(ts_data):
 
     def enthalpy_change(self, units):
         """Returns the enthalpy change in the process"""
-        H = self.outlet_enthalpy(units) - self.inlet_enthalpy(units)
-        return (H, units)
+        #Create a reactor object with inlet and outlet streams
+        r = Reactor(self.inlet_streams, self.outlet_streams)
+        return r.enthalpy_change(units)
 
     def generate_enthalpy_change(self, units):
-        """Generates a new column with enthalpy change in the data sereies"""
+        """Generates a new column with enthalpy change in the data series"""
         self['delta_H'], self.units['delta_H'] = self.enthalpy_change(self, units)
         
 
