@@ -376,7 +376,16 @@ class Stream:
     species['H2O'] = {'H':2,'O':1, 'name':'Water'}
     species['Ar'] = {'Ar':1, 'name':'Argon'}
     species['N2'] = {'N':2, 'name':'Nitrogen'}
+    species['CELL'] = {'C':6, 'H':10, 'O':5, 'name':'Cellulose'}
+    species['HCE'] = {'C':5, 'H':8, 'O':4, 'name':'Hemicellulose'}
+    species['LIGH'] = {'C':22, 'H':28, 'O':9, 'name':'Lig-H'}
+    species['LIGO'] = {'C':20, 'H':22, 'O':10, 'name':'Lig-O'}
+    species['LIGC'] = {'C':15, 'H':14, 'O':4, 'name':'Lig-C'}
     
+    ct_trans = {}
+    ct_trans['Ar'] = {'AR':1.0}
+    ct_trans['biomass'] = {'CELL':0.3932, 'LIGC':0.10, 'LIGH':0.10, 'LIGO':0.10, 'HCE':0.30}   #Still missing ASH - will correct in a bit
+
     names = {}
     for i in species.keys():       
         names[species[i]['name']] = i
@@ -401,13 +410,14 @@ class Stream:
         self.special_species = {}
         
         #Create Cantera object for the stream
-        self.ctstream = ct.GRI30()
+        self.ctphase = ct.importPhase('GasifierSpecies.cti','gas')
         if self.temperature is not None:
-            self.ctstream.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
         if self.pressure is not None:
-            self.ctstream.set(P = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
+            self.ctphase.set(P = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
         if self.composition is not None:
-            self.ctStream.set(X = self.ct_comp_string())    
+            self.ct_setcomp()
+        #will need to set up None checking in the enthalpy function to make sure that stream values are not empty    
         
     def elementalFactor(self, element):
         """Returns the units of element/basis unit of a given element in the feed"""
@@ -633,9 +643,36 @@ class Stream:
         conv = uc.UnitConverter()
         return conv.convert_units(self.entropy[0], self.entropy[1], units)
 
-    def ct_comp_string(self):
+    def ct_setcomp(self):
         """Returns a string that can be used to input the stream's composition into a Cantera object"""
-        return ', '.join([':'.join([i,str(self.composition[i])]) for i in self.composition.keys()])
+        #First, need to format everything into the Cantera Species
+        if self.basis == 'molar' or self.basis == 'gas_volume' or self.basis == 'std_gas_volume':
+            #This is the easiest case -- just pull all the compositional values and set the phase appropriately
+            set_string = ""
+            for specie in self.composition.keys():
+                if specie in Stream.ct_trans:
+                    for sub in Stream.ct_trans[specie]:
+                        set_string += '%s:%s' % (sub, Stream.ct_trans[specie][sub]*self.composition[specie])  #This, of course, assumes that the basis in ct_trans is the same as in self.composition
+                else:
+                    set_string += '%s:%s' % (specie, self.composition[specie])
+            #set the phase composition
+            self.ctphase.setMoleFractions(set_string)
+
+        elif self.basis == 'mass':
+            #This is also pretty easy -- just pull all the compositional values and set the phase appropriately
+            set_string = ""
+            for specie in self.composition.keys():
+                if specie in Stream.ct_trans:
+                    for sub in Stream.ct_trans[specie]:
+                        set_string += '%s:%s' % (sub, Stream.ct_trans[specie][sub]*self.composition[specie])  #This, of course, assumes that the basis in ct_trans is the same as in self.composition
+                else:
+                    set_string += '%s:%s' % (specie, self.composition[specie])
+            #set the phase composition
+            self.ctphase.setMassFractions(set_string)
+
+        else:
+            raise lflException, '%s is not a valid stream basis' % self.basis
+        
         
     def _calc_enthalpy(self):
         """Calculates the stream enthalpy and stores it in self.enthalpy"""
@@ -774,11 +811,11 @@ class Molecule:
 class SpecialMolecule(Molecule):
     """This class holds specially designated molcules, so that I can calculate molecular weights without too much of a problem"""
     MW = {}
-    MW['LigH'] = 0
-    MW['LigO'] = 0
-    MW['LigC'] = 0
-    MW['Cell'] = 162
-    MW['HemiC'] = 0
+    MW['LIGH'] = 436
+    MW['LIGO'] = 422
+    MW['LIGC'] = 258
+    MW['CELL'] = 162
+    MW['HCE'] = 132
 
 class ProcTS(ts_data):
 
