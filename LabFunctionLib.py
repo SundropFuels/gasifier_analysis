@@ -631,14 +631,16 @@ class Stream:
     def get_enthalpy(self, units):
         if not IsInstance(units, str):
             raise UnitConversionError, "The provided units must be a string for the enthalpy function"
-
+        
         self._calc_enthalpy()
         conv = uc.UnitConverter()
         return conv.convert_units(self.enthalpy[0], self.enthalpy[1], units)
+       
 
     def get_entropy(self, units):
         if not IsInstance(units, str):
-            raise UnitConversionError, "The provided units must be a strong for the entropy function"
+            raise UnitConversionError, "The provided units must be a string for the enthalpy function"
+        
         self._calc_entropy()
         conv = uc.UnitConverter()
         return conv.convert_units(self.entropy[0], self.entropy[1], units)
@@ -681,19 +683,68 @@ class Stream:
             raise BadStreamError, 'Stream temperature is not defined.'
         if self.pressure==None:
             raise BadStreamError, 'Stream pressure is not defined.'
-        self.specific_enthalpy=(self.ctstream.enthalpy_mole(), 'J/kmol')
-        self.enthalpy=(self.specific_enthalpy[0]*conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s'), 'J/s')
+        conv = uc.UnitConverter()
+        if self.basis == 'molar':
+            #convert to kmol/s:
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
+            self.enthalpy = [flow*self.ctphase.enthalpy_mole(), 'J/s']
+
+        elif self.basis == 'mass':
+            #convert to kg/s
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kg/s')
+            self.enthalpy = [flow*self.ctphase.enthalpy_mass(), 'J/s']
+
+        elif self.basis ==  "gas_volume":
+                        
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            flow =  val*p/(8.314*T)
+            self.enthalpy = [flow*self.ctphase.enthalpy_mole(), 'J/s']
+
+        elif self.basis == "std_gas_volume":
+            
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
+            
+            p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
+            T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
+            flow =  val*p/(8.314*T)
+            self.enthalpy = [flow*self.ctphase.enthalpy_mole(), 'J/s']
             
 
     def _calc_entropy(self):
         """Calculates the stream entropy and stores it in self.entropy"""
-        
+        conv = uc.UnitConverter()
         if self.temperature==None:
             raise BadStreamError, 'Stream temperature is not defined.'
         if self.pressure==None:
             raise BadStreamError, 'Stream pressure is not defined.'
-        self.specific_entropy=(self.ctstream.entropy_mole(), 'J/kmol/K')
-        self.entropy=(self.specific_entropy[0]*conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s'), 'J/s/K')
+        if self.basis == 'molar':
+            #convert to kmol/s:
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
+            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+
+        elif self.basis == 'mass':
+            #convert to kg/s
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kg/s')
+            self.entropy = [flow*self.ctphase.entropy_mass(), 'J/K/s']
+
+        elif self.basis ==  "gas_volume":
+                        
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            flow =  val*p/(8.314*T)
+            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+
+        elif self.basis == "std_gas_volume":
+            
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
+            
+            p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
+            T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
+            flow =  val*p/(8.314*T)
+            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
         
 
 class ProcessObject:
