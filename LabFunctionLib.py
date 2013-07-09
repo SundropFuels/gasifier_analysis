@@ -747,6 +747,55 @@ class Stream:
             flow =  val*p/(8.314*T)
             self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
         
+    def convert_to_mass_basis(self):
+        if self.basis == 'mass':
+            #do nothing
+            pass
+        
+        elif self.basis == 'gas_volume':
+            #I'm going to be sneaky here and convert to molar first, then let the execution drop downward
+            conv = uc.UnitConverter()
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            self.flowrate = [conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')*p/(8.314*T), 'mol/s']
+            self.basis = 'molar'
+
+        elif self.basis == 'std_gas_volume:
+            conv = uc.UnitConverter()
+            p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
+            T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
+            self.flowrate = [conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')*p/(8.314*T), 'mol/s']
+            self.basis = 'molar'
+
+        if self.basis == 'molar':
+            #calculate the molar compositions from the mass compositions
+            
+            conv = uc.UnitConverter()
+            #calculate the average molecular weight first
+            species_dict = {}
+            for species in self.composition:
+            
+                if species in SpecialMolecule.MW.keys():
+                    MW = SpecialMolecule.MW[species]
+                else:
+                    MW = 0
+                    breakdown = ep.parse_species(species)
+                    try:
+                        for ele, v in breakdown.items():
+                            MW +=  v*Element.MW[ele]
+                    except KeyError:
+                        raise BadStreamError, "%s does not have an entry in the Element molecular weight dictionary" % ele
+                species_dict[species] = MW*self.composition[species]
+            avg_MW = sum(species_dict.values())
+            for species in species_dict:
+                self.composition[species] = species_dict[species]/avg_MW
+            self.flowrate = [avg_MW*conv.convert_units(self.flowrate[0],self.flowrate[1], 'mol/s'), 'g/s']
+            self.basis = 'mass'
+
+        
+            
+
+
 
 class ProcessObject:
     
@@ -854,6 +903,7 @@ class Mixer(ProcessObject):
     def _calc_outlet_flowrate(self):
         conv = uc.UnitConverter()
         #Need to put everything on a consistent basis - if everything the same, just add them all together; otherwise use mass
+        #Also, need to set the composition of the outlet
         c = True
         basis_fl_dict = {'molar':'mol/s', 'mass':'kg/s', 'gas_volume':'m^3/s', 'std_gas_volume':'m^3/s'}
         basis_choice = self.inlets[0].basis
@@ -861,16 +911,34 @@ class Mixer(ProcessObject):
             if inlet.basis != basis_choice:
                 c = False
 
-        if c:
-            self.outlets[0].basis = basis_choice
-            fl_sum = 0
+        if not c:
+            #convert all streams to a mass basis
             for inlet in self.inlets:
-                fl_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])
-            self.outlets[0].flowrate = [fl_sum, basis_fl_dict[basis_choice])
+                if inlet.basis != 'mass':
+                    inlet.convert_to_mass_basis()
+            basis_choice = 'mass'
 
-        else:
-            pass
-            #implement this later
+        
+        self.outlets[0].basis = basis_choice
+        fl_sum = 0
+        for inlet in self.inlets:
+            fl_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])
+        self.outlets[0].flowrate = [fl_sum, basis_fl_dict[basis_choice])
+        #need to generate a total species list for compositional matching - then composition is simply the sum of the streams for that species divided by the total flowrate
+        species_list = []
+        for inlet in self.inlets:
+            for species in inlet.composition: 
+                if species not in species_list:
+                    species_list.append(species)
+        composition = {}
+        for specie in species_list:
+            spec_sum = 0
+            for inlet in self.inlets:
+                spec_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])*inlet.composition[species]
+            composition[species] = spec_sum/fl_sum
+        self.outlets[0].composition = composition
+
+        #Volume won't work right now -- needs to be converted to a molar basis to add the streams anyway
 
 
     def _calc_outlet_temperature(self):
