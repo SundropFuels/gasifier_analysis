@@ -1012,6 +1012,7 @@ class GasifierProcTS(ProcTS):
         self.units['tar_loading_incl'] = 'mg/m^3'
 
 
+
     def calc_space_time(self, reactor_vol, excluded_species):
         """Calculates the inlet space time of the reactor based on the inlet streams"""
         conv = uc.UnitConverter()
