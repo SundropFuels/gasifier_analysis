@@ -9,6 +9,9 @@ class dfException(Exception):
 
     def __str__(self):
         return repr(self.value)
+        
+class TimeError(dfException):
+    pass
 
 class GlossaryError(Exception):
     pass
