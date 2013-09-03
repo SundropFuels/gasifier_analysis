@@ -226,7 +226,7 @@ class GasifierDataAnalysis:
         
 
         #3. Calculate changes in enthalpy and entropy
-        #self.gts.generate_enthalpy_change(self, 'kW')
+        self.gts.generate_enthalpy_change(self, 'kW')
         #self.gts.generate_entropy_change(self, 'kW/K')
 
         #4. Normalize the compositions
