@@ -421,6 +421,39 @@ class Stream:
             self.ct_setcomp()
         #will need to set up None checking in the enthalpy function to make sure that stream values are not empty    
         
+    def gas_volumetric_flowrate(self, units):
+        """Returns the gas volumetric flowrate, in the desired units"""
+        conv = uc.UnitConverter()
+        if self.basis == "gas_volume":
+            return conv.convert_units(self.flowrate[0], self.flowrate[1], units)
+        elif self.basis == "std_gas_volume":
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            std_T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
+            std_P = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
+            return conv.convert_units(self.flowrate[0], self.flowrate[1], units)*T/std_T*std_P/p
+        elif self.basis == "molar":
+            f = conv.convert_units(self.flowrate[0], self.flowrate[1], 'mol/s')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            return conv.convert_units(8.314*f*T/p, 'm^3/s', units)
+        elif self.basis == "mass":
+            #convert to a molar flow first ###!!!###
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'g/s')
+            for species in self.composition.keys():
+                if species in SpecialMolecule.MW.keys():
+                    MW = SpecialMolecule.MW[species]
+                else:
+                    MW = 0
+                    breakdown = ep.parse_species(species)
+                    try:
+                        for ele, v in breakdown.items():
+                            MW +=  v*Element.MW[ele]
+                    except KeyError:
+                        raise BadStreamError, "%s does not have an entry in the Element molecular weight dictionary" % ele
+            return val*self.composition[species]/MW
+
+
     def elementalFactor(self, element):
         """Returns the units of element/basis unit of a given element in the feed"""
         factor = 0.0
@@ -800,7 +833,7 @@ class Stream:
 
 class ProcessObject:
     
-    def __init__(self, inlets, outlets):
+    def __init__(self, inlets, outlets = None):
         
         #Inlet Checks.  Maybe in future don't need to have inlets fully defined if outlets are, but not sure how to implement now.
         if type(inlets) != list:
@@ -822,11 +855,12 @@ class ProcessObject:
             
                 
         #Outlet Checks
-        if type(outlets) != list:
-            raise BadStreamError, 'Outlets must be input as a list of Stream objects.'
-        for outlet in outlets:
-            if not isinstance(outlet, Stream):
-                raise BadStreamError, 'Outlet %s is not a Stream object.' %outlet.name
+        if outlets is not None:
+            if type(outlets) != list:
+                raise BadStreamError, 'Outlets must be input as a list of Stream objects.'
+            for outlet in outlets:
+                if not isinstance(outlet, Stream):
+                    raise BadStreamError, 'Outlet %s is not a Stream object.' %outlet.name
 
         #Probably don't want this as general behavior, either
         """        
@@ -909,7 +943,7 @@ class Mixer(ProcessObject):
         basis_fl_dict = {'molar':'mol/s', 'mass':'kg/s', 'gas_volume':'m^3/s', 'std_gas_volume':'m^3/s'}
         basis_choice = self.inlets[0].basis
         for inlet in self.inlets:
-            if inlet.basis != basis_choice:
+            if inlet.basis != basis_choice or inlet.basis == 'gas_volume' or inlet.basis == 'std_gas_volume':
                 c = False
 
         if not c:
@@ -939,7 +973,7 @@ class Mixer(ProcessObject):
             composition[species] = spec_sum/fl_sum
         self.outlets[0].composition = composition
 
-        #Volume won't work right now -- needs to be converted to a molar basis to add the streams anyway
+        #Just driving all volume directly to mass now -- should work
 
 
     def _calc_outlet_temperature(self):
@@ -970,7 +1004,7 @@ class Reactor(ProcessObject):
     def calc_entropy_change(self, units):
         return self.deltaS(units)
         
-class Condensor(ProcessObject):
+class Condenser(ProcessObject):
     def __init__(self, **kwargs):
         ProcessObject.__init__(**kwargs)
         
@@ -1267,6 +1301,10 @@ class GasifierProcTS(ProcTS):
             for species in stream.composition:
                 if species not in excluded_species:
                     V_dot += stream.calcSpeciesVolumetricFlowrate(species)
+
+        #Create a mixer
+        mix = Mixer(inlets = self.inlet_streams)
+        #need to get the volumetric flowrate of this stream -- add a function to stream to calculate a gas volume if gas phase -- generalize later
 
         tau = vol/V_dot
         self['space_time'] = tau
