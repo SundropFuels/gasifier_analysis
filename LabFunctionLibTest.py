@@ -960,6 +960,29 @@ class UncertaintyTests(unittest.TestCase):
         #Create uncertainty objects (like structs) to hold the uncertainty parameters for the critical numbers
 
 
+#Unit tests added by Ryon 9/3/2013
+
+class ProcessObjectTests(unittest.TestCase):
+    """Needs to:
+    0 Correctly calculate total inlet enthalpy.
+    0 Correctly calculate total inlet entropy.
+    0 Correctly calculate total outlet enthalpy.
+    0 Correctly calculate total outlet entropy.
+    0 Correctly calculate outlet composition of a mixer.
+    0 Correctly calculate outlet temperature of a mixer.
+    0 Correctly calculate outlet pressure of a mixer.
+    0 Raise error if inlets are not in list object.
+    0 Raise error if outlets are not in list object.
+    0 Raise error if any inlet in inlets list not a Stream object.
+    0 Raise error if any outlets in outlets list not a Stream object.
+    """
+
+class SpaceTimeTests(unittest.TestCase):
+    """Needs to:
+    0 Correctly calculate space time
+    """
+
+
 if __name__ == "__main__":
     
     unittest.main()

@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import collections
 import element_parser as ep
 import scipy.optimize as spo
+import Cantera as ct
 
 conv = uc.UnitConverter()
 
@@ -413,9 +414,9 @@ class Stream:
         #Create Cantera object for the stream
         self.ctphase = ct.importPhase('GasifierSpecies.cti','gas')
         if self.temperature is not None:
-            self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'))
         if self.pressure is not None:
-            self.ctphase.set(P = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
+            self.ctphase.set(P = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m'))
         if self.composition is not None:
             self.ct_setcomp()
         #will need to set up None checking in the enthalpy function to make sure that stream values are not empty    
@@ -760,7 +761,7 @@ class Stream:
             self.flowrate = [conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')*p/(8.314*T), 'mol/s']
             self.basis = 'molar'
 
-        elif self.basis == 'std_gas_volume:
+        elif self.basis == 'std_gas_volume':
             conv = uc.UnitConverter()
             p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
             T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
@@ -923,7 +924,7 @@ class Mixer(ProcessObject):
         fl_sum = 0
         for inlet in self.inlets:
             fl_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])
-        self.outlets[0].flowrate = [fl_sum, basis_fl_dict[basis_choice])
+        self.outlets[0].flowrate = (fl_sum, basis_fl_dict[basis_choice])
         #need to generate a total species list for compositional matching - then composition is simply the sum of the streams for that species divided by the total flowrate
         species_list = []
         for inlet in self.inlets:
@@ -969,7 +970,7 @@ class Reactor(ProcessObject):
     def calc_entropy_change(self, units):
         return self.deltaS(units)
         
-class Condensor(ProcessObject:
+class Condensor(ProcessObject):
     def __init__(self, **kwargs):
         ProcessObject.__init__(**kwargs)
         
