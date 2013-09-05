@@ -249,13 +249,13 @@ class LoadDataTests(unittest.TestCase):
     """
     def testDataLoadCorrect(self):
         """Test whether all the data is loaded correctly and no extraneous data exists"""
-        interface = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
         interface.connect()
-        q = db.use_Query("lab_run_db")
+        q = db.use_Query("gas_unit_test")
         interface.query(q)
         
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
-        ts.SQL_load(interface, table = "gasifier_lv_GC_view")
+        ts.SQL_load(interface, table = "gas_data_test_tbl")
         for key in LoadDataTests.general_library.keys():
                 for i in range(len(ts[key])):
                     self.assertEqual(ts[key][i], LoadDataTests.general_library[key][i])
@@ -283,12 +283,12 @@ class LoadDataTests(unittest.TestCase):
 
     def testDataIsTimeseries(self):
         """The data should have a timestamp column (actually be timeseries data)"""
-        interface = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
         interface.connect()
-        q = db.use_Query("LIMS")
+        q = db.use_Query("gas_unit_test")
         interface.query(q)
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
-        ts.SQL_load(interface, table = "gasifier_data_HR_view")
+        ts.SQL_load(interface, table = "gas_data_test_tbl")
         self.assertIn("timestamp", ts.data.keys())
 
     def testSensibleStartandEnd(self):
@@ -745,10 +745,10 @@ class ConversionTests(unittest.TestCase):
         phiCO = outlet_molar*(LoadDataTests.general_library['CO_GC'])/inlet
 
         for i in range(len(goodX)):
-            self.assertAlmostEqual(gts['X_good'][i],goodX[i],2)
-            self.assertAlmostEqual(gts['X_tot'][i],totX[i],2)
-            self.assertAlmostEqual(gts['X_std'][i],stdX[i],2)
-            self.assertAlmostEqual(gts['CO_yield'][i],phiCO[i],2)
+            self.assertAlmostEqual(gts['X_good'][i],goodX[i],3)
+            self.assertAlmostEqual(gts['X_tot'][i],totX[i],3)
+            self.assertAlmostEqual(gts['X_std'][i],stdX[i],3)
+            self.assertAlmostEqual(gts['CO_yield'][i],phiCO[i],3)
 
         for name in ['X_good','X_tot','X_std','CO_yield']:
             self.assertEqual(gts.units[name],None)
@@ -968,14 +968,25 @@ class ProcessObjectTests(unittest.TestCase):
     0 Correctly calculate total inlet entropy.
     0 Correctly calculate total outlet enthalpy.
     0 Correctly calculate total outlet entropy.
-    0 Correctly calculate outlet composition of a mixer.
-    0 Correctly calculate outlet temperature of a mixer.
-    0 Correctly calculate outlet pressure of a mixer.
+    
     0 Raise error if inlets are not in list object.
     0 Raise error if outlets are not in list object.
     0 Raise error if any inlet in inlets list not a Stream object.
     0 Raise error if any outlets in outlets list not a Stream object.
     """
+
+class MixerTests(unittest.TestCase):
+    """Needs to:
+    0 Correctly calculate outlet composition of a mixer.
+    0 Correctly calculate outlet temperature of a mixer.
+    0 Correctly calculate outlet pressure of a mixer.
+    """
+    
+    def setUp(self):
+        self.inlet1 = lfl.Stream('inlet1')
+        self.inlet2 = lfl.Stream('inlet2')
+        self.inlet3 = lfl.Stream('inlet3')
+        
 
 class SpaceTimeTests(unittest.TestCase):
     """Needs to:

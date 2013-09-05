@@ -412,7 +412,7 @@ class Stream:
         self.special_species = {}
         
         #Create Cantera object for the stream
-        self.ctphase = ct.importPhase('GasifierSpecies.cti','gas')
+        self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
         if self.temperature is not None:
             self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'))
         if self.pressure is not None:
