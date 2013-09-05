@@ -664,7 +664,7 @@ class Stream:
         return parsed_elements
 
     def get_enthalpy(self, units):
-        if not IsInstance(units, str):
+        if not isinstance(units, str):
             raise UnitConversionError, "The provided units must be a string for the enthalpy function"
         
         self._calc_enthalpy()
@@ -673,7 +673,7 @@ class Stream:
        
 
     def get_entropy(self, units):
-        if not IsInstance(units, str):
+        if not isinstance(units, str):
             raise UnitConversionError, "The provided units must be a string for the enthalpy function"
         
         self._calc_entropy()
@@ -689,10 +689,11 @@ class Stream:
             for specie in self.composition.keys():
                 if specie in Stream.ct_trans:
                     for sub in Stream.ct_trans[specie]:
-                        set_string += '%s:%s' % (sub, Stream.ct_trans[specie][sub]*self.composition[specie])  #This, of course, assumes that the basis in ct_trans is the same as in self.composition
+                        set_string += '%s:%s, ' % (sub, Stream.ct_trans[specie][sub]*self.composition[specie])  #This, of course, assumes that the basis in ct_trans is the same as in self.composition
                 else:
-                    set_string += '%s:%s' % (specie, self.composition[specie])
+                    set_string += '%s:%s, ' % (specie, self.composition[specie])
             #set the phase composition
+            set_string = set_string[:-2] #Remove last ', ' from set_string build
             self.ctphase.setMoleFractions(set_string)
 
         elif self.basis == 'mass':
@@ -701,10 +702,11 @@ class Stream:
             for specie in self.composition.keys():
                 if specie in Stream.ct_trans:
                     for sub in Stream.ct_trans[specie]:
-                        set_string += '%s:%s' % (sub, Stream.ct_trans[specie][sub]*self.composition[specie])  #This, of course, assumes that the basis in ct_trans is the same as in self.composition
+                        set_string += '%s:%s, ' % (sub, Stream.ct_trans[specie][sub]*self.composition[specie])  #This, of course, assumes that the basis in ct_trans is the same as in self.composition
                 else:
-                    set_string += '%s:%s' % (specie, self.composition[specie])
+                    set_string += '%s:%s, ' % (specie, self.composition[specie])
             #set the phase composition
+            set_string = set_string[:-2] #Remove last ', ' from set_string build
             self.ctphase.setMassFractions(set_string)
 
         else:
@@ -719,23 +721,25 @@ class Stream:
         if self.pressure==None:
             raise BadStreamError, 'Stream pressure is not defined.'
         conv = uc.UnitConverter()
+        
+        #Cantera output is J/kmol or J/kg, so conversions must follow this for molar and mass flow rates.
         if self.basis == 'molar':
             #convert to kmol/s:
             flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
-            self.enthalpy = [flow*self.ctphase.enthalpy_mole(), 'J/s']
+            self.enthalpy = (flow*self.ctphase.enthalpy_mole(), 'J/s')
 
         elif self.basis == 'mass':
             #convert to kg/s
             flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kg/s')
-            self.enthalpy = [flow*self.ctphase.enthalpy_mass(), 'J/s']
+            self.enthalpy = (flow*self.ctphase.enthalpy_mass(), 'J/s')
 
         elif self.basis ==  "gas_volume":
                         
             val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
             p = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
             T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
-            flow =  val*p/(8.314*T)
-            self.enthalpy = [flow*self.ctphase.enthalpy_mole(), 'J/s']
+            flow =  val*p/(8.314*T)/1000
+            self.enthalpy = (flow*self.ctphase.enthalpy_mole(), 'J/s')
 
         elif self.basis == "std_gas_volume":
             
@@ -743,8 +747,8 @@ class Stream:
             
             p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
             T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
-            flow =  val*p/(8.314*T)
-            self.enthalpy = [flow*self.ctphase.enthalpy_mole(), 'J/s']
+            flow =  val*p/(8.314*T)/1000
+            self.enthalpy = (flow*self.ctphase.enthalpy_mole(), 'J/s')
             
 
     def _calc_entropy(self):

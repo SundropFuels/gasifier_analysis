@@ -42,9 +42,9 @@ class GasifierDataAnalysis:
         self.run_info.SQL_load(self.interface_proc, table = 'gas_run_info_tbl', run_id = self.run_id)
         #set up the tube size
         if self.run_info.info['tube_dia'] == 2.0:
-            self.reactor_size = (24.0*1.5, 'in^3')
+            self.reactor_size = (24.0*1.5*1.5*np.pi/4, 'in^3')
         elif self.run_info.info['tube_dia'] == 1.5:
-            self.reactor_size = (24*1.0, 'in^3')
+            self.reactor_size = (24.0*1.0*1.0*np.pi/4, 'in^3')
         else:
             self.reactor_size = (None, None)
         

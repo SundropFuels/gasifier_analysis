@@ -15,6 +15,7 @@ import datetime
 import db_toolbox as db
 import unitConversion as uc
 import dataFrame_v2 as df
+import Cantera as ct
 
 class LoadDataTests(unittest.TestCase):
     timestamp = np.ndarray(0, dtype = 'object')
@@ -896,7 +897,17 @@ class EnthalpyTests(unittest.TestCase):
     0 Raise exception on non-sensical arguments
     """
 
-    pass
+    def testStreamEnthalpy(self):
+        """Must correctly calculate stream enthalpy"""
+        test_stream = lfl.Stream('test_stream', flowrate = (10, 'L/min'), temperature = (400, 'K'), pressure = (101325, 'Pa'), composition = {'CO2':0.5, 'H2O':0.5}, basis = 'std_gas_volume', std_temperature = (70, 'F'))
+        
+        #Hand calculate enthlapy (kJ/s)
+        hand_stream_flowrate = 10/24.16/60 # SLPM to moles/s
+        hand_stream = ct.importPhase('cantera_biomass/GasifierSpecies.cti')
+        hand_stream.set(X = 'CO2:0.5, H2O:0.5', T = 400, P = 101325)
+        tot_enth = hand_stream.enthalpy_mole()/1000/1000*hand_stream_flowrate
+        
+        self.assertAlmostEqual(test_stream.get_enthalpy('kJ/s'), tot_enth, 2)
 
 class HeatExchangeTests(unittest.TestCase):
     """Needs to:
@@ -968,12 +979,21 @@ class ProcessObjectTests(unittest.TestCase):
     0 Correctly calculate total inlet entropy.
     0 Correctly calculate total outlet enthalpy.
     0 Correctly calculate total outlet entropy.
+    0 Correctly calculate delta H.
+    0 Correctly calculate delta S.
     
     0 Raise error if inlets are not in list object.
     0 Raise error if outlets are not in list object.
     0 Raise error if any inlet in inlets list not a Stream object.
     0 Raise error if any outlets in outlets list not a Stream object.
     """
+
+    def setUp(self):
+        pass
+    def testInletEnthalpy(self):
+        pass
+    def testOutletEnthalpy(self):
+        pass
 
 class MixerTests(unittest.TestCase):
     """Needs to:
@@ -983,16 +1003,30 @@ class MixerTests(unittest.TestCase):
     """
     
     def setUp(self):
-        self.inlet1 = lfl.Stream('inlet1')
-        self.inlet2 = lfl.Stream('inlet2')
-        self.inlet3 = lfl.Stream('inlet3')
+        pass
         
 
 class SpaceTimeTests(unittest.TestCase):
     """Needs to:
     0 Correctly calculate space time
     """
-
+    def setUp(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = (25, 'C'), pressure = (50, 'psig'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.get_val('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.get_val('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.get_val('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        
+        inlet_streams = [biomass_feed, ent_1, ent_2, ent_3]
+        reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
+        
+        # Hand calculate residence time...
+        
+        hand_vol = 1.5*1.5*np,pi/4*24*0.0163871 #Convert to liters
+        
 
 if __name__ == "__main__":
     
