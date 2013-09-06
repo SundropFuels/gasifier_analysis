@@ -270,13 +270,13 @@ class LoadDataTests(unittest.TestCase):
 
     def testUnconnectedInterface(self):
         """An unconnected interface should raise an error"""
-        interface = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        interface = db.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
     def testNoDatabaseSelected(self):
         """An interface with no selected database should raise an error:"""
-        interface = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        interface = db.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
         interface.connect()
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
