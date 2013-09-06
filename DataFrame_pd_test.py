@@ -16,29 +16,45 @@ class Data:
 
 class CorrectInitialization(unittest.TestCase):
     """TESTS:
-    0	Successfully create accurate dataframe from a dict of numpy arrays
-    0   Successfully add units to that dict
-    0   Raise error on non-existent column from unit dict
-    0   Raise error if units are not given as strings
+    +	Successfully create accurate dataframe from a dict of numpy arrays
+    +   Successfully add units to that dict
+    +   Raise error on non-existent column from unit dict
+    +   Raise error if units are not given as strings
     """
 
 
     #This is a prototype right now
     def testCorrectInitialization(self):
         """The data in the data frame should match the data in the array_dict"""
-        self.assertEqual(1,0)
+        
+        A = np.array([1.2,3.1,1.1])
+        B = np.array([4.6,7.0,7.3])
+        C = np.array([3.6,8.0,2.5])
+        cheetah = np.array([2.6,9.2,1.1])
+
+        data = df.Dataframe({'A':A,'B':B,'C':C,'cheetah':cheetah})
+        
+        #need a way to compare one dataframe to another
+        self.assertTrue(np.all((data==Data.df1).values))
+
+       
 
     def testUnitInitialization(self):
         """A unit dictionary must be appropriately applied to the dataframe"""
-        self.assertEqual(1,0)
+        units = {'A':'m/s', 'B':'kg/s', 'C':'Pa', 'cheetah':'s'}
+        data = df.Dataframe([Data.a, Data.b, Data.c], units_dict = units) 
+
+        self.assertEqual(units, data.units)
 
     def testNonexistentColumn(self):
-        """Passing a column name that isn't there should raise an error"""
-        self.assertEqual(1,0)
+        """Passing a column name in the units dict that isn't there should raise an error"""
+        units = {'A':'m/s', 'B':'kg/s', 'C':'Pa', 'mouse':'s'}
+        self.assertRaises(df.NoColumnError, df.Dataframe, [Data.a, Data.b, Data.c], units)
 
     def testBadUnitType(self):
         """Passing a non-string unit should raise an error"""
-        self.assertEqual(1,0)
+        units = {'A':'m/s', 'B':'kg/s', 'C':'Pa', 'cheetah':1.0}
+        self.assertRaises(df.BadUnitError, df.Dataframe, [Data.a, Data.b, Data.c], units)
         
 class ValueUnitTests(unittest.TestCase):
     """TESTS:

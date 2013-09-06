@@ -29,12 +29,15 @@ class BadArgumentError(dfException):
 class UncertaintyError(dfException):
     pass
 
+class BadUnitError(dfException):
+    pass
+
 class Dataframe(pd.DataFrame):
 
     def __init__(self, data = None, units_dict = None, index = None, **kwargs):
         """Constructor puts together the basic data structure, which includes a dictionary of arrays -- this is essentially a subclassed pandas DataFrame now"""
         #should check whether **kwargs contains either data or index and drop those keys, so they are not called twice; also, I should write the tests first
-        pd.DataFrame.__init__(data, index = index, **kwargs)
+        pd.DataFrame.__init__(self, data, index = index, **kwargs)
        
         #will only need to explicitly handle errors that pandas does NOT handle
 
@@ -43,11 +46,11 @@ class Dataframe(pd.DataFrame):
 
         for key in units_dict.keys():
             if key not in self.columns:
-                raise dfException, "Unit given for non-existent column"
+                raise NoColumnError, "Unit given for non-existent column"
 
         for value in units_dict.values():
             if type(value) != str and value is not None:
-                raise dfException, "Units must be given as strings"
+                raise BadUnitError, "Units must be given as strings"
 
         self.units = units_dict.copy()
    
@@ -68,7 +71,7 @@ class Dataframe(pd.DataFrame):
         results = db_interface.query(query)
 
         #try this:
-        self.__init__(data = results)
+        self.__init__(self, data = results)
       
 
     def SQL_upload_data(self, db_interface, table = "", conditions = None):
