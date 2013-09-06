@@ -4,6 +4,8 @@ import dataFrame_pd as df
 import unittest
 import numpy as np
 import pandas as pd
+import unitConversion as uc
+import db_toolbox as SQL
 
 class Data:
     """This is the standard holder for all test data"""
@@ -58,41 +60,78 @@ class CorrectInitialization(unittest.TestCase):
         
 class ValueUnitTests(unittest.TestCase):
     """TESTS:
-    0	Raise error if given column not in Dataframe
-    0   Return a given value and unit together correctly
-    0   Convert to a desired unit
+    +	Raise error if given column not in Dataframe
+    +   Return a given value and unit together correctly
+    +   Convert to a desired unit
     """
     def testNonexistentColumn(self):
         """Passing a column name that isn't there should raise an error"""
-        self.assertEqual(1,0)
+        units = {'A':'m/s', 'B':'kg/s', 'C':'Pa', 'cheetah':'s'}
+        data = df.Dataframe([Data.a, Data.b, Data.c], units_dict = units)
+        self.assertRaises(df.NoColumnError, data.val_units, 'mouse')
 
     def testCorrectOutput(self):
         """The dataframe should return a (value,unit) tuple correctly"""
-        self.assertEqual(1,0)
+        units = {'A':'m/s', 'B':'kg/s', 'C':'Pa', 'cheetah':'s'}
+        data = df.Dataframe([Data.a, Data.b, Data.c], units_dict = units)
+        vu = data.val_units('C')
+        C = np.array([3.6,8.0,2.5])
+        self.assertTrue((vu[0]==C).all())
+        self.assertEqual(vu[1], 'Pa')
 
     def testUnitConversion(self):
         """The dataframe should return a (value,unit) tuple in the specified units"""
-        self.assertEqual(1,0) 
+        units = {'A':'m/s', 'B':'kg/s', 'C':'Pa', 'cheetah':'s'}
+        data = df.Dataframe([Data.a, Data.b, Data.c], units_dict = units)
+        vu = data.val_units('A', 'ft/hr')
+        A = np.array([1.2,3.1,1.1])
+        conv = uc.UnitConverter()
+        Ac = conv.convert_units(A, 'm/s', 'ft/hr')
+        self.assertTrue((vu[0]==Ac).all())
+        self.assertEqual(vu[1], 'ft/hr')
 
 class LoadSQLTests(unittest.TestCase):
     """TESTS:
-    0 	Raise error on bad interface
-    0   Raise error on non-existent table
-    0   Pass through query error
-    0   Correctly load dataframe from database
+    + 	Raise error on bad interface
+    +   Raise error on non-existent table
+    +   Pass through query error
+    +   Correctly load dataframe from database
     """
 
     def testBadInterface(self):
         """The dataframe should raise an error when a bad interface is passed"""
-        self.assertEqual(1,0)
+        
+        
+        data = df.Dataframe()
+        self.assertRaises(df.dfSQLError, data.SQL_load_data, "dog")
 
     def testSQLError(self):
         """The dataframe should raise an error when the SQL library sends one back"""
-        self.assertEqual(1,0)
+        data = df.Dataframe()
+        #error - no database selected
+        interface = SQL.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
+        interface.connect()
+        self.assertRaises(df.dfSQLError, data.SQL_load_data, interface)
 
+        q = SQL.use_Query("gas_unit_test")
+        interface.query(q)
+
+        #error - bad table
+        self.assertRaises(df.dfSQLError, data.SQL_load_data, interface, "moat")        
+
+        #error - bad condition
+        self.assertRaises(df.dfSQLError, data.SQL_load_data, interface, "dataframe_pd_test_table", ["denver>2.0"])
+        
     def testCorrectSQLLoad(self):
         """The dataframe should correctly be loaded from an SQL table"""
-        self.assertEqual(1,0)
+        data = df.Dataframe()
+        interface = SQL.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
+        interface.connect()
+        q = SQL.use_Query("gas_unit_test")
+        interface.query(q)
+
+        data.SQL_load_data(interface, table = "dataframe_pd_test_table")
+        self.assertTrue(np.all((data==Data.df1).values))
 
 class UploadSQLTests(unittest.TestCase):
     """TESTS:

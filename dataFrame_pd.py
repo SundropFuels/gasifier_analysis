@@ -3,6 +3,7 @@ import pandas as pd
 import db_toolbox as SQL
 import datetime
 import csv
+import unitConversion as uc
 
 class dfException(Exception):
     def __init__(self,value):
@@ -32,6 +33,9 @@ class UncertaintyError(dfException):
 class BadUnitError(dfException):
     pass
 
+class dfSQLError(dfException):
+    pass
+
 class Dataframe(pd.DataFrame):
 
     def __init__(self, data = None, units_dict = None, index = None, **kwargs):
@@ -55,29 +59,45 @@ class Dataframe(pd.DataFrame):
         self.units = units_dict.copy()
    
 
-    def val_units(self, col_name):
+    def val_units(self, col_name, units = None):
         if col_name not in self.columns:
             raise NoColumnError, "The specified column is not in the dataframe"
 
-        return (self[col_name], self.units[col_name])
+        if units is None:
+            units = self.units[col_name]
+        conv = uc.UnitConverter()
+        return (conv.convert_units(self[col_name],self.units[col_name],units), units)
 
 
     def SQL_load_data(self, db_interface, table = "", conditions = None):
         """Allows the user to load the dataframe directly from a MySQL database; must pass interface"""
         if conditions is None:
             conditions = []
-        query = SQL.select_Query(objects = ['*'], table = table, condition_list = conditions)
-        
-        results = db_interface.query(query)
+        if not isinstance(db_interface, SQL.db_interface):
+            raise dfSQLError, "The passed interface is not a db_toolbox interface"
 
+        query = SQL.select_Query(objects = ['*'], table = table, condition_list = conditions)
+        s = []
+
+        try:
+            results = db_interface.query(query)
+        
+        except SQL.DBToolboxError:
+            raise dfSQLError, "There was an error in using the SQL interface"
+
+        for row in results:
+            s.append(pd.Series(row))
         #try this:
-        self.__init__(self, data = results)
+        self.__init__(s)
       
 
     def SQL_upload_data(self, db_interface, table = "", conditions = None):
         """Allows the user to upload data to a MySQL database; tries an INSERT command first, then an UPDATE if an error is received"""
         if conditions is None:
             conditions = []
+
+        if not isinstance(db_interface, SQL.db_interface):
+            raise dfSQLError, "The passed interface is not a db_toolbox interface"
 
         for index in range(0,len(self)):
             row = {}
@@ -101,7 +121,7 @@ class Dataframe(pd.DataFrame):
                     #print query.getQuery()
                     db_interface.query(query)
                 except SQL.DBToolboxError:
-                    raise dfException, "Whoa...can't load that into the table, brah.  Don't know why."
+                    raise dfSQLError, "Whoa...can't load that into the table, brah.  Don't know why."
 
 
     def write_csv(self, filename, mode = "new", col_list = None):
