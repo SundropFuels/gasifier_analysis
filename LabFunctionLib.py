@@ -878,6 +878,10 @@ class ProcessObject:
        
         """
     #There has GOT to be a way to generalize this with decorators or similar
+    
+        self.inlets = inlets
+        self.outlets = outlets
+    
     def totalInletEnthalpy(self, units):
         H = 0
         for stream in self.inlets:

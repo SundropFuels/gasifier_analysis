@@ -16,6 +16,8 @@ import db_toolbox as db
 import unitConversion as uc
 import dataFrame_v2 as df
 import Cantera as ct
+import scipy as sp
+import random
 
 class LoadDataTests(unittest.TestCase):
     timestamp = np.ndarray(0, dtype = 'object')
@@ -869,6 +871,7 @@ class CompositionTests(unittest.TestCase):
 
 class EnthalpyTests(unittest.TestCase):
     """Needs to:
+    0 Correctly use Cantera to calculate enthalpy.
     0 Correctly calculate sensible heat change of a set of marked species given:
         - Inlet temperature
         - Outlet temperature
@@ -896,7 +899,84 @@ class EnthalpyTests(unittest.TestCase):
         - Object containing Cp, dH_formation for all species
     0 Raise exception on non-sensical arguments
     """
-
+    
+    gasifier_species = ['CO', 'CO2', 'H2O', 'O2', 'CH4', 'H2', 'C2H4', 'Ar', 'N2', 'C2H2', 'C2H6', 'C3H6', 'C3H6', 'C3H8', 'C6H6', 'C10H8']
+    cantera_species = ['CO', 'CO2', 'H2O', 'O2', 'CH4', 'H2', 'C2H4', 'AR', 'N2', 'C2H2', 'C2H6', 'C3H6', 'C3H6', 'C3H8', 'C6H6', 'C10H8']
+    cantera_trans = {'Ar':'AR'}
+    enth_vals = {}
+    cp_vals = {}
+       
+    
+        
+    # h0 = kJ/mole, cp = J/mol/Kl    
+    enth_vals["CO"] = -110.5
+    cp_vals["CO"] = {'A':3.087e1, 'B':1.285e-2, 'C':2.789e-5, 'D':-1.272e-8}
+    enth_vals["CO2"] = -393.5
+    cp_vals["CO2"] = {'A':1.980e1, 'B':7.344e-2, 'C':-5.602e-5, 'D':1.715e-8}
+    enth_vals["H2O"] = -241.8
+    cp_vals["H2O"] = {'A':32.24, 'B':1.924e-3, 'C':1.055e-5, 'D':-3.596e-9}
+    enth_vals["O2"] = 0
+    cp_vals["O2"] = {'A':2.811e1, 'B':-3.680e-6, 'C':1.746e-5, 'D':-1.065e-8}
+    enth_vals["CH4"] = -74.6
+    cp_vals["CH4"] = {'A':19.25, 'B':5.213e-2, 'C':1.197e-5, 'D':-1.132e-8}
+    enth_vals["H2"] = 0
+    cp_vals["H2"] = {'A':2.714e1, 'B':9.274e-3, 'C':-1.381e-5, 'D':7.645e-9}
+    enth_vals["C2H4"] = 52.4
+    cp_vals["C2H4"] = {'A':3.806, 'B':1.566e-1, 'C':-8.348e-5, 'D':1.755e-8}
+    enth_vals["Ar"] = 0
+    cp_vals["Ar"] = {'A':2.080e1, 'B':0, 'C':0, 'D':0}
+    enth_vals["N2"] = 0
+    cp_vals["N2"] = {'A':3.115e1, 'B':-1.357e-2, 'C':2.680e-5, 'D':-1.168e-8}
+    enth_vals["C2H2"] = 227.4
+    cp_vals["C2H2"] = {'A':2.682e1, 'B':7.578e-2, 'C':-5.007e-5, 'D':1.412e-8}
+    enth_vals["C2H6"] = -84.0
+    cp_vals["C2H6"] = {'A':5.509, 'B':1.781e-1, 'C':-6.938e-5, 'D':8.713e-9}
+    enth_vals["C3H6"] = 20.0
+    cp_vals["C3H6"] = {'A':3.710, 'B':2.345e-1, 'C':-1.160e-4, 'D':2.205e-8}
+    enth_vals["C3H8"] = -103.8
+    cp_vals["C3H8"] = {'A':-4.224, 'B':3.063e-1, 'C':-1.586e-4, 'D':3.215e-8}
+    enth_vals["C6H6"] = 82.9
+    cp_vals["C6H6"] = {'A':-3.392e1, 'B':4.739e-1, 'C':-3.017e-4, 'D':7.130e-8}
+    enth_vals["C10H8"] = 150.6
+    cp_vals["C10H8"] = {'A':-6.880e1, 'B':8.499e-1, 'C':-6.506e-4, 'D':1.981e-7}
+    
+    def delta_h(self, Tf, Ti, A, B, C, D):
+        """Returns delta H from integrated heat capacity in J/mol"""
+        hf = A*Tf + B/2*Tf*Tf + C/3*Tf*Tf*Tf + D/4*Tf*Tf*Tf*Tf
+        hi = A*Ti + B/2*Ti*Ti + C/3*Ti*Ti*Ti + D/4*Ti*Ti*Ti*Ti
+        dh = hf - hi
+        return dh
+         
+         
+    def delta_s(self, Tf, Ti, A, B, C, D): 
+        """Returns delta S from integrated heat capacity in J/mol/K"""
+        sf = A*log(Tf) + B*Tf + C/2*Tf*Tf + D/3*Tf*Tf*Tf
+        si = A*log(Ti) + B*Ti + C/2*Ti*Ti + D/3*Ti*Ti*Ti
+        ds = sf - si
+        return ds 
+        
+    def testCanteraEnthalpy(self):
+        """Must correctly calculate enthalpy for every gasifier species using Cantera GasifierSpecies.cti file."""
+        cp_coeff = EnthalpyTests.cp_vals
+        for specie in EnthalpyTests.gasifier_species:
+            Tf = random.randrange(300,500) #generate random temperature from 300-500K
+            ct_stream = ct.importPhase('cantera_biomass/GasifierSpecies.cti')
+            if specie in EnthalpyTests.cantera_trans:
+                ct_stream.set(T = Tf, P = 101325, X = '%s:1' % EnthalpyTests.cantera_trans[specie])
+            else:
+                ct_stream.set(T = Tf, P = 101325, X = '%s:1' % specie)
+            ct_enth = ct_stream.enthalpy_mole()/1000/1000
+            hand_enth = EnthalpyTests.enth_vals[specie] + \
+                        EnthalpyTests.delta_h(self,Tf, 298.15, cp_coeff[specie]['A'], cp_coeff[specie]['B'], cp_coeff[specie]['C'], cp_coeff[specie]['D'])/1000
+                        
+            # Assert hand calculation and cantera calculation are <%3 off.
+            percent = abs((hand_enth - ct_enth) / hand_enth)*100
+            try:
+                self.assertLess(percent, 3)
+            except:
+                print 'Failed on %s %s K' %(specie, Tf)
+                self.assertLess(percent, 3)
+                          
     def testStreamEnthalpy(self):
         """Must correctly calculate stream enthalpy"""
         test_stream = lfl.Stream('test_stream', flowrate = (10, 'L/min'), temperature = (400, 'K'), pressure = (101325, 'Pa'), composition = {'CO2':0.5, 'H2O':0.5}, basis = 'std_gas_volume', std_temperature = (70, 'F'))
@@ -971,13 +1051,11 @@ class UncertaintyTests(unittest.TestCase):
         #Create uncertainty objects (like structs) to hold the uncertainty parameters for the critical numbers
 
 
-#Unit tests added by Ryon 9/3/2013
-
 class ProcessObjectTests(unittest.TestCase):
     """Needs to:
-    0 Correctly calculate total inlet enthalpy.
+    + Correctly calculate total inlet enthalpy.
     0 Correctly calculate total inlet entropy.
-    0 Correctly calculate total outlet enthalpy.
+    + Correctly calculate total outlet enthalpy.
     0 Correctly calculate total outlet entropy.
     0 Correctly calculate delta H.
     0 Correctly calculate delta S.
@@ -989,17 +1067,111 @@ class ProcessObjectTests(unittest.TestCase):
     """
 
     def setUp(self):
-        pass
+        inlet1_t = random.randrange(300,500)
+        inlet1_p = random.randrange(101325, 101325*6)
+        inlet1_sp = random.sample(EnthalpyTests.cantera_species, 3)
+        inlet1_x = '%s:0.33, %s:0.33, %s:0.33' %(inlet1_sp[0], inlet1_sp[1], inlet1_sp[2])
+        inlet2_t = random.randrange(300,500)
+        inlet2_p = random.randrange(101325, 101325*6)
+        inlet2_sp = random.sample(EnthalpyTests.cantera_species, 3)
+        inlet2_x = '%s:0.33, %s:0.33, %s:0.33' %(inlet2_sp[0], inlet2_sp[1], inlet2_sp[2])
+        inlet3_t = random.randrange(300,500)
+        inlet3_p = random.randrange(101325, 101325*6)
+        inlet3_sp = random.sample(EnthalpyTests.cantera_species, 3)
+        inlet3_x = '%s:0.33, %s:0.33, %s:0.33' %(inlet3_sp[0], inlet3_sp[1], inlet3_sp[2])
+        
+        
+        outlet1_t = random.randrange(300,500)
+        outlet1_p = random.randrange(101325, 101325*6)
+        outlet1_sp = random.sample(EnthalpyTests.cantera_species, 3)
+        outlet1_x = '%s:0.33, %s:0.33, %s:0.33' %(outlet1_sp[0], outlet1_sp[1], outlet1_sp[2])
+        outlet2_t = random.randrange(300,500)
+        outlet2_p = random.randrange(101325, 101325*6)
+        outlet2_sp = random.sample(EnthalpyTests.cantera_species, 3)
+        outlet2_x = '%s:0.33, %s:0.33, %s:0.33' %(outlet2_sp[0], outlet2_sp[1], outlet2_sp[2])
+        outlet3_t = random.randrange(300,500)
+        outlet3_p = random.randrange(101325, 101325*6)
+        outlet3_sp = random.sample(EnthalpyTests.cantera_species, 3)
+        outlet3_x = '%s:0.33, %s:0.33, %s:0.33' %(outlet3_sp[0], outlet3_sp[1], outlet3_sp[2])
+        
+        inlet1 = lfl.Stream('inlet1', basis = 'molar', flowrate = (1, 'mol/s'), \
+                            temperature = (inlet1_t, 'K'), pressure = (inlet1_p, 'Pa'), \
+                            composition = {inlet1_sp[0]:0.33, inlet1_sp[1]:0.33, inlet1_sp[2]:0.33})
+        inlet2 = lfl.Stream('inlet2', basis = 'molar', flowrate = (1, 'mol/s'), \
+                            temperature = (inlet2_t, 'K'), pressure = (inlet2_p, 'Pa'), \
+                            composition = {inlet2_sp[0]:0.33, inlet2_sp[1]:0.33, inlet2_sp[2]:0.33})
+        inlet3 = lfl.Stream('inlet3', basis = 'molar', flowrate = (1, 'mol/s'), \
+                            temperature = (inlet3_t, 'K'), pressure = (inlet3_p, 'Pa'), \
+                            composition = {inlet3_sp[0]:0.33, inlet3_sp[1]:0.33, inlet3_sp[2]:0.33})
+                            
+        outlet1 = lfl.Stream('inlet1', basis = 'molar', flowrate = (1, 'mol/s'), \
+                            temperature = (outlet1_t, 'K'), pressure = (outlet1_p, 'Pa'), \
+                            composition = {outlet1_sp[0]:0.33, outlet1_sp[1]:0.33, outlet1_sp[2]:0.33})
+        outlet2 = lfl.Stream('inlet2', basis = 'molar', flowrate = (1, 'mol/s'), \
+                            temperature = (outlet2_t, 'K'), pressure = (outlet2_p, 'Pa'), \
+                            composition = {outlet2_sp[0]:0.33, outlet2_sp[1]:0.33, outlet2_sp[2]:0.33})
+        outlet3 = lfl.Stream('inlet3', basis = 'molar', flowrate = (1, 'mol/s'), \
+                            temperature = (outlet3_t, 'K'), pressure = (outlet3_p, 'Pa'), \
+                            composition = {outlet3_sp[0]:0.33, outlet3_sp[1]:0.33, outlet3_sp[2]:0.33})
+        
+        self.ct_inlet1 = ct.importPhase('cantera_biomass/GasifierSpecies.cti')
+        self.ct_inlet1.set(T = inlet1_t, P = inlet1_p, X = inlet1_x)
+        self.ct_inlet2 = ct.importPhase('cantera_biomass/GasifierSpecies.cti')
+        self.ct_inlet2.set(T = inlet2_t, P = inlet2_p, X = inlet2_x)
+        self.ct_inlet3 = ct.importPhase('cantera_biomass/GasifierSpecies.cti')
+        self.ct_inlet3.set(T = inlet3_t, P = inlet3_p, X = inlet3_x)
+        
+        self.ct_outlet1 = ct.importPhase('cantera_biomass/GasifierSpecies.cti')
+        self.ct_outlet1.set(T = outlet1_t, P = outlet1_p, X = outlet1_x)
+        self.ct_outlet2 = ct.importPhase('cantera_biomass/GasifierSpecies.cti')
+        self.ct_outlet2.set(T = outlet2_t, P = outlet2_p, X = outlet2_x)
+        self.ct_outlet3 = ct.importPhase('cantera_biomass/GasifierSpecies.cti')
+        self.ct_outlet3.set(T = outlet3_t, P = outlet3_p, X = outlet3_x)
+        
+        inlets = [inlet1, inlet2, inlet3]
+        outlets = [outlet1, outlet2, outlet3]
+        
+        self.test_ProcessObject = lfl.ProcessObject(inlets, outlets)
+        
+                                
     def testInletEnthalpy(self):
-        pass
+        inlet_enth = self.test_ProcessObject.totalInletEnthalpy('J/s')
+        hand1_enth = self.ct_inlet1.enthalpy_mole()/1000
+        hand2_enth = self.ct_inlet2.enthalpy_mole()/1000
+        hand3_enth = self.ct_inlet3.enthalpy_mole()/1000
+        hand_inlet_enth = hand1_enth + hand2_enth + hand3_enth
+        self.assertAlmostEqual(inlet_enth, hand_inlet_enth, 4)
+        
     def testOutletEnthalpy(self):
-        pass
+        outlet_enth = self.test_ProcessObject.totalOutletEnthalpy('J/s')
+        hand1_enth = self.ct_outlet1.enthalpy_mole()/1000
+        hand2_enth = self.ct_outlet2.enthalpy_mole()/1000
+        hand3_enth = self.ct_outlet3.enthalpy_mole()/1000
+        hand_outlet_enth = hand1_enth + hand2_enth + hand3_enth
+        self.assertAlmostEqual(outlet_enth, hand_outlet_enth, 4)
+        
+    def testInletEtropy(self):
+        inlet_entr = self.test_ProcessObject.totalInletEntropy('J/K/s')
+        hand1_entr = self.ct_inlet1.entropy_mole()/1000
+        hand2_entr = self.ct_inlet2.entropy_mole()/1000
+        hand3_entr = self.ct_inlet3.entropy_mole()/1000
+        hand_inlet_entr = hand1_entr + hand2_entr + hand3_entr
+        self.assertAlmostEqual(inlet_entr, hand_inlet_entr, 4)
+        
+    def testOutletEtropy(self):
+        outlet_entr = self.test_ProcessObject.totalOutletEntropy('J/K/s')
+        hand1_entr = self.ct_outlet1.entropy_mole()/1000
+        hand2_entr = self.ct_outlet2.entropy_mole()/1000
+        hand3_entr = self.ct_outlet3.entropy_mole()/1000
+        hand_outlet_entr = hand1_entr + hand2_entr + hand3_entr
+        self.assertAlmostEqual(outlet_entr, hand_outlet_entr, 4)
 
 class MixerTests(unittest.TestCase):
     """Needs to:
     0 Correctly calculate outlet composition of a mixer.
     0 Correctly calculate outlet temperature of a mixer.
     0 Correctly calculate outlet pressure of a mixer.
+    0 Raise an error if defined outlet of a mixer is higher than the pressure of any inlet.
     """
     
     def setUp(self):
