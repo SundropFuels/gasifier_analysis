@@ -917,7 +917,7 @@ class Mixer(ProcessObject):
     """A mixer blends multiple inlet streams into one outlet stream"""
 
     def __init__(self, name, outlet_pressure = None, **kwargs):
-        ProcessObject.__init__(**kwargs)
+        ProcessObject.__init__(self, **kwargs)
         
         self.outlets = [Stream(name = '%s_outlet' % name)]
         
@@ -974,7 +974,7 @@ class Mixer(ProcessObject):
                 if species not in species_list:
                     species_list.append(species)
         composition = {}
-        for specie in species_list:
+        for species in species_list:
             spec_sum = 0
             for inlet in self.inlets:
                 spec_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])*inlet.composition[species]

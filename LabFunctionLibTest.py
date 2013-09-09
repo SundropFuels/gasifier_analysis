@@ -1067,6 +1067,8 @@ class ProcessObjectTests(unittest.TestCase):
     """
 
     def setUp(self):
+    
+        #Randomly generate conditions for three inlets and three outlets.
         inlet1_t = random.randrange(300,500)
         inlet1_p = random.randrange(101325, 101325*6)
         inlet1_sp = random.sample(EnthalpyTests.cantera_species, 3)
@@ -1175,7 +1177,19 @@ class MixerTests(unittest.TestCase):
     """
     
     def setUp(self):
-        pass
+        inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
+                            composition = {'N2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
+        inlet2 = lfl.Stream('inlet2', temperature = (500, 'K'), pressure = (60, 'psig'), \
+                            composition = {'H2O':1}, flowrate = (1, 'mol/s'), basis = 'molar')
+        inlet3 = lfl.Stream('inlet3', temperature = (350, 'K'), pressure = (53, 'psig'), \
+                            composition = {'CO2':0.5, 'Ar':0.5}, flowrate = (1, 'mol/s'), \
+                            basis = 'molar')
+        self.inlets = [inlet1, inlet2, inlet3]
+                            
+    def testOutletComposition(self):
+        """Outlet composition must be correctly calculated for the mixer object."""
+        mix = lfl.Mixer('mix', inlets = self.inlets)
+        
         
 
 class SpaceTimeTests(unittest.TestCase):
