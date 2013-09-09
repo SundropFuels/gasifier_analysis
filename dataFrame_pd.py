@@ -91,7 +91,7 @@ class Dataframe(pd.DataFrame):
         self.__init__(s)
       
 
-    def SQL_upload_data(self, db_interface, table = "", conditions = None):
+    def SQL_upload_data(self, db_interface, table = "", conditions = None, index_col = "timestamp"):
         """Allows the user to upload data to a MySQL database; tries an INSERT command first, then an UPDATE if an error is received"""
         if conditions is None:
             conditions = []
@@ -101,6 +101,7 @@ class Dataframe(pd.DataFrame):
 
         for index in range(0,len(self)):
             row = {}
+            
             for key in self.columns:
                 if ' ' in key:
                     new_key = '`' + key + '`'
@@ -113,12 +114,12 @@ class Dataframe(pd.DataFrame):
                 
             try:
                 query = SQL.insert_Query(objects = row, table = table)
-                
+                print query
                 db_interface.query(query)
             except SQL.DBToolboxError:
                 try:
-                    query = SQL.update_Query(objects = row, table = table, conditions = ["timestamp = '%s'" % row['timestamp']])
-                    #print query.getQuery()
+                    query = SQL.update_Query(objects = row, table = table, conditions = ["%s = '%s'" % (index_col,row['%s' % index_col])])
+                    print query.getQuery()
                     db_interface.query(query)
                 except SQL.DBToolboxError:
                     raise dfSQLError, "Whoa...can't load that into the table, brah.  Don't know why."
@@ -127,6 +128,8 @@ class Dataframe(pd.DataFrame):
     def write_csv(self, filename, mode = "new", col_list = None):
         """Writes the dataframe to a csv file"""
         mode_dict = {"new":"w", "append":"a"}
+        if not isinstance(filename, str):
+            raise dfException, "The filename must be a string"
         outputfile = open(filename, mode_dict[mode])
         writer = csv.writer(outputfile, delimiter = ',', quoting=csv.QUOTE_MINIMAL)
         if col_list is not None:
@@ -153,12 +156,16 @@ class Dataframe(pd.DataFrame):
             raise BadGlossaryTypeError, "The glossary must be a dictionary"
 
         
+
+
         for key in glossary.keys():
             if key not in self.columns:
                 raise BadGlossaryTagError, "There is a tag in the glossary that is not in the dataframe"
             
+
+
             if key != glossary[key]:
-                self[glossary[key]] = self.data[key]
+                self[glossary[key]] = self[key]
                 del self[key]
 
     def set_units(self, units_dict = None):
@@ -176,6 +183,7 @@ class Dataframe(pd.DataFrame):
         self.units = units_dict.copy()
 
     def filter_vals(self, column, v, action):
+        
         if type(column) != str or not isinstance(v, (int, long, complex, float)) or type(action) != str:
             raise BadArgumentError, "The filter function received an argument not consistent with its parameter list"
 
@@ -196,7 +204,7 @@ class Dataframe(pd.DataFrame):
 
     ###HERE -- there are specific functions to do this within pandas, I should rely on those
     def replace_None_w_nan(self, column):
-        if column not in self.data:
+        if column not in self.columns:
             raise NoColumnError, "The specified column is not in the dataframe"
         
         if self[column].dtype != 'int64':
@@ -204,14 +212,14 @@ class Dataframe(pd.DataFrame):
             self[column][np.equal(self[column],None)] = np.nan
 
     def replace_None_w_nan_all(self):
-        for column in self.data.columns:
+        for column in self.columns:
             
             self.replace_None_w_nan(column)
 
 
     def finite_vals(self, key):
         """Returns only the finite values -- will build on this later to add the ability to return indices as well, to allow for pairs indexed on finite only"""
-        return self[key][np.isfinite(self[key].astype(float))]
+        return self[key][np.isfinite(self[key].astype(float))].values
 
     def finite_set(self, key, cols = None):
         """Returns a dataframe built up from only the finite values for key"""
