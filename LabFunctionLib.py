@@ -975,9 +975,10 @@ class Mixer(ProcessObject):
                     species_list.append(species)
         composition = {}
         for species in species_list:
-            spec_sum = 0
+            spec_sum = 0            
             for inlet in self.inlets:
-                spec_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])*inlet.composition[species]
+                if species in self.inlets:
+                    spec_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])*inlet.composition[species]
             composition[species] = spec_sum/fl_sum
         self.outlets[0].composition = composition
 
@@ -993,7 +994,7 @@ class Mixer(ProcessObject):
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
         temp_avg = temp_sum/len(self.inlets)
         outlet_temp = spo.newton(func = self.deltaH, x0 = temp_avg, args = ('J/s'))
-        self.outlets[0].temperature = [outlet_temp, 'K'] 
+        self.outlets[0].temperature = (outlet_temp, 'K') 
 
 
 
