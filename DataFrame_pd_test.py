@@ -135,7 +135,7 @@ class LoadSQLTests(unittest.TestCase):
 class UploadSQLTests(unittest.TestCase):
     """TESTS:
     +	Raise error on bad interface
-    0   Pass through query errors
+    
     +   Sucessfuly load database w/new values
     +   Sucessully load database when dataframe contains nan
     +   Load updated data into SQL table successfully
@@ -145,11 +145,6 @@ class UploadSQLTests(unittest.TestCase):
         
         data = df.Dataframe()
         self.assertRaises(df.dfSQLError, data.SQL_load_data, "dog")
-
-    def testSQLError(self):
-        """The dataframe should raise an error when the SQL library sends one back"""
-        
-        self.assertEqual(1,0)
 
     def testInsertLoad(self):
         """The dataframe should successfully add new records to an existing table"""
@@ -462,7 +457,7 @@ class FiniteValueTests(unittest.TestCase):
     """TESTS:
     +   Correctly return a column with only its finite values
     0   Correctly return a dataframe with only finite value columns
-    0   Raise an error on a column not in the dataframe
+    +   Raise an error on a column not in the dataframe
     """
 
     def testCorrectFiniteValCol(self):
@@ -486,7 +481,13 @@ class FiniteValueTests(unittest.TestCase):
 
     def testNonexistentColumn(self):
         """Passing a column name that isn't there should raise an error"""
-        self.assertEqual(1,0)
+        A = np.array([1.2,3.1,np.nan])
+        B = np.array([4.6,7.0,7.3])
+        C = np.array([np.nan,8.0,2.5])
+        cheetah = np.array([2.6,9.2,1.1])
+        data = df.Dataframe({'A':A,'B':B,'C':C,'cheetah':cheetah})
+        self.assertRaises(df.NoColumnError, data.finite_vals, 'foo')
+        
 
 
 if __name__ == "__main__":

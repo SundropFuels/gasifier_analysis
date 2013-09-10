@@ -219,6 +219,8 @@ class Dataframe(pd.DataFrame):
 
     def finite_vals(self, key):
         """Returns only the finite values -- will build on this later to add the ability to return indices as well, to allow for pairs indexed on finite only"""
+        if key not in self.columns:
+            raise NoColumnError, "The specified column is not in the dataframe"
         return self[key][np.isfinite(self[key].astype(float))].values
 
     def finite_set(self, key, cols = None):
