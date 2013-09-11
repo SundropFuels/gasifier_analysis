@@ -14,7 +14,7 @@ import numpy as np
 import datetime
 import db_toolbox as db
 import unitConversion as uc
-import dataFrame_v2 as df
+import dataFrame_pd as df
 
 class LoadDataTests(unittest.TestCase):
     timestamp = np.ndarray(0, dtype = 'object')
@@ -259,7 +259,7 @@ class LoadDataTests(unittest.TestCase):
         for key in LoadDataTests.general_library.keys():
                 for i in range(len(ts[key])):
                     self.assertEqual(ts[key][i], LoadDataTests.general_library[key][i])
-        for key in ts.data.keys():
+        for key in ts.columns:
             self.assertIn(key,LoadDataTests.general_library.keys())
 
     def testBadInterface(self):
@@ -289,7 +289,7 @@ class LoadDataTests(unittest.TestCase):
         interface.query(q)
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         ts.SQL_load(interface, table = "gas_data_test_tbl")
-        self.assertIn("timestamp", ts.data.keys())
+        self.assertIn("timestamp", ts.columns)
 
     def testSensibleStartandEnd(self):
         """The start and end times should be datetime.datetime objects"""
@@ -399,22 +399,22 @@ class GlossaryReplaceTests(unittest.TestCase):
 
     def testCorrectGlossaryReplace(self):
         """The names (and only the names) in the glossary should be changed"""
-        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16), array_dict = LoadDataTests.general_library.copy())
+        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16), data = LoadDataTests.general_library.copy())
         ts.glossary_replace(GlossaryReplaceTests.glossary)
         for key in GlossaryReplaceTests.post_keys:
-            self.assertIn(key,ts.data.keys())
+            self.assertIn(key,ts.columns)
         for key in GlossaryReplaceTests.pre_keys:
-            self.assertNotIn(key, ts.data.keys())
+            self.assertNotIn(key, ts.columns)
 
     def testBadGlossaryName(self):
         """A tag in the glossary NOT in the timeseries should raise an error"""
-        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16), array_dict = LoadDataTests.general_library.copy())
+        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16), data = LoadDataTests.general_library.copy())
         glossary1 = {"TE_101":"inlet_temp", "HI_203":"help_indicator"}
         self.assertRaises(df.GlossaryError, ts.glossary_replace, glossary1)
 
     def testBadGlossaryType(self):
         """If the glossary is not a dictionary, raise an error"""
-        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16), array_dict = LoadDataTests.general_library.copy())
+        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16), data = LoadDataTests.general_library.copy())
         glossary = 2.4
         self.assertRaises(df.GlossaryError, ts.glossary_replace, glossary)
         
@@ -431,7 +431,7 @@ class FeedrateUnitConversionTests(unittest.TestCase):
     """
     def testCorrectUnitConversion(self):
         """Unit conversion must be performed correctly, column must be added to the series, and the new units must be correct"""
-        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16),array_dict = LoadDataTests.general_library, units_dict = LoadDataTests.units.copy())
+        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16),data = LoadDataTests.general_library, units_dict = LoadDataTests.units.copy())
         for key, value in LoadDataTests.general_library.items():
             ts[key] = value
                 
@@ -443,7 +443,7 @@ class FeedrateUnitConversionTests(unittest.TestCase):
     
     def testNoColumnError(self):
         """Trying to convert a non-existent column should raise an error"""
-        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16),array_dict = LoadDataTests.general_library, units_dict = LoadDataTests.units.copy())
+        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16),data = LoadDataTests.general_library, units_dict = LoadDataTests.units.copy())
         for key, value in LoadDataTests.general_library.items():
             ts[key] = value
         
@@ -452,7 +452,7 @@ class FeedrateUnitConversionTests(unittest.TestCase):
 
     def testNoConversionInformation(self):
         """Trying to convert units that do not have a conversion factor should raise an error"""
-        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16),array_dict = LoadDataTests.general_library, units_dict = LoadDataTests.units.copy())
+        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16),data = LoadDataTests.general_library, units_dict = LoadDataTests.units.copy())
         for key, value in LoadDataTests.general_library.items():
             ts[key] = value
         
@@ -461,7 +461,7 @@ class FeedrateUnitConversionTests(unittest.TestCase):
 
     def testInconsistentUnitConversion(self):
         """Trying to convert to inconsistent units should raise an error"""
-        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16),array_dict = LoadDataTests.general_library, units_dict = LoadDataTests.units.copy())
+        ts = lfl.ts_data(start=datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16),data = LoadDataTests.general_library, units_dict = LoadDataTests.units.copy())
 
         for key, value in LoadDataTests.general_library.items():
             ts[key] = value
@@ -806,7 +806,7 @@ class DataFilteringTests(unittest.TestCase):
         """Must properly filter a low value from a data frame"""
         a = np.array([2.5,3.6,100.2,3.5])
         b = np.array([-3.2,0.0, -2.3, 1.5])
-        data1 = df.Dataframe(array_dict = {'a':a, 'b':b})
+        data1 = df.Dataframe(data = {'a':a, 'b':b})
         data1['b'] = data1.filter_vals(column = 'b', v = 0, action = 'low')
         for i in [1,3]:
             self.assertEqual(data1['b'][i], np.array([np.nan, 0, np.nan, 1.5])[i])
@@ -818,7 +818,7 @@ class DataFilteringTests(unittest.TestCase):
         """Must properly filter a high value from a data frame"""
         a = np.array([2.5,3.6,100.2,3.5])
         b = np.array([-3.2,0.0, -2.3, 1.5])
-        data1 = df.Dataframe(array_dict = {'a':a, 'b':b})
+        data1 = df.Dataframe(data = {'a':a, 'b':b})
         data1['a'] = data1.filter_vals(column = 'a', v = 3.5, action = 'high')
         for i in [0,3]:
             self.assertEqual(data1['a'][i], np.array([2.5, np.nan, np.nan, 3.5])[i])
@@ -829,7 +829,7 @@ class DataFilteringTests(unittest.TestCase):
         """A non-numeric filter value should raise an error or non-string field name"""
         a = np.array([2.5,3.6,100.2,3.5])
         b = np.array([-3.2,0.0, -2.3, 1.5])
-        data1 = df.Dataframe(array_dict = {'a':a, 'b':b})
+        data1 = df.Dataframe(data = {'a':a, 'b':b})
         
         self.assertRaises(df.BadArgumentError, data1.filter_vals, 'a', 'hi', 'high')
         self.assertRaises(df.BadArgumentError, data1.filter_vals, 2, 3.5, 'high')
@@ -841,7 +841,7 @@ class DataFilteringTests(unittest.TestCase):
 
         a = np.array([2.5,3.6,100.2,3.5])
         b = np.array([-3.2,0.0, -2.3, 1.5])
-        data1 = df.Dataframe(array_dict = {'a':a, 'b':b})
+        data1 = df.Dataframe(data = {'a':a, 'b':b})
         
         self.assertRaises(df.NoColumnError, data1.filter_vals, 'c', 2.5, 'high')
 

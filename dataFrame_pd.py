@@ -41,6 +41,7 @@ class Dataframe(pd.DataFrame):
     def __init__(self, data = None, units_dict = None, index = None, **kwargs):
         """Constructor puts together the basic data structure, which includes a dictionary of arrays -- this is essentially a subclassed pandas DataFrame now"""
         #should check whether **kwargs contains either data or index and drop those keys, so they are not called twice; also, I should write the tests first
+        
         pd.DataFrame.__init__(self, data, index = index, **kwargs)
        
         #will only need to explicitly handle errors that pandas does NOT handle
@@ -58,6 +59,14 @@ class Dataframe(pd.DataFrame):
 
         self.units = units_dict.copy()
    
+    def _set_item(self, key, value):
+        """Overriding the inherent set item function to allow addition of a column when the index is empty"""
+        if len(self) == 0:
+            #call your reinitialize function on the dictionary
+            self.reinitialize_data(data = {key:value})
+        else:
+            pd.DataFrame._set_item(self, key, value)
+
 
     def val_units(self, col_name, units = None):
         if col_name not in self.columns:
@@ -79,17 +88,44 @@ class Dataframe(pd.DataFrame):
         query = SQL.select_Query(objects = ['*'], table = table, condition_list = conditions)
         s = []
 
-        try:
-            results = db_interface.query(query)
+        #try:
+        results = db_interface.query(query)
         
-        except SQL.DBToolboxError:
-            raise dfSQLError, "There was an error in using the SQL interface"
+        #except SQL.DBToolboxError:
+        #    raise dfSQLError, "There was an error in using the SQL interface"
 
         for row in results:
             s.append(pd.Series(row))
+        """
+        #clear and reset the dataframe -- no indexing, of course
+        for col in self.columns:
+            del self[col]
+
+        #for col in results[0].keys():
+        #    self.columns.append(col)
+        
+        r = pd.DataFrame(s)
+        print "We should have an empty index now"
+        print self
+        self.reindex(index = range(0,len(r)), copy = False)
+        print "We should be reindexed now with a length of %s" % len(r)
+        print self
+        
+        for col in r.columns:
+            
+            self[col] = r[col]
+        print self
+        """
         #try this:
-        self.__init__(s)
+        self.reinitialize_data(s)
       
+
+        
+       
+    def reinitialize_data(self, data):
+        
+        self.__init__(data = data, units_dict = self.units)
+
 
     def SQL_upload_data(self, db_interface, table = "", conditions = None, index_col = "timestamp"):
         """Allows the user to upload data to a MySQL database; tries an INSERT command first, then an UPDATE if an error is received"""
