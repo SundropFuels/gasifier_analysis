@@ -1168,6 +1168,16 @@ class ProcessObjectTests(unittest.TestCase):
         hand_outlet_entr = hand1_entr + hand2_entr + hand3_entr
         self.assertAlmostEqual(outlet_entr, hand_outlet_entr, 4)
 
+class MoleculeTests(unittest.TestCase):
+    """Needs to:
+    0 Correctly calculate molecular weight of a molecule.
+    """
+    
+    def testMolecularWeight(self):
+        molecules = {'H2O':18.0, 'CO':28.0, 'CO2':44.0}
+        for molecule in molecules:
+            self.assertAlmostEqual(lfl.Molecule(molecule).MW(), molecules[molecule], 1)
+
 class MixerTests(unittest.TestCase):
     """Needs to:
     0 Correctly calculate outlet composition of a mixer.
@@ -1176,27 +1186,52 @@ class MixerTests(unittest.TestCase):
     0 Raise an error if defined outlet of a mixer is higher than the pressure of any inlet.
     """
     
-    def setUp(self):
+    def testOutletComposition(self):
+        """Outlet composition must be correctly calculated for the mixer object."""
+    
         inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
                             composition = {'N2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
         inlet2 = lfl.Stream('inlet2', temperature = (500, 'K'), pressure = (60, 'psig'), \
-                            composition = {'H2O':1}, flowrate = (1, 'mol/s'), basis = 'molar')
+                            composition = {'H2O':1}, flowrate = (18, 'g/s'), basis = 'mass')
         inlet3 = lfl.Stream('inlet3', temperature = (350, 'K'), pressure = (53, 'psig'), \
                             composition = {'CO2':0.5, 'Ar':0.5}, flowrate = (1, 'mol/s'), \
                             basis = 'molar')
-        self.inlets = [inlet1, inlet2, inlet3]
-                            
-    def testOutletComposition(self):
-        """Outlet composition must be correctly calculated for the mixer object."""
-        mix = lfl.Mixer('mix', inlets = self.inlets)
+        inlets = [inlet1, inlet2, inlet3]
+        mix = lfl.Mixer('mix', inlets = inlets)
+        self.assertEqual(mix.outlets[0].basis, 'mass')
+        self.assertAlmostEqual(mix.outlets[0].composition['N2'], 0.318307, 3)
+        self.assertAlmostEqual(mix.outlets[0].composition['H2O'], 0.204701, 3)
+        self.assertAlmostEqual(mix.outlets[0].composition['CO2'], 0.250034, 3)
+        self.assertAlmostEqual(mix.outlets[0].composition['Ar'], 0.226958, 3)
+    
+    def testOutletTemperature(self):
+        """Outlet temperature must be correctly calculated for the mixer object."""
+        inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
+                            composition = {'N2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
+        inlet2 = lfl.Stream('inlet2', temperature = (500, 'K'), pressure = (50, 'psig'), \
+                            composition = {'N2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
+        inlets = [inlet1, inlet2]
+        mix = lfl.Mixer('mix', inlets = inlets)
+        self.assertEqual(1,0)
         
-        
+    def testOutletPressure(self):
+        inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
+                            composition = {'N2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
+        inlet2 = lfl.Stream('inlet2', temperature = (500, 'K'), pressure = (60, 'psig'), \
+                            composition = {'H2O':1}, flowrate = (18, 'g/s'), basis = 'mass')
+        inlet3 = lfl.Stream('inlet3', temperature = (350, 'K'), pressure = (53, 'psig'), \
+                            composition = {'CO2':0.5, 'Ar':0.5}, flowrate = (1, 'mol/s'), \
+                            basis = 'molar')
+        inlets = [inlet1, inlet2, inlet3]
+        mix = lfl.Mixer('mix', inlets = inlets)
+        self.assertAlmostEqual(mix.outlets[0].pressure[0], 446062.86, 2)
+           
 
 class SpaceTimeTests(unittest.TestCase):
     """Needs to:
     0 Correctly calculate space time
     """
-    def setUp(self):
+    def testSpaceTime(self):
         gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
         for (key, value) in LoadDataTests.general_library.items():
             gts[key] = value
@@ -1206,12 +1241,19 @@ class SpaceTimeTests(unittest.TestCase):
         ent_2 = lfl.Stream('ent_2', flowrate = gts.get_val('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
         ent_3 = lfl.Stream('ent_3', flowrate = gts.get_val('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
         
-        inlet_streams = [biomass_feed, ent_1, ent_2, ent_3]
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3]
         reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
         
         # Hand calculate residence time...
         
-        hand_vol = 1.5*1.5*np,pi/4*24*0.0163871 #Convert to liters
+        hand_vol = 1.5*1.5*np.pi/4*24*0.0163871 #Convert to liters
+        total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*0.04139#moles/s
+        total_flow = total_flow*0.0821*298/((50+14.7)/14.7) # L/s
+        hand_st = hand_vol/total_flow
+        
+        space_time = gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        
+        assertAlmostEqual(hand_st, space_time, 3)
         
 
 if __name__ == "__main__":

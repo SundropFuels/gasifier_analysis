@@ -419,7 +419,19 @@ class Stream:
             self.ctphase.set(P = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m'))
         if self.composition is not None:
             self.ct_setcomp()
-        #will need to set up None checking in the enthalpy function to make sure that stream values are not empty    
+        #will need to set up None checking in the enthalpy function to make sure that stream values are not empty   
+    
+    def set_temperature(self, temperature):
+        self.temperature = temperature
+        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'))
+        
+    def set_pressure(self, pressure):
+        self.pressure =  pressure
+        self.ctphase.set(P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        
+    def set_composition(self, composition):
+        self.composition = composition
+        self.ct_setcomp()
         
     def gas_volumetric_flowrate(self, units):
         """Returns the gas volumetric flowrate, in the desired units"""
@@ -711,7 +723,7 @@ class Stream:
 
         else:
             raise lflException, '%s is not a valid stream basis' % self.basis
-        
+       
         
     def _calc_enthalpy(self):
         """Calculates the stream enthalpy and stores it in self.enthalpy"""
@@ -885,12 +897,14 @@ class ProcessObject:
     def totalInletEnthalpy(self, units):
         H = 0
         for stream in self.inlets:
+            
             H += stream.get_enthalpy(units)
         return H
 
     def totalOutletEnthalpy(self, units):
         H = 0
         for stream in self.outlets:
+            
             H += stream.get_enthalpy(units)
         return H
 
@@ -939,9 +953,9 @@ class Mixer(ProcessObject):
             for stream in self.inlets:
                 if minP is None or conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa') < minP:
                     minP = conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa')
-            else:
-                minP = outlet_pressure
-        self.outlets[0].pressure = [minP, 'Pa']
+        else:
+            minP = outlet_pressure
+        self.outlets[0].set_pressure((minP, 'Pa'))
 
     def _calc_outlet_flowrate(self):
         conv = uc.UnitConverter()
@@ -960,7 +974,6 @@ class Mixer(ProcessObject):
                 if inlet.basis != 'mass':
                     inlet.convert_to_mass_basis()
             basis_choice = 'mass'
-
         
         self.outlets[0].basis = basis_choice
         fl_sum = 0
@@ -977,14 +990,19 @@ class Mixer(ProcessObject):
         for species in species_list:
             spec_sum = 0            
             for inlet in self.inlets:
-                if species in self.inlets:
+                if species in inlet.composition:               
                     spec_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])*inlet.composition[species]
             composition[species] = spec_sum/fl_sum
-        self.outlets[0].composition = composition
+        self.outlets[0].set_composition(composition)
 
         #Just driving all volume directly to mass now -- should work
 
-
+    def enth_func(self, T):
+        self.outlets[0].set_temperature((T, 'K'))
+        #self.outlets[0].get_enthalpy('J/s')
+        d_H = self.deltaH('J/s')
+        return d_H
+    
     def _calc_outlet_temperature(self):
         #Solving the equation dH = 0 (not a heat exchanger, so Q and W are both 0)
         #guess a temperature for the outlet as a mean of the inlet temperatures
@@ -993,8 +1011,8 @@ class Mixer(ProcessObject):
         for inlet in self.inlets:
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
         temp_avg = temp_sum/len(self.inlets)
-        outlet_temp = spo.newton(func = self.deltaH, x0 = temp_avg, args = ('J/s'))
-        self.outlets[0].temperature = (outlet_temp, 'K') 
+        outlet_temp = spo.newton(func = self.enth_func, x0 = temp_avg)
+        self.outlets[0].set_temperature((outlet_temp, 'K')) 
 
 
 
@@ -1026,10 +1044,10 @@ class Element:
     """A physical element.  Will have properties of the elements, plus a handy reference library"""
     Elements = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au','Hg', 'Tl', 'Pb','Bi', 'Po', 'At', 'Rn', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu']
     MW = {}
-    MW['C'] = 12.01
-    MW['H'] = 1.01
-    MW['O'] = 16.00
-    MW['N'] = 14.01
+    MW['C'] = 12.0107
+    MW['H'] = 1.00794
+    MW['O'] = 15.9994
+    MW['N'] = 14.0067
     MW['S'] = 32.065
     MW['Cl'] = 35.453
     MW['Ar'] = 39.948
@@ -1303,17 +1321,24 @@ class GasifierProcTS(ProcTS):
 
     def calc_space_time(self, reactor_vol, excluded_species):
         """Calculates the inlet space time of the reactor based on the inlet streams"""
+        #Right now excluded_species must be in their own stream, find a way to fix this if I can...
         conv = uc.UnitConverter()
         vol = conv.convert_units(reactor_vol[0], reactor_vol[1], 'm^3')
         V_dot = 0
+        excl_inlets = []
         for stream in self.inlet_streams:
+            stream_flow = 0
+            non_excl_species = {}
             for species in stream.composition:
-                if species not in excluded_species:
-                    V_dot += stream.calcSpeciesVolumetricFlowrate(species)
+                if species in excluded_species:
+                    excl_inlets.append(stream)
+                        
+        temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
 
-        #Create a mixer
-        mix = Mixer(inlets = self.inlet_streams)
-        #need to get the volumetric flowrate of this stream -- add a function to stream to calculate a gas volume if gas phase -- generalize later
+        #mixer not working with dataframe series as input.
+        
+        mix = Mixer('inlet_mix', inlets = temp_inlets)
+        V_dot = conv.convert_units(mix.flowrate[0], mix.flowrate[1], 'm^3/s')
 
         tau = vol/V_dot
         self['space_time'] = tau
