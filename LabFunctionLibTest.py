@@ -908,7 +908,7 @@ class EnthalpyTests(unittest.TestCase):
        
     
         
-    # h0 = kJ/mole, cp = J/mol/Kl    
+    # h0 = kJ/mole, cp = J/mol/K  
     enth_vals["CO"] = -110.5
     cp_vals["CO"] = {'A':3.087e1, 'B':1.285e-2, 'C':2.789e-5, 'D':-1.272e-8}
     enth_vals["CO2"] = -393.5
@@ -1209,10 +1209,10 @@ class MixerTests(unittest.TestCase):
         inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
                             composition = {'N2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
         inlet2 = lfl.Stream('inlet2', temperature = (500, 'K'), pressure = (50, 'psig'), \
-                            composition = {'N2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
+                            composition = {'H2O':1}, flowrate = (18.02, 'g/s'), basis = 'mass')
         inlets = [inlet1, inlet2]
         mix = lfl.Mixer('mix', inlets = inlets)
-        self.assertEqual(1,0)
+        self.assertAlmostEqual(mix.outlets[0].temperature[0], 408.97,2)
         
     def testOutletPressure(self):
         inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
@@ -1236,12 +1236,12 @@ class SpaceTimeTests(unittest.TestCase):
         for (key, value) in LoadDataTests.general_library.items():
             gts[key] = value
         gts.set_units(LoadDataTests.units)
-        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = (25, 'C'), pressure = (50, 'psig'))
-        ent_1 = lfl.Stream('ent_1', flowrate = gts.get_val('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
-        ent_2 = lfl.Stream('ent_2', flowrate = gts.get_val('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
-        ent_3 = lfl.Stream('ent_3', flowrate = gts.get_val('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = (gts['ME_101'][0], 'lb/hr'), composition = {'biomass':1.00}, basis = "mass", temperature = (25, 'C'), pressure = (50, 'psig'))
+        ent_1 = lfl.Stream('ent_1', flowrate = (gts['MFC_102'][0], 'L/min'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        ent_2 = lfl.Stream('ent_2', flowrate = (gts['MFC_103'][0], 'L/min'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        ent_3 = lfl.Stream('ent_3', flowrate = (gts['MFC_104'][0], 'L/min'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
         
-        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3]
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3] 
         reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
         
         # Hand calculate residence time...
@@ -1253,7 +1253,7 @@ class SpaceTimeTests(unittest.TestCase):
         
         space_time = gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
         
-        assertAlmostEqual(hand_st, space_time, 3)
+        self.assertAlmostEqual(hand_st, space_time, 3)
         
 
 if __name__ == "__main__":

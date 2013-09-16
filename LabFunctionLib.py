@@ -1321,10 +1321,10 @@ class GasifierProcTS(ProcTS):
 
     def calc_space_time(self, reactor_vol, excluded_species):
         """Calculates the inlet space time of the reactor based on the inlet streams"""
-        #Right now excluded_species must be in their own stream, find a way to fix this if I can...
+        #Right now excluded_species must be in their own stream, find a way to fix this if I can... Maybe create temporary streams without the excluded species.
         conv = uc.UnitConverter()
         vol = conv.convert_units(reactor_vol[0], reactor_vol[1], 'm^3')
-        V_dot = 0
+        
         excl_inlets = []
         for stream in self.inlet_streams:
             stream_flow = 0
@@ -1338,11 +1338,13 @@ class GasifierProcTS(ProcTS):
         #mixer not working with dataframe series as input.
         
         mix = Mixer('inlet_mix', inlets = temp_inlets)
-        V_dot = conv.convert_units(mix.flowrate[0], mix.flowrate[1], 'm^3/s')
+        
+        V_dot = mix.outlets[0].gas_volumetric_flowrate('m^3/s')
 
         tau = vol/V_dot
-        self['space_time'] = tau
-        self.units['space_time'] = 's'
+        return tau
+#        self['space_time'] = tau
+#        self.units['space_time'] = 's'
 
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""
