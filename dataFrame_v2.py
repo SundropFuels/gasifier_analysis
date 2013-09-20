@@ -172,7 +172,7 @@ class Dataframe:
 
     def numrows(self):
         return self.nRows
-       
+
     def numcols(self):
         return self.nCols
 

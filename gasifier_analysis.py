@@ -113,10 +113,6 @@ class GasifierDataAnalysis:
         methane_gas_feed = Stream('methane_feed', flowrate = self.gts.val_units('mass_flow_methane'),composition = {'CH4':1.00}, basis = "std_gas_volume")
         
 
-        
-
-
-        
         #Convert steam to mass flow 
         self.gts.convert_col_units('setpoint_steam_HPLC_pump', 'mL/hr')
         self.gts['steam_flow'] = self.gts['setpoint_steam_HPLC_pump']

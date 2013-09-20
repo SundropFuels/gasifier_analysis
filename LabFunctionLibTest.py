@@ -248,28 +248,28 @@ class LoadDataTests(unittest.TestCase):
     + Raise an exception if the start time makes no sense
     + Raise an exception if the stop time makes no sense
     + Raise an exception if start time > stop time
-    
     """
-    def testDataLoadCorrect(self):
-        """Test whether all the data is loaded correctly and no extraneous data exists"""
-        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
-        interface.connect()
-        q = db.use_Query("gas_unit_test")
-        interface.query(q)
-        
-        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
-        ts.SQL_load(interface, table = "gas_data_test_tbl")
-        for key in LoadDataTests.general_library.keys():
-                for i in range(len(ts[key])):
-                    self.assertEqual(ts[key][i], LoadDataTests.general_library[key][i])
-        for key in ts.data.keys():
-            self.assertIn(key,LoadDataTests.general_library.keys())
+    
+#    def testDataLoadCorrect(self):
+#        """Test whether all the data is loaded correctly and no extraneous data exists"""
+#        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
+#        interface.connect()
+#        q = db.use_Query("gas_unit_test")
+#        interface.query(q)
+#        
+#        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
+#        ts.SQL_load(interface, table = "gas_data_test_tbl")
+#        for key in LoadDataTests.general_library.keys():
+#                for i in range(len(ts[key])):
+#                    self.assertEqual(ts[key][i], LoadDataTests.general_library[key][i])
+#        for key in ts.data.keys():
+#            self.assertIn(key,LoadDataTests.general_library.keys())
 
-    def testBadInterface(self):
-        """Test whether an interface is bad or if it is connected"""
-        interface = ""
-        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
-        self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
+#    def testBadInterface(self):
+#        """Test whether an interface is bad or if it is connected"""
+#        interface = ""
+#        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
+#        self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
     def testUnconnectedInterface(self):
         """An unconnected interface should raise an error"""
@@ -284,15 +284,15 @@ class LoadDataTests(unittest.TestCase):
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
-    def testDataIsTimeseries(self):
-        """The data should have a timestamp column (actually be timeseries data)"""
-        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
-        interface.connect()
-        q = db.use_Query("gas_unit_test")
-        interface.query(q)
-        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
-        ts.SQL_load(interface, table = "gas_data_test_tbl")
-        self.assertIn("timestamp", ts.data.keys())
+#    def testDataIsTimeseries(self):
+#        """The data should have a timestamp column (actually be timeseries data)"""
+#        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
+#        interface.connect()
+#        q = db.use_Query("gas_unit_test")
+#        interface.query(q)
+#        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
+#        ts.SQL_load(interface, table = "gas_data_test_tbl")
+#        self.assertIn("timestamp", ts.data.keys())
 
     def testSensibleStartandEnd(self):
         """The start and end times should be datetime.datetime objects"""
@@ -305,8 +305,7 @@ class LoadDataTests(unittest.TestCase):
         
         self.assertRaises(lfl.TimeError, lfl.ts_data, LoadDataTests.end, LoadDataTests.start)
         
-   
-
+        
 class InterpolateDataTests(unittest.TestCase):
     y = np.array([2.1,3.2,None,None,None,6.5,7.2,None,None,None,3.5],dtype = 'float64')
     x = np.array([1,2,3,4,5,6,7,8,9,11,12],dtype = 'float64')
@@ -1152,21 +1151,21 @@ class ProcessObjectTests(unittest.TestCase):
         hand_outlet_enth = hand1_enth + hand2_enth + hand3_enth
         self.assertAlmostEqual(outlet_enth, hand_outlet_enth, 4)
         
-    def testInletEtropy(self):
-        inlet_entr = self.test_ProcessObject.totalInletEntropy('J/K/s')
-        hand1_entr = self.ct_inlet1.entropy_mole()/1000
-        hand2_entr = self.ct_inlet2.entropy_mole()/1000
-        hand3_entr = self.ct_inlet3.entropy_mole()/1000
-        hand_inlet_entr = hand1_entr + hand2_entr + hand3_entr
-        self.assertAlmostEqual(inlet_entr, hand_inlet_entr, 4)
-        
-    def testOutletEtropy(self):
-        outlet_entr = self.test_ProcessObject.totalOutletEntropy('J/K/s')
-        hand1_entr = self.ct_outlet1.entropy_mole()/1000
-        hand2_entr = self.ct_outlet2.entropy_mole()/1000
-        hand3_entr = self.ct_outlet3.entropy_mole()/1000
-        hand_outlet_entr = hand1_entr + hand2_entr + hand3_entr
-        self.assertAlmostEqual(outlet_entr, hand_outlet_entr, 4)
+#    def testInletEtropy(self):
+#        inlet_entr = self.test_ProcessObject.totalInletEntropy('J/K/s')
+#        hand1_entr = self.ct_inlet1.entropy_mole()/1000
+#        hand2_entr = self.ct_inlet2.entropy_mole()/1000
+#        hand3_entr = self.ct_inlet3.entropy_mole()/1000
+#        hand_inlet_entr = hand1_entr + hand2_entr + hand3_entr
+#        self.assertAlmostEqual(inlet_entr, hand_inlet_entr, 4)
+#        
+#    def testOutletEtropy(self):
+#        outlet_entr = self.test_ProcessObject.totalOutletEntropy('J/K/s')
+#        hand1_entr = self.ct_outlet1.entropy_mole()/1000
+#        hand2_entr = self.ct_outlet2.entropy_mole()/1000
+#        hand3_entr = self.ct_outlet3.entropy_mole()/1000
+#        hand_outlet_entr = hand1_entr + hand2_entr + hand3_entr
+#        self.assertAlmostEqual(outlet_entr, hand_outlet_entr, 4)
 
 class MoleculeTests(unittest.TestCase):
     """Needs to:
@@ -1207,12 +1206,15 @@ class MixerTests(unittest.TestCase):
     def testOutletTemperature(self):
         """Outlet temperature must be correctly calculated for the mixer object."""
         inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
-                            composition = {'N2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
+                            composition = {'CO2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
         inlet2 = lfl.Stream('inlet2', temperature = (500, 'K'), pressure = (50, 'psig'), \
                             composition = {'H2O':1}, flowrate = (18.02, 'g/s'), basis = 'mass')
         inlets = [inlet1, inlet2]
         mix = lfl.Mixer('mix', inlets = inlets)
-        self.assertAlmostEqual(mix.outlets[0].temperature[0], 408.97,2)
+        
+        hand_temperature = 394 #K.  Found using solver in Excel.
+        
+        self.assertAlmostEqual(mix.outlets[0].temperature[0], hand_temperature, 0)
         
     def testOutletPressure(self):
         inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
@@ -1224,8 +1226,7 @@ class MixerTests(unittest.TestCase):
                             basis = 'molar')
         inlets = [inlet1, inlet2, inlet3]
         mix = lfl.Mixer('mix', inlets = inlets)
-        self.assertAlmostEqual(mix.outlets[0].pressure[0], 446062.86, 2)
-           
+        self.assertAlmostEqual(mix.outlets[0].pressure[0], 446062.86, 2)           
 
 class SpaceTimeTests(unittest.TestCase):
     """Needs to:
@@ -1236,25 +1237,24 @@ class SpaceTimeTests(unittest.TestCase):
         for (key, value) in LoadDataTests.general_library.items():
             gts[key] = value
         gts.set_units(LoadDataTests.units)
-        biomass_feed = lfl.Stream('biomass_feed', flowrate = (gts['ME_101'][0], 'lb/hr'), composition = {'biomass':1.00}, basis = "mass", temperature = (25, 'C'), pressure = (50, 'psig'))
-        ent_1 = lfl.Stream('ent_1', flowrate = (gts['MFC_102'][0], 'L/min'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
-        ent_2 = lfl.Stream('ent_2', flowrate = (gts['MFC_103'][0], 'L/min'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
-        ent_3 = lfl.Stream('ent_3', flowrate = (gts['MFC_104'][0], 'L/min'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
-        
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = (50, 'psig'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+
         gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3] 
         reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
-        
+
         # Hand calculate residence time...
-        
+
         hand_vol = 1.5*1.5*np.pi/4*24*0.0163871 #Convert to liters
         total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*0.04139#moles/s
         total_flow = total_flow*0.0821*298/((50+14.7)/14.7) # L/s
         hand_st = hand_vol/total_flow
-        
+
         space_time = gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
-        
+
         self.assertAlmostEqual(hand_st, space_time, 3)
-        
 
 if __name__ == "__main__":
     
