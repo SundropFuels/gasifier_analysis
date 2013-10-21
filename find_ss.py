@@ -10,7 +10,7 @@ class ssFinder:
 
     def __init__(self, run_id, run_information = None):
         #Create the gasifier data frame, and load the data from the SQL database (this will be automated through the interface later)
-        self.interface_raw = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        self.interface_raw = db.db_interface(host = "192.168.13.51", user = "dbmaint", passwd = "f9p2#nH1")
         self.interface_raw.connect()
         q = db.use_Query("lab_run_db")
         self.interface_raw.query(q)
@@ -35,9 +35,8 @@ class ssFinder:
     def _load_ts_timeseries_data(self):
         """Loads raw gasifier data."""
         self.ts = GasifierProcTS(start = self.run_info.info['ts_start'], end = self.run_info.info['ts_stop'])
-        self.ts.SQL_load(self.interface_raw,'gasifier_lv_GC_view') #This line needs to automatically load the units
+        self.ts.SQL_load(self.interface_raw,'gasifier_lv_GC_view') 
         
-        #Need to build the glossary using the SQL tools
         q = db.select_Query(objects = ['tag_number', 'simple_name', 'units'], table = "tag_glossary_tbl")
         glossary = self.interface_raw.query(q)
         self.glossary = {}

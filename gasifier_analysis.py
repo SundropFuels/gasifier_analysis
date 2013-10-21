@@ -13,7 +13,7 @@ class GasifierDataAnalysis:
 
     def __init__(self, run_id, run_information = None):
         #Create the gasifier data frame, and load the data from the SQL database (this will be automated through the interface later)
-        self.interface_raw = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        self.interface_raw = db.db_interface(host = "192.168.13.51", user = "dbmaint", passwd = "f9p2#nH1")
         self.interface_raw.connect()
         q = db.use_Query("lab_run_db")
         self.interface_raw.query(q)
