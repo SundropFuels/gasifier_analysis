@@ -417,22 +417,6 @@ class Stream:
         self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
  
         
-    def check_ct_property_array(self):
-        #Returns array length if any property is array, returns 1 if none are arrays.
-        
-        array_length = 1
-        l = [len(i) for i in [self.pressure[0], self.temperature[0], self.composition.values()[0]] if i.__class__ is np.ndarray]
-                   
-        if len(l)>0:
-            #check if any arrays that exist are different lengths
-            if l.count(l[0]) < len(l):
-                raise BadStreamError, "%s Stream has physical property arrays of varying legnths" %self.name
-            array_length = l[0]
-            
-        return array_length     
- 
-
-
     def set_temperature(self, temperature):
         if isinstance(temperature[0], np.ndarray):
             self.temperature = [temperature[0].mean(), temperature[1]]
