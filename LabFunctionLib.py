@@ -415,8 +415,7 @@ class Stream:
         self.special_species = {}
 
         self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
-        
-        #Need to allow for composition values, pressure, and temperature to each be single input or array.  If one is array, others should become arrays so setting Cantera phase for each row in a dataframe is easier.
+ 
         
     def check_ct_property_array(self):
         #Returns array length if any property is array, returns 1 if none are arrays.
@@ -431,16 +430,8 @@ class Stream:
             array_length = l[0]
             
         return array_length     
+ 
 
-            
-#        if self.temperature is not None:
-#            self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'))
-#        if self.pressure is not None:
-#            self.ctphase.set(P = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m'))
-#        if self.composition is not None:
-#            self.ct_setcomp()
-#        #will need to set up None checking in the enthalpy function to make sure that stream values are not empty   
-             
 
     def set_temperature(self, temperature):
         if isinstance(temperature[0], np.ndarray):
@@ -771,110 +762,42 @@ class Stream:
             raise BadStreamError, '%s Stream composition needs to be defined to calculate enthalpy.' % self.name
         conv = uc.UnitConverter()
         
-        array_length = self.check_ct_property_array()
-        
-        #Create list objects for physical properties so that Stream properties remain untouched.  Use list instead of tuple to allow for modification.       
-        
-        
-        composition = {}
-        for specie in self.composition.keys():
-            composition[specie] = [self.composition[specie]]
-        
-        
-        temperature = [[self.temperature[0]], self.temperature[1]]
-        pressure = [[self.pressure[0]], self.pressure[1]]        
-        flowrate = [[self.flowrate[0]], self.flowrate[1]]  
-       
-             
-        if array_length > 1:
-#            temperature = [np.array(self.temperature[0]), self.temperature[1]]
-#            pressure = [np.array(self.pressure[0]), self.pressure[1]]        
-            flowrate = [np.array(self.flowrate[0]), self.flowrate[1]]
-           
-            if len(temperature[0]) == 1:
-                temperature[0] = np.zeros(array_length) + temperature[0]
-            if len(pressure[0]) ==1:
-                pressure[0] = np.zeros(array_length) + pressure[0]
-            if len(composition.values()[0]) == 1:
-                for specie in composition.keys():
-                    composition[specie] = np.zeros(array_length) + composition[specie]
-            for specie in composition.keys():
-                composition[specie] = composition[specie][0]
-            if len(flowrate[0]) ==1:
-                flowrate[0] = np.zeros(array_length) + flowrate[0]
-            
-        enthalpy = np.array([np.nan for i in range(array_length)])
-        
-        #Convert each value in temp and pressure arrays to K and Pa for Cantera input       
-        for i in range(array_length):
-            temperature[0][i] = conv.convert_units(temperature[0][i], temperature[1], 'K')
-            pressure[0][i] = conv.convert_units(pressure[0][i], pressure[1], 'Pa')
-        
-        if flowrate[0][0].__class__ is np.ndarray:
-            flowrate[0] = flowrate[0][0]
+        #set the Cantera phase
+        self.ct_setcomp(self.composition)
+        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+               
                         
         #Cantera output is J/kmol or J/kg, so conversions must follow this for molar and mass flow rates.
         if self.basis == 'molar':
             #convert to kmol/s:
-            x = {}           
-            for i in range(array_length):
-                for specie in composition.keys():
-                    x[specie] = composition[specie][i]
-                self.ct_setcomp(x) 
-                self.ctphase.set(T = temperature[0][i], P = pressure[0][i])
-                flow = conv.convert_units(flowrate[0][i], flowrate[1], 'kmol/s')
-                enthalpy[i] = flow*self.ctphase.enthalpy_mole()
-            if len(enthalpy) == 1:
-                self.enthalpy = (enthalpy[0], 'J/s')
-            else:
-                self.enthalpy = (enthalpy, 'J/s')
+            
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
+            enthalpy = flow*self.ctphase.enthalpy_mole()
+            self.enthalpy = (enthalpy, 'J/s')
+            
             
         elif self.basis == 'mass':
             #convert to kg/s
-            y = {}
-            for i in range(array_length):
-                for specie in composition.keys():
-                    y[specie] = composition[specie][i]
-                self.ct_setcomp(y)
-                self.ctphase.set(T = temperature[0][i], P = pressure[0][i])           
-                flow = conv.convert_units(flowrate[0][i], flowrate[1], 'kg/s')
-                enthalpy[i] = flow*self.ctphase.enthalpy_mass()
-            if len(enthalpy) == 1:
-                self.enthalpy = (enthalpy[0], 'J/s')
-            else:
-                self.enthalpy = (enthalpy, 'J/s')
+            flow = conv.convert_units(flowrate[0][i], flowrate[1], 'kg/s')
+            enthalpy = flow*self.ctphase.enthalpy_mass()
+            self.enthalpy = (enthalpy, 'J/s')
+            
             
         elif self.basis ==  "gas_volume":
-            x = {}
-            for i in range(array_length):            
-                val = conv.convert_units(flowrate[0][i], flowrate[1], 'm^3/s')
-                for specie in composition.keys():
-                    x[specie] = composition[specie][i]
-                self.ct_setcomp(x)
-                self.ctphase.set(T = temperature[0][i], P = pressure[0][i])
-                flow =  val*p/(8.314*T)/1000
-                enthalpy[i] = flow*self.ctphase.enthalpy_mole()
-            if len(enthalpy) == 1:
-                self.enthalpy = (enthalpy[0], 'J/s')
-            else:
-                self.enthalpy = (enthalpy, 'J/s')
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            flow =  val*p/(8.314*T)/1000
+            enthalpy = flow*self.ctphase.enthalpy_mole()
+            self.enthalpy = (enthalpy, 'J/s')
 
         elif self.basis == "std_gas_volume":
-            x = {}
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
             p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
             T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
-            for i in range(array_length):                
-                val = conv.convert_units(flowrate[0][i], flowrate[1], 'm^3/s')
-                for specie in composition.keys():
-                    x[specie] = composition[specie][i]
-                self.ct_setcomp(x)
-                self.ctphase.set(T = temperature[0][i], P = pressure[0][i])
-                flow =  val*p/(8.314*T)/1000
-                enthalpy[i] = flow * self.ctphase.enthalpy_mole()
-            if len(enthalpy) == 1:
-                self.enthalpy = (enthalpy[0], 'J/s')
-            else:
-                self.enthalpy = (enthalpy, 'J/s')                      
+            flow =  val*p/(8.314*T)/1000
+            enthalpy = flow * self.ctphase.enthalpy_mole()
+            self.enthalpy = (enthalpy, 'J/s')                      
 
     def _calc_entropy(self):
         """Calculates the stream entropy and stores it in self.entropy"""
