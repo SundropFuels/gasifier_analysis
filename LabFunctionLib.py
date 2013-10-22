@@ -806,6 +806,11 @@ class Stream:
             raise BadStreamError, 'Stream temperature is not defined.'
         if self.pressure==None:
             raise BadStreamError, 'Stream pressure is not defined.'
+
+        #set the Cantera phase
+        self.ct_setcomp(self.composition)
+        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+
         if self.basis == 'molar':
             #convert to kmol/s:
             flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
