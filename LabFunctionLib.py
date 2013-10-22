@@ -418,26 +418,36 @@ class Stream:
  
         
     def set_temperature(self, temperature):
-        if isinstance(temperature[0], np.ndarray):
-            self.temperature = [temperature[0].mean(), temperature[1]]
+        if temperature is not None:
+            if isinstance(temperature[0], np.ndarray):
+                self.temperature = [temperature[0].mean(), temperature[1]]
+            else:
+                self.temperature = [temperature[0], temperature[1]]
         else:
-            self.temperature = [temperature, temperature[1]]
+            self.temperature = None
 
     def set_pressure(self, pressure):
-        if isinstance(pressure[0], np.ndarray):
-            self.pressure = [pressure[0].mean(), pressure[1]] 
+        if pressure is not None:
+            if isinstance(pressure[0], np.ndarray):
+                self.pressure = [pressure[0].mean(), pressure[1]] 
+            else:
+                self.pressure = [pressure[0], pressure[1]]        
         else:
-           self.pressure = [pressure[0], pressure[1]]        
+            self.pressure = None
 
     def set_composition(self, composition):
         """Sets the composition"""
         #composition should be in the format {species:fraction}
-        for k in composition:
-            if isinstance(composition[k], np.ndarray):
-                self.composition[k] = composition[k].mean()
-            else:
-                self.composition[k] = composition[k]
-
+        if composition is not None:
+            self.composition = {}
+        
+            for k in composition:
+                if isinstance(composition[k], np.ndarray):
+                    self.composition[k] = composition[k].mean()
+                else:
+                    self.composition[k] = composition[k]
+        else:
+            self.composition = None
         #consistency check -- should probably check that these add up to 1, but Cantera re-normalizes --> not too worried ##!!## FIX
 
     def gas_volumetric_flowrate(self, units):
