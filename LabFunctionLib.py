@@ -399,10 +399,13 @@ class Stream:
         if composition is None:
             composition = {}
         self.name = name
-        self.composition = composition #{specie:fraction}
+
+        #need to average temperature, pressure, and composition if they are arrays
+        self.set_temperature(temperature)
+        self.set_pressure(pressure)
+        self.set_composition(composition)
         self.basis = basis
-        self.temperature = temperature #(value, units)
-        self.pressure = pressure #(value, units)
+               
         self.density = density #(value, units)
         self.flowrate = flowrate #(value, units)
         self.compressible = compressible
@@ -440,16 +443,27 @@ class Stream:
              
 
     def set_temperature(self, temperature):
-        self.temperature = temperature
-#        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'))
+        if isinstance(temperature[0], np.ndarray):
+            self.temperature = [temperature[0].mean(), temperature[1]]
+        else:
+            self.temperature = [temperature, temperature[1]]
 
     def set_pressure(self, pressure):
-        self.pressure =  pressure
-#        self.ctphase.set(P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        if isinstance(pressure[0], np.ndarray):
+            self.pressure = [pressure[0].mean(), pressure[1]] 
+        else:
+           self.pressure = [pressure[0], pressure[1]]        
 
     def set_composition(self, composition):
-        self.composition = composition
-#        self.ct_setcomp()
+        """Sets the composition"""
+        #composition should be in the format {species:fraction}
+        for k in composition:
+            if isinstance(composition[k], np.ndarray):
+                self.composition[k] = composition[k].mean()
+            else:
+                self.composition[k] = composition[k]
+
+        #consistency check -- should probably check that these add up to 1, but Cantera re-normalizes --> not too worried ##!!## FIX
 
     def gas_volumetric_flowrate(self, units):
         """Returns the gas volumetric flowrate, in the desired units"""
