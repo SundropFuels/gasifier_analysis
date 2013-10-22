@@ -1248,13 +1248,14 @@ class SpaceTimeTests(unittest.TestCase):
         # Hand calculate residence time...
 
         hand_vol = 1.5*1.5*np.pi/4*24*0.0163871 #Convert to liters
-        total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*0.04139#moles/s
+        total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*0.04139#moles/min
         total_flow = total_flow*0.0821*298/((50+14.7)/14.7) # L/s
         hand_st = hand_vol/total_flow
 
         space_time = gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
-
-        self.assertAlmostEqual(hand_st, space_time, 3)
+        print hand_st
+        print space_time
+        self.assertTrue((hand_st==space_time).all())
 
 if __name__ == "__main__":
     

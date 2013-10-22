@@ -313,53 +313,7 @@ class ts_data(df.Dataframe):
             keylist[k].sort()
         return keylist
 
-class Biomass:
-    def __init__(self, sample = None, CHN = None, moisture = None, enthalpy_formation = None):
-        #Heat of formation SEP SYP -3.156 MJ/kg or -1432 kJ/lb
-        self.sample=sample
-        if CHN is None:
-            CHN = {}
-        self.CHN = CHN #{C:(Value, 'Units'), H:(Value, 'Units'), N:(Value, 'Units')}
-        self.moisture = moisture #(Value, 'Units')
-        self.enthalpy_formation = enthalpy_formation #(Value, 'Units')
-
-    def lookup(self):
-        pass
-
-    def calc_CHN_dry(self):
-        self.CHN_dry={}
-        self.CHN_dry['C']=(conv.convert_units(self.CHN['C'][0], self.CHN['C'][1], 'fraction')/
-                           (1.-conv.convert_units(self.moisture[0], self.moisture[1], 'fraction')), 'fraction')
-        self.CHN_dry['H']=((conv.convert_units(self.CHN['H'][0], self.CHN['H'][1], 'fraction')-
-                            conv.convert_units(self.moisture[0], self.moisture[1], 'fraction')*
-                           2.02/18.02)/(1.-conv.convert_units(self.moisture[0], self.moisture[1], 'fraction')), 'fraction')
-        self.CHN_dry['N']=(conv.convert_units(self.CHN['N'][0], self.CHN['N'][1], 'fraction')/
-                           (1.-conv.convert_units(self.moisture[0], self.moisture[1], 'fraction')), 'fraction')
-
-class Gasification_Experiment:
-    def __init__(self, name, biomass_sample = None, biomass_feedrate = None,
-                 entrainment_flow = None, entrainment_gas = None,
-                 makeup_flow = None, makeup_gas = None,
-                 argon_flow = None, fill_flow = None, temperature = None,
-                 pressure = None, start_time = None, end_time = None,
-                 steam_flow = None):
-        self.biomass_sample = biomass_sample
-        self.biomass_feedrate = biomass_feedrate #(value, units)
-        self.entrainment_flow = entrainment_flow #(value, units)
-        self.entrainment_gas = entrainment_gas
-        self.makeup_flow = makeup_flow #(value, units)
-        self.makeup_gas = makeup_gas
-        self.argon_flow = argon_flow #(value, units)
-        self.fill_flow = fill_flow #(value, units)
-        self.temperature = temperature #(value, units)
-        self.pressure = pressure #(value, units)
-        self.steam_flow = steam_flow #(value, units)
-        self.start_time = start_time
-        self.end_time = end_time
-        
-    def lookup(self):
-        pass
-        
+       
 class Stream:
     species = {}
     species['CO'] = {'C':1,'O':1, 'name':'Carbon Monoxide'}
@@ -772,7 +726,7 @@ class Stream:
             
         elif self.basis == 'mass':
             #convert to kg/s
-            flow = conv.convert_units(flowrate[0][i], flowrate[1], 'kg/s')
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kg/s')
             enthalpy = flow*self.ctphase.enthalpy_mass()
             self.enthalpy = (enthalpy, 'J/s')
             
@@ -1014,10 +968,8 @@ class Mixer(ProcessObject):
 
     def enth_func(self, T):
         self.outlets[0].set_temperature((T, 'K'))
-        print self.outlets[0].temperature        
         #self.outlets[0].get_enthalpy('J/s')
         d_H = self.deltaH('J/s')
-        print d_H
         return d_H
     
     def _calc_outlet_temperature(self):
@@ -1028,9 +980,9 @@ class Mixer(ProcessObject):
         for inlet in self.inlets:
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
         temp_avg = temp_sum/len(self.inlets)
+        #OK, I can think of a SLOW way to do this, but there is no way to do vector rootfinding-- or is there???
         
-        
-        outlet_temp = spo.newton(func = self.enth_func, x0 = temp_avg)
+        outlet_temp = spo.fsolve(func = self.enth_func, x0 = temp_avg)
         self.outlets[0].set_temperature((outlet_temp, 'K')) 
 
 
@@ -1351,11 +1303,11 @@ class GasifierProcTS(ProcTS):
             for species in stream.composition:
                 if species in excluded_species:
                     excl_inlets.append(stream)
-                        
-        temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
-
-        #mixer not working with dataframe series as input.
         
+        #need a mixer that works on both the FULL streams as well as the gas-only
+                
+        temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
+               
         mix = Mixer('inlet_mix', inlets = temp_inlets)
         
         V_dot = mix.outlets[0].gas_volumetric_flowrate('m^3/s')
