@@ -882,17 +882,7 @@ class ProcessObject:
         for inlet in inlets:
             if not isinstance(inlet, Stream):
                 raise BadStreamError, 'Inlet %s is not a Stream object.' %inlet.name
-            #I'm going to relax this condition -- maybe we want the ProcessObject to SOLVE for T, P, or other
-            """
-            if inlet.temperature = None:
-                raise BadStreamError, 'Inlet %s temperature is not defined.' %inlet.name
-            if inlet.pressure = None:
-                raise BadStreamError, 'Inlet %s pressure is not defined.' %inlet.name
-            if inlet.composition = None:
-                raise BadStreamError, 'Inlet %s composition is not defined.' %inlet.name
-            if inlet.flowrate = None:
-                raise BadStreamError, 'Inlet %s flow rate is not defined.' %inlet.name
-            """
+            
             
                 
         #Outlet Checks
@@ -903,17 +893,7 @@ class ProcessObject:
                 if not isinstance(outlet, Stream):
                     raise BadStreamError, 'Outlet %s is not a Stream object.' %outlet.name
 
-        #Probably don't want this as general behavior, either
-        """        
-        #Find total flowrates for all species in inlets
-        self.inspeciesflowrates={}        
-        for inlet in self.inlets:
-            for sp in inlet.composition.keys():
-                if sp not in self.inspeciesflowrates:
-                    self.inspeciesflowrates[sp]=0
-                self.inspeciesflowrates[sp]+=inlet.calcSpeciesMolarFlowrate(sp)
-       
-        """
+        
     #There has GOT to be a way to generalize this with decorators or similar
     
         self.inlets = inlets
