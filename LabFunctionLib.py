@@ -316,27 +316,27 @@ class ts_data(df.Dataframe):
        
 class Stream:
     species = {}
-    species['CO'] = {'C':1,'O':1, 'name':'Carbon Monoxide'}
-    species['CO2'] = {'C':1,'O':2, 'name':'Carbon Dioxide'}
-    species['CH4'] = {'C':1, 'H':4, 'name':'Methane'}
-    species['H2'] = {'H':2, 'name':'Hydrogen'}
-    species['H2S'] = {'H':2, 'S':1, 'name':'Hydrogen Sulfide'}
-    species['C2H2'] = {'C':2,'H':2, 'name':'Acetylene'}
-    species['C2H4'] = {'C':2,'H':4, 'name':'Ethylene'}
-    species['C2H6'] = {'C':2,'H':6, 'name':'Ethane'}
-    species['C3H8'] = {'C':3, 'H':8, 'name':'Propane'}
-    species['C3H6'] = {'C':3, 'H':6, 'name':'Propylene'}
-    species['C6H6'] = {'C':6, 'H':6, 'name':'Benzene'}
-    species['C7H8'] = {'C':7, 'H':8, 'name':'Toluene'}
-    species['C10H8'] = {'C':10, 'H':8, 'name':'Napthalene'}
-    species['H2O'] = {'H':2,'O':1, 'name':'Water'}
-    species['Ar'] = {'Ar':1, 'name':'Argon'}
-    species['N2'] = {'N':2, 'name':'Nitrogen'}
-    species['CELL'] = {'C':6, 'H':10, 'O':5, 'name':'Cellulose'}
-    species['HCE'] = {'C':5, 'H':8, 'O':4, 'name':'Hemicellulose'}
-    species['LIGH'] = {'C':22, 'H':28, 'O':9, 'name':'Lig-H'}
-    species['LIGO'] = {'C':20, 'H':22, 'O':10, 'name':'Lig-O'}
-    species['LIGC'] = {'C':15, 'H':14, 'O':4, 'name':'Lig-C'}
+    species['CO'] = {'C':1,'O':1, 'name':'Carbon Monoxide', 'phase':'g'}
+    species['CO2'] = {'C':1,'O':2, 'name':'Carbon Dioxide', 'phase':'g'}
+    species['CH4'] = {'C':1, 'H':4, 'name':'Methane','phase':'g'}
+    species['H2'] = {'H':2, 'name':'Hydrogen','phase':'g'}
+    species['H2S'] = {'H':2, 'S':1, 'name':'Hydrogen Sulfide','phase':'g'}
+    species['C2H2'] = {'C':2,'H':2, 'name':'Acetylene','phase':'g'}
+    species['C2H4'] = {'C':2,'H':4, 'name':'Ethylene','phase':'g'}
+    species['C2H6'] = {'C':2,'H':6, 'name':'Ethane','phase':'g'}
+    species['C3H8'] = {'C':3, 'H':8, 'name':'Propane','phase':'g'}
+    species['C3H6'] = {'C':3, 'H':6, 'name':'Propylene','phase':'g'}
+    species['C6H6'] = {'C':6, 'H':6, 'name':'Benzene','phase':'g'}
+    species['C7H8'] = {'C':7, 'H':8, 'name':'Toluene','phase':'g'}
+    species['C10H8'] = {'C':10, 'H':8, 'name':'Napthalene', 'phase':'g'}
+    species['H2O'] = {'H':2,'O':1, 'name':'Water', 'phase':'g'}
+    species['Ar'] = {'Ar':1, 'name':'Argon', 'phase':'g'}
+    species['N2'] = {'N':2, 'name':'Nitrogen', 'phase':'g'}
+    species['CELL'] = {'C':6, 'H':10, 'O':5, 'name':'Cellulose', 'phase':'s'}
+    species['HCE'] = {'C':5, 'H':8, 'O':4, 'name':'Hemicellulose', 'phase':'s'}
+    species['LIGH'] = {'C':22, 'H':28, 'O':9, 'name':'Lig-H', 'phase':'s'}
+    species['LIGO'] = {'C':20, 'H':22, 'O':10, 'name':'Lig-O', 'phase':'s'}
+    species['LIGC'] = {'C':15, 'H':14, 'O':4, 'name':'Lig-C', 'phase':'s'}
     
     ct_trans = {}
     ct_trans['Ar'] = {'AR':1.0}
@@ -423,18 +423,24 @@ class Stream:
         elif self.basis == "mass":
             #convert to a molar flow first ###!!!###
             val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'g/s')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            avgMW = 0.0
             for species in self.composition.keys():
-                if species in SpecialMolecule.MW.keys():
-                    MW = SpecialMolecule.MW[species]
-                else:
-                    MW = 0
-                    breakdown = ep.parse_species(species)
-                    try:
-                        for ele, v in breakdown.items():
-                            MW +=  v*Element.MW[ele]
-                    except KeyError:
-                        raise BadStreamError, "%s does not have an entry in the Element molecular weight dictionary" % ele
-            return val*self.composition[species]/MW
+                if Stream.species[species]['phase'] == 'g':
+                    if species in SpecialMolecule.MW.keys():
+                        MW = SpecialMolecule.MW[species]
+                    else:
+                        MW = 0.0
+                        breakdown = ep.parse_species(species)
+                        try:
+                            for ele, v in breakdown.items():
+                                MW +=  v*Element.MW[ele]
+                        except KeyError:
+                            raise BadStreamError, "%s does not have an entry in the Element molecular weight dictionary" % ele
+                    avgMW += self.composition[species]*MW
+
+            return val/avgMW*8.314*T/p
 
 
     def elementalFactor(self, element):
@@ -968,7 +974,7 @@ class Mixer(ProcessObject):
 
     def enth_func(self, T):
         self.outlets[0].set_temperature((T, 'K'))
-        #self.outlets[0].get_enthalpy('J/s')
+        
         d_H = self.deltaH('J/s')
         return d_H
     
@@ -980,8 +986,7 @@ class Mixer(ProcessObject):
         for inlet in self.inlets:
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
         temp_avg = temp_sum/len(self.inlets)
-        #OK, I can think of a SLOW way to do this, but there is no way to do vector rootfinding-- or is there???
-        
+              
         outlet_temp = spo.fsolve(func = self.enth_func, x0 = temp_avg)
         self.outlets[0].set_temperature((outlet_temp, 'K')) 
 
@@ -1307,9 +1312,15 @@ class GasifierProcTS(ProcTS):
         #need a mixer that works on both the FULL streams as well as the gas-only
                 
         temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
-               
+        print temp_inlets
         mix = Mixer('inlet_mix', inlets = temp_inlets)
-        
+        mix.recalc()
+        for stream in mix.inlets:
+            print "Name: %s\tTemperature:%s\tPressure:%s" % (stream.name, stream.temperature, stream.pressure)
+        for stream in mix.outlets:
+            print "Name: %s\tTemperature:%s\tPressure:%s" % (stream.name, stream.temperature, stream.pressure)
+            for component in stream.composition:
+                print "Component: %s\tFraction: %s" % (component, stream.composition[component])
         V_dot = mix.outlets[0].gas_volumetric_flowrate('m^3/s')
 
         tau = vol/V_dot

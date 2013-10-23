@@ -1241,6 +1241,8 @@ class SpaceTimeTests(unittest.TestCase):
         ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
         ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
         ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        
+
 
         gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3] 
         reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
