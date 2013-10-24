@@ -411,18 +411,49 @@ class Stream:
 
     def set_composition(self, composition):
         """Sets the composition"""
-        #composition should be in the format {species:fraction}
-        if composition is not None:
+        if composition == {}:
             self.composition = {}
-        
-            for k in composition:
-                if isinstance(composition[k], np.ndarray):
-                    self.composition[k] = composition[k].mean()
-                else:
-                    self.composition[k] = composition[k]
         else:
-            self.composition = None
-        #consistency check -- should probably check that these add up to 1, but Cantera re-normalizes --> not too worried ##!!## FIX
+
+            #dict checking
+            if not isinstance(composition, dict):
+                raise Exception, "The composition must be provided as a {species:fraction} dictionary"
+
+            #mode checking
+            if isinstance(composition[composition.keys()[0]], np.ndarray):
+                if self.mode is None or self.mode == "vector":
+                    self.mode = "vector"
+                else:
+                    raise Exception, "Trying to set a vector composition to a scalar valued stream"
+
+            else:
+                if self.mode is None or self.mode == "scalar":
+                    self.mode = "scalar"
+                else:
+                    raise Exception, "Trying to set a scalar composition to a vector valued stream"
+            
+            getattr(self, "_set_composition_%s" % self.mode)(composition)
+
+       
+
+    def _set_composition_scalar(self, composition):
+        """Internal scalar function for setting the composition"""
+        self.composition = composition
+
+    def _set_composition_vector(self, composition):
+        """Internal vector function for setting the composition"""
+        #len checking first
+        l = len(composition[composition.keys()[0]])
+        s = np.zeros(l)
+        for k in composition:
+            if len(composition[k]!=l):
+                raise Exception, "Not all of the fractional composition vectors are of the same length"
+            s += composition[k]
+        if not (s==np.ones(l)).all():
+            raise Exception, "The compositions do not all add up to 1.0 in the composition setup"
+
+        self.composition = composition
+
 
     def gas_volumetric_flowrate(self, units):
         """Returns the gas volumetric flowrate, in the desired units"""
