@@ -1237,10 +1237,10 @@ class SpaceTimeTests(unittest.TestCase):
         for (key, value) in LoadDataTests.general_library.items():
             gts[key] = value
         gts.set_units(LoadDataTests.units)
-        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = (50, 'psig'))
-        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
-        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
-        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = (50, 'psig'))
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = gts.val_units('PT_101'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
         
 
 

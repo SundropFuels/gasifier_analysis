@@ -353,7 +353,7 @@ class Stream:
         if composition is None:
             composition = {}
         self.name = name
-
+        self.mode = None
         #need to average temperature, pressure, and composition if they are arrays
         self.set_temperature(temperature)
         self.set_pressure(pressure)
@@ -372,20 +372,40 @@ class Stream:
  
         
     def set_temperature(self, temperature):
+        
         if temperature is not None:
             if isinstance(temperature[0], np.ndarray):
-                self.temperature = [temperature[0].mean(), temperature[1]]
+                if self.mode is None or self.mode == "vector":
+                    self.mode = "vector"
+                else:
+                    raise Exception, "Trying to set a vector of temperatures to a scalar stream"
+            
             else:
-                self.temperature = [temperature[0], temperature[1]]
+                if self.mode is None or self.mode == "scalar":
+                    self.mode = "scalar"
+                else:
+                    raise Exception, "Trying to set a scalar temperature to a vector stream"
+            
+            self.temperature = [temperature[0], temperature[1]]
         else:
             self.temperature = None
+        
 
     def set_pressure(self, pressure):
         if pressure is not None:
             if isinstance(pressure[0], np.ndarray):
-                self.pressure = [pressure[0].mean(), pressure[1]] 
+                if self.mode is None or self.mode == "vector":
+                    self.mode = "vector"
+                else:
+                    raise Exception, "Trying to set a vector of pressures to a scalar stream"
+            
             else:
-                self.pressure = [pressure[0], pressure[1]]        
+                if self.mode is None or self.mode == "scalar":
+                    self.mode = "scalar"
+                else:
+                    raise Exception, "Trying to set a scalar pressure to a vector stream"
+            
+            self.pressure = [pressure[0], pressure[1]]
         else:
             self.pressure = None
 
