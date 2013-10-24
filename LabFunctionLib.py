@@ -767,42 +767,68 @@ class Stream:
             raise BadStreamError, '%s Stream composition needs to be defined to calculate enthalpy.' % self.name
         conv = uc.UnitConverter()
         
-        #set the Cantera phase
-        self.ct_setcomp(self.composition)
-        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
-               
+        #get the specific enthalpy -- for the vector case will need to loop through and build the enthalpy vectors
+        getattr(self, "_calc_spec_enthalpy_%s" % self.mode)()
+
+        #self.ct_setcomp(self.composition)
+        #self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+              
                         
         #Cantera output is J/kmol or J/kg, so conversions must follow this for molar and mass flow rates.
         if self.basis == 'molar':
             #convert to kmol/s:
             
             flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
-            enthalpy = flow*self.ctphase.enthalpy_mole()
-            self.enthalpy = (enthalpy, 'J/s')
-            
+                       
             
         elif self.basis == 'mass':
             #convert to kg/s
             flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kg/s')
-            enthalpy = flow*self.ctphase.enthalpy_mass()
-            self.enthalpy = (enthalpy, 'J/s')
-            
+                       
             
         elif self.basis ==  "gas_volume":
             val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
             p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
             T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
             flow =  val*p/(8.314*T)/1000
-            enthalpy = flow*self.ctphase.enthalpy_mole()
-            self.enthalpy = (enthalpy, 'J/s')
-
+            
         elif self.basis == "std_gas_volume":
             val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
             p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
             T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
             flow =  val*p/(8.314*T)/1000
-            enthalpy = flow * self.ctphase.enthalpy_mole()
-            self.enthalpy = (enthalpy, 'J/s')                      
+                                  
+
+        enthalpy = flow*self.spec_enthalpy
+        self.enthalpy = (enthalpy, 'J/s')
+
+    def _calc_spec_enthalpy_scalar(self):
+        """Internal function for calculating the specific enthalpy for scalar valued streams"""
+        self.ct_setcomp(self.composition)
+        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        if self.basis == "mass":
+            self.spec_enthalpy = self.ctphase.enthalpy_mass()	#Units will be J/kg
+        else:							#Everything else is a molar case
+	    self.spec_enthalpy = self.ctphase.enthalpy_mole()
+
+    def _calc_spec_enthalpy_vector(self):
+        """Internal function for calculating the specific enthalpy for vector valued streams"""
+        #Vector streams need to loop through the temperature, pressure, and composition lines to set the Cantera phase one by one
+        self.spec_enthalpy = np.zeros(len(self.temperature))
+        self.spec_enthalpy[:] = np.nan				#appropriate until values are filled in
+        if self.basis == "mass":
+            kw = "mass"
+        else:
+            kw = "mole"
+        for i in range(0, len(self.temperature)):
+            #need to build a composition dictionary to set the Cantera phase
+            comp = {}
+            for k in self.composition:
+                comp[k] = self.composition[k][i]
+            self.ct_setcomp(comp)
+            self.ctphase.set(T = conv.convert_units(self.temperature[0][i], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0][i], self.pressure[1], 'Pa'))
+            self.spec_enthalpy[i] = getattr(self.ctphase, "enthalpy_%s" % kw)()
+
 
     def _calc_entropy(self):
         """Calculates the stream entropy and stores it in self.entropy"""
@@ -1037,7 +1063,7 @@ class Mixer(ProcessObject):
         for inlet in self.inlets:
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
         temp_avg = temp_sum/len(self.inlets)
-              
+        print temp_avg    
         outlet_temp = spo.fsolve(func = self.enth_func, x0 = temp_avg)
         self.outlets[0].set_temperature((outlet_temp, 'K')) 
 
