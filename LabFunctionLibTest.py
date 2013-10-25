@@ -1207,8 +1207,10 @@ class MixerTests(unittest.TestCase):
         """Outlet temperature must be correctly calculated for the mixer object."""
         inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
                             composition = {'CO2':1}, flowrate = (1, 'mol/s'), basis = 'molar')
+        
         inlet2 = lfl.Stream('inlet2', temperature = (500, 'K'), pressure = (50, 'psig'), \
                             composition = {'H2O':1}, flowrate = (18.02, 'g/s'), basis = 'mass')
+        
         inlets = [inlet1, inlet2]
         mix = lfl.Mixer('mix', inlets = inlets)
         

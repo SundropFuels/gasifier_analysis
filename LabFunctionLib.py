@@ -369,7 +369,16 @@ class Stream:
         self.special_species = {}
 
         self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
- 
+
+
+    def convert_scalar_to_vector(self, length):
+        if self.mode == "scalar":
+            self.mode = "vector"
+            self.temperature[0] = np.ones(length)*self.temperature[0]
+            self.pressure[0] = np.ones(length)*self.pressure[0]
+            comp = {}
+            for k in self.composition:
+                self.composition[k] = np.ones(length)*self.composition[k] 
         
     def set_temperature(self, temperature):
         
@@ -1007,6 +1016,7 @@ class Mixer(ProcessObject):
                     minP = conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa')
         else:
             minP = outlet_pressure
+        
         self.outlets[0].set_pressure((minP, 'Pa'))
 
     def _calc_outlet_flowrate(self):
@@ -1016,6 +1026,17 @@ class Mixer(ProcessObject):
         c = True
         basis_fl_dict = {'molar':'mol/s', 'mass':'kg/s', 'gas_volume':'m^3/s', 'std_gas_volume':'m^3/s'}
         basis_choice = self.inlets[0].basis
+        #if we have vectors for outlet flowrates, convert all the streams to vector streams
+        mode = None
+        for inlet in self.inlets:
+            
+            if isinstance(inlet.flowrate[0], np.ndarray):
+                mode = "vector"
+                length = len(inlet.flowrate[0])
+        if mode == "vector":
+            for inlet in self.inlets:
+                inlet.convert_scalar_to_vector(length)
+
         for inlet in self.inlets:
             if inlet.basis != basis_choice or inlet.basis == 'gas_volume' or inlet.basis == 'std_gas_volume':
                 c = False
@@ -1045,9 +1066,11 @@ class Mixer(ProcessObject):
                 if species in inlet.composition:               
                     spec_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])*inlet.composition[species]
             composition[species] = spec_sum/fl_sum
+        
         self.outlets[0].set_composition(composition)
 
         #Just driving all volume directly to mass now -- should work
+        #!!!#Need a function that converts a scalar stream to a vector stream
 
     def enth_func(self, T):
         self.outlets[0].set_temperature((T, 'K'))
@@ -1062,9 +1085,12 @@ class Mixer(ProcessObject):
         temp_sum = 0.0
         for inlet in self.inlets:
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
+        
         temp_avg = temp_sum/len(self.inlets)
-        print temp_avg    
-        outlet_temp = spo.fsolve(func = self.enth_func, x0 = temp_avg)
+        if self.outlets[0].mode == "vector": 
+            outlet_temp = spo.fsolve(func = self.enth_func, x0 = temp_avg)
+        elif self.outlets[0].mode == "scalar":
+            outlet_temp = spo.newton(func = self.enth_func, x0 = temp_avg)
         self.outlets[0].set_temperature((outlet_temp, 'K')) 
 
 
