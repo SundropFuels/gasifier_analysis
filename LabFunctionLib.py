@@ -354,6 +354,10 @@ class Stream:
             composition = {}
         self.name = name
         self.mode = None
+        self.length = None
+        self.temperature = None
+        self.pressure = None
+        self.composition = None
         #need to average temperature, pressure, and composition if they are arrays
         self.set_temperature(temperature)
         self.set_pressure(pressure)
@@ -374,26 +378,37 @@ class Stream:
     def convert_scalar_to_vector(self, length):
         if self.mode == "scalar":
             self.mode = "vector"
-            self.temperature[0] = np.ones(length)*self.temperature[0]
-            self.pressure[0] = np.ones(length)*self.pressure[0]
-            comp = {}
-            for k in self.composition:
-                self.composition[k] = np.ones(length)*self.composition[k] 
+            if self.temperature is not None and not isinstance(self.temperature[0], np.ndarray):
+                self.temperature[0] = np.ones(length)*self.temperature[0]
+            if self.pressure is not None and not isinstance(self.pressure[0], np.ndarray):
+                self.pressure[0] = np.ones(length)*self.pressure[0]
+            if self.composition is not None:
+                comp = {}
+                for k in self.composition:
+                    if not isinstance(self.composition[k], np.ndarray):
+                        self.composition[k] = np.ones(length)*self.composition[k] 
         
     def set_temperature(self, temperature):
         
         if temperature is not None:
             if isinstance(temperature[0], np.ndarray):
                 if self.mode is None or self.mode == "vector":
-                    self.mode = "vector"
-                else:
-                    raise Exception, "Trying to set a vector of temperatures to a scalar stream"
+                    if self.length is None or len(temperature[0]) == self.length:
+                        self.mode = "vector"
+                        self.length = len(temperature[0])
+                    else:
+                        raise Exception, "Length of new temperature is not consistent with length of vector stream"
+                
+                elif self.mode == "scalar":
+                    self.length = len(temperature[0])
+                    self.convert_scalar_to_vector(self.length)
             
             else:
                 if self.mode is None or self.mode == "scalar":
                     self.mode = "scalar"
-                else:
-                    raise Exception, "Trying to set a scalar temperature to a vector stream"
+                elif self.mode == "vector":
+                    temperature[0] = temperature[0]*np.ones(self.length)
+                    
             
             self.temperature = [temperature[0], temperature[1]]
         else:
@@ -404,15 +419,21 @@ class Stream:
         if pressure is not None:
             if isinstance(pressure[0], np.ndarray):
                 if self.mode is None or self.mode == "vector":
-                    self.mode = "vector"
-                else:
-                    raise Exception, "Trying to set a vector of pressures to a scalar stream"
+                    if self.length is None or len(pressure[0]) == self.length:
+                        self.mode = "vector"
+                        self.length = len(pressure[0])
+                    else:
+                        raise Exception, "Length of new pressure vector is not consistent with length of vector stream"
+                elif self.mode == "scalar":
+                    self.length = len(pressure[0])
+                    self.convert_scalar_to_vector(self.length)
             
             else:
                 if self.mode is None or self.mode == "scalar":
                     self.mode = "scalar"
-                else:
-                    raise Exception, "Trying to set a scalar pressure to a vector stream"
+                elif self.mode == "vector":
+                    pressure[0] = pressure[0]*np.ones(self.length)
+                
             
             self.pressure = [pressure[0], pressure[1]]
         else:
@@ -432,11 +453,17 @@ class Stream:
             if isinstance(composition[composition.keys()[0]], np.ndarray):
                 if self.mode is None or self.mode == "vector":
                     self.mode = "vector"
-                else:
-                    raise Exception, "Trying to set a vector composition to a scalar valued stream"
+                elif self.mode == "scalar":
+                    self.length = len(composition[composition.keys()[0]])
+                    self.convert_scalar_to_vector(self.length)
+                    
 
             else:
-                if self.mode is None or self.mode == "scalar":
+                if self.mode == "vector":
+                    #convert the composition to a vector to allow for simple scalar assignment
+                    for k in composition:
+                        composition[k] = composition[k]*np.ones(self.length)
+                elif self.mode is None or self.mode == "scalar":
                     self.mode = "scalar"
                 else:
                     raise Exception, "Trying to set a scalar composition to a vector valued stream"
@@ -454,13 +481,16 @@ class Stream:
         #len checking first
         l = len(composition[composition.keys()[0]])
         s = np.zeros(l)
+        
         for k in composition:
-            if len(composition[k]!=l):
+            if len(composition[k])!=l:
                 raise Exception, "Not all of the fractional composition vectors are of the same length"
             s += composition[k]
+        
         if not (s==np.ones(l)).all():
-            raise Exception, "The compositions do not all add up to 1.0 in the composition setup"
-
+            pass
+            #raise Exception, "The compositions do not all add up to 1.0 in the composition setup"
+            #!!!#FIX
         self.composition = composition
 
 
@@ -485,7 +515,7 @@ class Stream:
             val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'g/s')
             T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
             p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
-            avgMW = 0.0
+            avgMWinv = 0.0
             for species in self.composition.keys():
                 if Stream.species[species]['phase'] == 'g':
                     if species in SpecialMolecule.MW.keys():
@@ -498,8 +528,9 @@ class Stream:
                                 MW +=  v*Element.MW[ele]
                         except KeyError:
                             raise BadStreamError, "%s does not have an entry in the Element molecular weight dictionary" % ele
-                    avgMW += self.composition[species]*MW
+                    avgMWinv += self.composition[species]/MW
 
+            avgMW = 1.0/avgMWinv 
             return val/avgMW*8.314*T/p
 
 
@@ -823,13 +854,13 @@ class Stream:
     def _calc_spec_enthalpy_vector(self):
         """Internal function for calculating the specific enthalpy for vector valued streams"""
         #Vector streams need to loop through the temperature, pressure, and composition lines to set the Cantera phase one by one
-        self.spec_enthalpy = np.zeros(len(self.temperature))
+        self.spec_enthalpy = np.zeros(len(self.temperature[0]))
         self.spec_enthalpy[:] = np.nan				#appropriate until values are filled in
         if self.basis == "mass":
             kw = "mass"
         else:
             kw = "mole"
-        for i in range(0, len(self.temperature)):
+        for i in range(0, len(self.temperature[0])):
             #need to build a composition dictionary to set the Cantera phase
             comp = {}
             for k in self.composition:
@@ -938,7 +969,7 @@ class ProcessObject:
         for inlet in inlets:
             if not isinstance(inlet, Stream):
                 raise BadStreamError, 'Inlet %s is not a Stream object.' %inlet.name
-            
+        #!!!FIX!!! Should check that all inlets are of the same length            
             
                 
         #Outlet Checks
@@ -1009,15 +1040,43 @@ class Mixer(ProcessObject):
 
     def _calc_outlet_pressure(self, outlet_pressure):
         conv = uc.UnitConverter()
-        minP = None
         if outlet_pressure is None:
+
+            minP = None
+            mode = "scalar"
             for stream in self.inlets:
-                if minP is None or conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa') < minP:
-                    minP = conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa')
-        else:
-            minP = outlet_pressure
+                if stream.mode == "vector":
+                    mode = "vector"
         
+            getattr(self, "_calc_outlet_pressure_%s" % mode)()
+
+        else:
+            self.outlets[0].set_pressure(outlet_pressure)
+
+    def _calc_outlet_pressure_scalar(self):
+        conv = uc.UnitConverter()
+        minP = None
+        for stream in self.inlets:
+            if minP is None or conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa') < minP:
+                minP = conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa')
+               
         self.outlets[0].set_pressure((minP, 'Pa'))
+
+    def _calc_outlet_pressure_vector(self):
+        
+        conv = uc.UnitConverter()
+        minP = np.zeros(self.inlets[0].length)
+        minP[:] = np.nan
+        for i in range(0,self.inlets[0].length):
+            for stream in self.inlets:
+                
+                if np.isnan(minP[i]) or conv.convert_units(stream.pressure[0][i], stream.pressure[1], 'Pa') < minP[i]:
+                    minP[i] = conv.convert_units(stream.pressure[0][i], stream.pressure[1], 'Pa')
+        self.outlets[0].set_pressure((minP, 'Pa'))
+                
+
+        
+
 
     def _calc_outlet_flowrate(self):
         conv = uc.UnitConverter()
@@ -1415,16 +1474,13 @@ class GasifierProcTS(ProcTS):
         #need a mixer that works on both the FULL streams as well as the gas-only
                 
         temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
-        print temp_inlets
+        
         mix = Mixer('inlet_mix', inlets = temp_inlets)
         mix.recalc()
-        for stream in mix.inlets:
-            print "Name: %s\tTemperature:%s\tPressure:%s" % (stream.name, stream.temperature, stream.pressure)
-        for stream in mix.outlets:
-            print "Name: %s\tTemperature:%s\tPressure:%s" % (stream.name, stream.temperature, stream.pressure)
-            for component in stream.composition:
-                print "Component: %s\tFraction: %s" % (component, stream.composition[component])
+        
         V_dot = mix.outlets[0].gas_volumetric_flowrate('m^3/s')
+        
+
 
         tau = vol/V_dot
         return tau
