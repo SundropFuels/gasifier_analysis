@@ -17,6 +17,8 @@ import Thermo
 import matplotlib.pyplot as plt
 import collections
 import element_parser as ep
+import scipy.optimize as spo
+import Cantera as ct
 
 conv = uc.UnitConverter()
 
@@ -311,72 +313,35 @@ class ts_data(df.Dataframe):
             keylist[k].sort()
         return keylist
 
-class Biomass:
-    def __init__(self, sample = None, CHN = None, moisture = None, enthalpy_formation = None):
-        #Heat of formation SEP SYP -3.156 MJ/kg or -1432 kJ/lb
-        self.sample=sample
-        if CHN is None:
-            CHN = {}
-        self.CHN = CHN #{C:(Value, 'Units'), H:(Value, 'Units'), N:(Value, 'Units')}
-        self.moisture = moisture #(Value, 'Units')
-        self.enthalpy_formation = enthalpy_formation #(Value, 'Units')
-
-    def lookup(self):
-        pass
-
-    def calc_CHN_dry(self):
-        self.CHN_dry={}
-        self.CHN_dry['C']=(conv.convert_units(self.CHN['C'][0], self.CHN['C'][1], 'fraction')/
-                           (1.-conv.convert_units(self.moisture[0], self.moisture[1], 'fraction')), 'fraction')
-        self.CHN_dry['H']=((conv.convert_units(self.CHN['H'][0], self.CHN['H'][1], 'fraction')-
-                            conv.convert_units(self.moisture[0], self.moisture[1], 'fraction')*
-                           2.02/18.02)/(1.-conv.convert_units(self.moisture[0], self.moisture[1], 'fraction')), 'fraction')
-        self.CHN_dry['N']=(conv.convert_units(self.CHN['N'][0], self.CHN['N'][1], 'fraction')/
-                           (1.-conv.convert_units(self.moisture[0], self.moisture[1], 'fraction')), 'fraction')
-
-class Gasification_Experiment:
-    def __init__(self, name, biomass_sample = None, biomass_feedrate = None,
-                 entrainment_flow = None, entrainment_gas = None,
-                 makeup_flow = None, makeup_gas = None,
-                 argon_flow = None, fill_flow = None, temperature = None,
-                 pressure = None, start_time = None, end_time = None,
-                 steam_flow = None):
-        self.biomass_sample = biomass_sample
-        self.biomass_feedrate = biomass_feedrate #(value, units)
-        self.entrainment_flow = entrainment_flow #(value, units)
-        self.entrainment_gas = entrainment_gas
-        self.makeup_flow = makeup_flow #(value, units)
-        self.makeup_gas = makeup_gas
-        self.argon_flow = argon_flow #(value, units)
-        self.fill_flow = fill_flow #(value, units)
-        self.temperature = temperature #(value, units)
-        self.pressure = pressure #(value, units)
-        self.steam_flow = steam_flow #(value, units)
-        self.start_time = start_time
-        self.end_time = end_time
-        
-    def lookup(self):
-        pass
-        
+       
 class Stream:
     species = {}
-    species['CO'] = {'C':1,'O':1, 'name':'Carbon Monoxide'}
-    species['CO2'] = {'C':1,'O':2, 'name':'Carbon Dioxide'}
-    species['CH4'] = {'C':1, 'H':4, 'name':'Methane'}
-    species['H2'] = {'H':2, 'name':'Hydrogen'}
-    species['H2S'] = {'H':2, 'S':1, 'name':'Hydrogen Sulfide'}
-    species['C2H2'] = {'C':2,'H':2, 'name':'Acetylene'}
-    species['C2H4'] = {'C':2,'H':4, 'name':'Ethylene'}
-    species['C2H6'] = {'C':2,'H':6, 'name':'Ethane'}
-    species['C3H8'] = {'C':3, 'H':8, 'name':'Propane'}
-    species['C3H6'] = {'C':3, 'H':6, 'name':'Propylene'}
-    species['C6H6'] = {'C':6, 'H':6, 'name':'Benzene'}
-    species['C7H8'] = {'C':7, 'H':8, 'name':'Toluene'}
-    species['C10H8'] = {'C':10, 'H':8, 'name':'Napthalene'}
-    species['H2O'] = {'H':2,'O':1, 'name':'Water'}
-    species['Ar'] = {'Ar':1, 'name':'Argon'}
-    species['N2'] = {'N':2, 'name':'Nitrogen'}
+    species['CO'] = {'C':1,'O':1, 'name':'Carbon Monoxide', 'phase':'g'}
+    species['CO2'] = {'C':1,'O':2, 'name':'Carbon Dioxide', 'phase':'g'}
+    species['CH4'] = {'C':1, 'H':4, 'name':'Methane','phase':'g'}
+    species['H2'] = {'H':2, 'name':'Hydrogen','phase':'g'}
+    species['H2S'] = {'H':2, 'S':1, 'name':'Hydrogen Sulfide','phase':'g'}
+    species['C2H2'] = {'C':2,'H':2, 'name':'Acetylene','phase':'g'}
+    species['C2H4'] = {'C':2,'H':4, 'name':'Ethylene','phase':'g'}
+    species['C2H6'] = {'C':2,'H':6, 'name':'Ethane','phase':'g'}
+    species['C3H8'] = {'C':3, 'H':8, 'name':'Propane','phase':'g'}
+    species['C3H6'] = {'C':3, 'H':6, 'name':'Propylene','phase':'g'}
+    species['C6H6'] = {'C':6, 'H':6, 'name':'Benzene','phase':'g'}
+    species['C7H8'] = {'C':7, 'H':8, 'name':'Toluene','phase':'g'}
+    species['C10H8'] = {'C':10, 'H':8, 'name':'Napthalene', 'phase':'g'}
+    species['H2O'] = {'H':2,'O':1, 'name':'Water', 'phase':'g'}
+    species['Ar'] = {'Ar':1, 'name':'Argon', 'phase':'g'}
+    species['N2'] = {'N':2, 'name':'Nitrogen', 'phase':'g'}
+    species['CELL'] = {'C':6, 'H':10, 'O':5, 'name':'Cellulose', 'phase':'s'}
+    species['HCE'] = {'C':5, 'H':8, 'O':4, 'name':'Hemicellulose', 'phase':'s'}
+    species['LIGH'] = {'C':22, 'H':28, 'O':9, 'name':'Lig-H', 'phase':'s'}
+    species['LIGO'] = {'C':20, 'H':22, 'O':10, 'name':'Lig-O', 'phase':'s'}
+    species['LIGC'] = {'C':15, 'H':14, 'O':4, 'name':'Lig-C', 'phase':'s'}
     
+    ct_trans = {}
+    ct_trans['Ar'] = {'AR':1.0}
+    ct_trans['biomass'] = {'CELL':0.3932, 'LIGC':0.10, 'LIGH':0.10, 'LIGO':0.10, 'HCE':0.30}   #Still missing ASH - will correct in a bit
+
     names = {}
     for i in species.keys():       
         names[species[i]['name']] = i
@@ -388,10 +353,17 @@ class Stream:
         if composition is None:
             composition = {}
         self.name = name
-        self.composition = composition #{specie:fraction}
+        self.mode = None
+        self.length = None
+        self.temperature = None
+        self.pressure = None
+        self.composition = None
+        #need to average temperature, pressure, and composition if they are arrays
+        self.set_temperature(temperature)
+        self.set_pressure(pressure)
+        self.set_composition(composition)
         self.basis = basis
-        self.temperature = temperature #(value, units)
-        self.pressure = pressure #(value, units)
+               
         self.density = density #(value, units)
         self.flowrate = flowrate #(value, units)
         self.compressible = compressible
@@ -399,7 +371,169 @@ class Stream:
         self.std_pressure = std_pressure
 
         self.special_species = {}
+
+        self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
+
+
+    def convert_scalar_to_vector(self, length):
+        if self.mode == "scalar":
+            self.mode = "vector"
+            if self.temperature is not None and not isinstance(self.temperature[0], np.ndarray):
+                self.temperature[0] = np.ones(length)*self.temperature[0]
+            if self.pressure is not None and not isinstance(self.pressure[0], np.ndarray):
+                self.pressure[0] = np.ones(length)*self.pressure[0]
+            if self.composition is not None:
+                comp = {}
+                for k in self.composition:
+                    if not isinstance(self.composition[k], np.ndarray):
+                        self.composition[k] = np.ones(length)*self.composition[k] 
         
+    def set_temperature(self, temperature):
+        
+        if temperature is not None:
+            if isinstance(temperature[0], np.ndarray):
+                if self.mode is None or self.mode == "vector":
+                    if self.length is None or len(temperature[0]) == self.length:
+                        self.mode = "vector"
+                        self.length = len(temperature[0])
+                    else:
+                        raise Exception, "Length of new temperature is not consistent with length of vector stream"
+                
+                elif self.mode == "scalar":
+                    self.length = len(temperature[0])
+                    self.convert_scalar_to_vector(self.length)
+            
+            else:
+                if self.mode is None or self.mode == "scalar":
+                    self.mode = "scalar"
+                elif self.mode == "vector":
+                    temperature[0] = temperature[0]*np.ones(self.length)
+                    
+            
+            self.temperature = [temperature[0], temperature[1]]
+        else:
+            self.temperature = None
+        
+
+    def set_pressure(self, pressure):
+        if pressure is not None:
+            if isinstance(pressure[0], np.ndarray):
+                if self.mode is None or self.mode == "vector":
+                    if self.length is None or len(pressure[0]) == self.length:
+                        self.mode = "vector"
+                        self.length = len(pressure[0])
+                    else:
+                        raise Exception, "Length of new pressure vector is not consistent with length of vector stream"
+                elif self.mode == "scalar":
+                    self.length = len(pressure[0])
+                    self.convert_scalar_to_vector(self.length)
+            
+            else:
+                if self.mode is None or self.mode == "scalar":
+                    self.mode = "scalar"
+                elif self.mode == "vector":
+                    pressure[0] = pressure[0]*np.ones(self.length)
+                
+            
+            self.pressure = [pressure[0], pressure[1]]
+        else:
+            self.pressure = None
+
+    def set_composition(self, composition):
+        """Sets the composition"""
+        if composition == {}:
+            self.composition = {}
+        else:
+
+            #dict checking
+            if not isinstance(composition, dict):
+                raise Exception, "The composition must be provided as a {species:fraction} dictionary"
+
+            #mode checking
+            if isinstance(composition[composition.keys()[0]], np.ndarray):
+                if self.mode is None or self.mode == "vector":
+                    self.mode = "vector"
+                elif self.mode == "scalar":
+                    self.length = len(composition[composition.keys()[0]])
+                    self.convert_scalar_to_vector(self.length)
+                    
+
+            else:
+                if self.mode == "vector":
+                    #convert the composition to a vector to allow for simple scalar assignment
+                    for k in composition:
+                        composition[k] = composition[k]*np.ones(self.length)
+                elif self.mode is None or self.mode == "scalar":
+                    self.mode = "scalar"
+                else:
+                    raise Exception, "Trying to set a scalar composition to a vector valued stream"
+            
+            getattr(self, "_set_composition_%s" % self.mode)(composition)
+
+       
+
+    def _set_composition_scalar(self, composition):
+        """Internal scalar function for setting the composition"""
+        self.composition = composition
+
+    def _set_composition_vector(self, composition):
+        """Internal vector function for setting the composition"""
+        #len checking first
+        l = len(composition[composition.keys()[0]])
+        s = np.zeros(l)
+        
+        for k in composition:
+            if len(composition[k])!=l:
+                raise Exception, "Not all of the fractional composition vectors are of the same length"
+            s += composition[k]
+        
+        if not (s==np.ones(l)).all():
+            pass
+            #raise Exception, "The compositions do not all add up to 1.0 in the composition setup"
+            #!!!#FIX
+        self.composition = composition
+
+
+    def gas_volumetric_flowrate(self, units):
+        """Returns the gas volumetric flowrate, in the desired units"""
+        conv = uc.UnitConverter()
+        if self.basis == "gas_volume":
+            return conv.convert_units(self.flowrate[0], self.flowrate[1], units)
+        elif self.basis == "std_gas_volume":
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            std_T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
+            std_P = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
+            return conv.convert_units(self.flowrate[0], self.flowrate[1], units)*T/std_T*std_P/p
+        elif self.basis == "molar":
+            f = conv.convert_units(self.flowrate[0], self.flowrate[1], 'mol/s')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            return conv.convert_units(8.314*f*T/p, 'm^3/s', units)
+        elif self.basis == "mass":
+            #convert to a molar flow first ###!!!###
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'g/s')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            avgMWinv = 0.0
+            for species in self.composition.keys():
+                if Stream.species[species]['phase'] == 'g':
+                    if species in SpecialMolecule.MW.keys():
+                        MW = SpecialMolecule.MW[species]
+                    else:
+                        MW = 0.0
+                        breakdown = ep.parse_species(species)
+                        try:
+                            for ele, v in breakdown.items():
+                                MW +=  v*Element.MW[ele]
+                        except KeyError:
+                            raise BadStreamError, "%s does not have an entry in the Element molecular weight dictionary" % ele
+                    avgMWinv += self.composition[species]/MW
+
+            avgMW = 1.0/avgMWinv 
+            return val/avgMW*8.314*T/p
+
+
     def elementalFactor(self, element):
         """Returns the units of element/basis unit of a given element in the feed"""
         factor = 0.0
@@ -610,125 +744,435 @@ class Stream:
         return parsed_elements
 
     def get_enthalpy(self, units):
-        if not IsInstance(units, str):
+        if not isinstance(units, str):
             raise UnitConversionError, "The provided units must be a string for the enthalpy function"
-
+        
         self._calc_enthalpy()
         conv = uc.UnitConverter()
         return conv.convert_units(self.enthalpy[0], self.enthalpy[1], units)
+       
 
     def get_entropy(self, units):
-        if not IsInstance(units, str):
-            raise UnitConversionError, "The provided units must be a strong for the entropy function"
+        if not isinstance(units, str):
+            raise UnitConversionError, "The provided units must be a string for the enthalpy function"
+        
         self._calc_entropy()
         conv = uc.UnitConverter()
         return conv.convert_units(self.entropy[0], self.entropy[1], units)
 
+    def ct_setcomp(self, composition = None):
+        """Returns a string that can be used to input the stream's composition into a Cantera object"""
+        if composition == None:
+            composition = self.composition
+        
+        #First, need to format everything into the Cantera Species
+        if self.basis == 'molar' or self.basis == 'gas_volume' or self.basis == 'std_gas_volume':
+            #This is the easiest case -- just pull all the compositional values and set the phase appropriately
+            set_string = ""
+            for specie in composition.keys():
+                if specie in Stream.ct_trans:
+                    for sub in Stream.ct_trans[specie]:
+                        set_string += '%s:%s, ' % (sub, Stream.ct_trans[specie][sub]*composition[specie])  #This, of course, assumes that the basis in ct_trans is the same as in composition
+                else:
+                    set_string += '%s:%s, ' % (specie, composition[specie])
+            #set the phase composition
+            set_string = set_string[:-2] #Remove last ', ' from set_string build
+            self.ctphase.setMoleFractions(set_string)
 
+        elif self.basis == 'mass':
+            #This is also pretty easy -- just pull all the compositional values and set the phase appropriately
+            set_string = ""
+            for specie in composition.keys():
+                if specie in Stream.ct_trans:
+                    for sub in Stream.ct_trans[specie]:
+                        set_string += '%s:%s, ' % (sub, Stream.ct_trans[specie][sub]*composition[specie])  #This, of course, assumes that the basis in ct_trans is the same as in composition
+                else:
+                    set_string += '%s:%s, ' % (specie, composition[specie])
+            #set the phase composition
+            set_string = set_string[:-2] #Remove last ', ' from set_string build
+            self.ctphase.setMassFractions(set_string)
+
+        else:
+            raise lflException, '%s is not a valid stream basis' % self.basis
+       
+        
     def _calc_enthalpy(self):
         """Calculates the stream enthalpy and stores it in self.enthalpy"""
-        tg = Thermo.ThermoGenerator()
-       
-        H = 0.0
-        #Calculate the enthalpy of each stream component and add them all together
+        
+        if self.temperature==None:
+            raise BadStreamError, '%s Stream temperature needs to be defined to calculate enthalpy.' % self.name
+        if self.pressure==None:
+            raise BadStreamError, '%s Stream pressure needs to be defined to calculate enthalpy.' % self.name
+        if self.composition ==None:
+            raise BadStreamError, '%s Stream composition needs to be defined to calculate enthalpy.' % self.name
+        conv = uc.UnitConverter()
+        
+        #get the specific enthalpy -- for the vector case will need to loop through and build the enthalpy vectors
+        getattr(self, "_calc_spec_enthalpy_%s" % self.mode)()
 
-        for sp in self.composition.keys():
-            if self.basis ==  "molar":
-                conv = uc.UnitConverter()
-                val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'mol/s')
-                val *=  self.composition[sp]
-                H +=  val*tg.calc_enthalpy(sp, self.temperature, 'J/mol')
-                
+        #self.ct_setcomp(self.composition)
+        #self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+              
+                        
+        #Cantera output is J/kmol or J/kg, so conversions must follow this for molar and mass flow rates.
+        if self.basis == 'molar':
+            #convert to kmol/s:
+            
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
+                       
+            
+        elif self.basis == 'mass':
+            #convert to kg/s
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kg/s')
+                       
+            
+        elif self.basis ==  "gas_volume":
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            flow =  val*p/(8.314*T)/1000
+            
+        elif self.basis == "std_gas_volume":
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
+            p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
+            T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
+            flow =  val*p/(8.314*T)/1000
+                                  
 
+        enthalpy = flow*self.spec_enthalpy
+        self.enthalpy = (enthalpy, 'J/s')
 
+    def _calc_spec_enthalpy_scalar(self):
+        """Internal function for calculating the specific enthalpy for scalar valued streams"""
+        self.ct_setcomp(self.composition)
+        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        if self.basis == "mass":
+            self.spec_enthalpy = self.ctphase.enthalpy_mass()	#Units will be J/kg
+        else:							#Everything else is a molar case
+	    self.spec_enthalpy = self.ctphase.enthalpy_mole()
 
-            elif self.basis ==  "mass":
-                conv = uc.UnitConverter()
-                val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'g/s')
-                if species in SpecialMolecule.MW.keys():
-                    MW = SpecialMolecule.MW[sp]
-                else:
-                    MW = 0
-                    breakdown = _parse_species(species)
-                    try:
-                        for ele, v in breakdown.items():
-                            MW +=  v*Element.MW[ele]
-                    except KeyError:
-                        raise BadStreamError, "%s does not have an entry in the Element molecular weight dictionary" % ele
-                val *=  self.composition[sp]/MW #This is now the flowrate of this species in mol/s
-                H +=  val*tg.calc_enthalpy(sp, self.temperature, 'J/mol')
-               
+    def _calc_spec_enthalpy_vector(self):
+        """Internal function for calculating the specific enthalpy for vector valued streams"""
+        #Vector streams need to loop through the temperature, pressure, and composition lines to set the Cantera phase one by one
+        self.spec_enthalpy = np.zeros(len(self.temperature[0]))
+        self.spec_enthalpy[:] = np.nan				#appropriate until values are filled in
+        if self.basis == "mass":
+            kw = "mass"
+        else:
+            kw = "mole"
+        for i in range(0, len(self.temperature[0])):
+            #need to build a composition dictionary to set the Cantera phase
+            comp = {}
+            for k in self.composition:
+                comp[k] = self.composition[k][i]
+            self.ct_setcomp(comp)
+            self.ctphase.set(T = conv.convert_units(self.temperature[0][i], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0][i], self.pressure[1], 'Pa'))
+            self.spec_enthalpy[i] = getattr(self.ctphase, "enthalpy_%s" % kw)()
 
-
-            elif self.basis ==  "gas_volume":
-                
-                conv = uc.UnitConverter()
-                val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
-                p = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
-                T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
-                val *=  self.composition[sp]*p/(8.314*T)
-                H +=  val*tg.calc_enthalpy(sp, self.temperature, 'J/mol')
-                
-
-
-        self.enthalpy = (H, 'J/s')
-      
 
     def _calc_entropy(self):
         """Calculates the stream entropy and stores it in self.entropy"""
-        tg = Thermo.ThermoGenerator()
-       
-        S = 0.0
-        #Calculate the enthalpy of each stream component and add them all together
+        conv = uc.UnitConverter()
+        if self.temperature==None:
+            raise BadStreamError, 'Stream temperature is not defined.'
+        if self.pressure==None:
+            raise BadStreamError, 'Stream pressure is not defined.'
 
-        for sp in self.composition.keys():
-            if self.basis ==  "molar":
-                conv = uc.UnitConverter()
-                val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'mol/s')
-                val *=  self.composition[sp]
-                S +=  val*tg.calc_entropy(sp, self.temperature, 'J/mol')
-                #Need to adjust if compressible is true for the stream -- FIX FOR ENTROPY
-                if self.compressible ==  True:
-                    p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
-                    T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
-                    S +=  8.314 * val * np.log(p/101325.0)
+        #set the Cantera phase
+        self.ct_setcomp(self.composition)
+        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
 
+        if self.basis == 'molar':
+            #convert to kmol/s:
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
+            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
 
+        elif self.basis == 'mass':
+            #convert to kg/s
+            flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kg/s')
+            self.entropy = [flow*self.ctphase.entropy_mass(), 'J/K/s']
 
-            elif self.basis ==  "mass":
-                conv = uc.UnitConverter()
-                val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'g/s')
+        elif self.basis ==  "gas_volume":
+                        
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            flow =  val*p/(8.314*T)
+            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+
+        elif self.basis == "std_gas_volume":
+            
+            val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
+            
+            p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
+            T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
+            flow =  val*p/(8.314*T)
+            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+        
+    def convert_to_mass_basis(self):
+        if self.basis == 'mass':
+            #do nothing
+            pass
+        
+        elif self.basis == 'gas_volume':
+            #I'm going to be sneaky here and convert to molar first, then let the execution drop downward
+            conv = uc.UnitConverter()
+            p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
+            T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
+            self.flowrate = [conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')*p/(8.314*T), 'mol/s']
+            self.basis = 'molar'
+
+        elif self.basis == 'std_gas_volume':
+            conv = uc.UnitConverter()
+            p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
+            T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
+            self.flowrate = [conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')*p/(8.314*T), 'mol/s']
+            self.basis = 'molar'
+
+        if self.basis == 'molar':
+            #calculate the molar compositions from the mass compositions
+            
+            conv = uc.UnitConverter()
+            #calculate the average molecular weight first
+            species_dict = {}
+            for species in self.composition:
+            
                 if species in SpecialMolecule.MW.keys():
-                    MW = SpecialMolecule.MW[sp]
+                    MW = SpecialMolecule.MW[species]
                 else:
                     MW = 0
-                    breakdown = _parse_species(species)
+                    breakdown = ep.parse_species(species)
                     try:
                         for ele, v in breakdown.items():
                             MW +=  v*Element.MW[ele]
                     except KeyError:
                         raise BadStreamError, "%s does not have an entry in the Element molecular weight dictionary" % ele
-                val *=  self.composition[sp]/MW #This is now the flowrate of this species in mol/s
-                S +=  val*tg.calc_entropy(sp, self.temperature, 'J/mol')
-                if self.compressible ==  True:
-                    p = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')
-                    T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
-                    S +=  8.314 * val * np.log(p/101325.0)
+                species_dict[species] = MW*self.composition[species]
+            avg_MW = sum(species_dict.values())
+            for species in species_dict:
+                self.composition[species] = species_dict[species]/avg_MW
+            self.flowrate = [avg_MW*conv.convert_units(self.flowrate[0],self.flowrate[1], 'mol/s'), 'g/s']
+            self.basis = 'mass'
 
-
-            elif self.basis ==  "gas_volume":
-                
-                conv = uc.UnitConverter()
-                val = conv.convert_units(self.flowrate[0], self.flowrate[1], 'm^3/s')
-                p = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
-                T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
-                val *=  self.composition[sp]*p/(8.314*T)
-                S +=  val*tg.calc_entropy(sp, self.temperature, 'J/mol')
-                S +=  8.314 * val * np.log(p/101325.0)
         
-        self.entropy = (S, 'J/mol/K')
+            
 
 
+
+class ProcessObject:
+    
+    def __init__(self, inlets, outlets = None):
+        
+        #Inlet Checks.  Maybe in future don't need to have inlets fully defined if outlets are, but not sure how to implement now.
+        if type(inlets) != list:
+            raise BadStreamError, 'Inlets must be input as a list of Stream objects.'
+        for inlet in inlets:
+            if not isinstance(inlet, Stream):
+                raise BadStreamError, 'Inlet %s is not a Stream object.' %inlet.name
+        #!!!FIX!!! Should check that all inlets are of the same length            
+            
+                
+        #Outlet Checks
+        if outlets is not None:
+            if type(outlets) != list:
+                raise BadStreamError, 'Outlets must be input as a list of Stream objects.'
+            for outlet in outlets:
+                if not isinstance(outlet, Stream):
+                    raise BadStreamError, 'Outlet %s is not a Stream object.' %outlet.name
+
+        
+    #There has GOT to be a way to generalize this with decorators or similar
+    
+        self.inlets = inlets
+        self.outlets = outlets
+    
+    def totalInletEnthalpy(self, units):
+        H = 0
+        for stream in self.inlets:
+            
+            H += stream.get_enthalpy(units)
+        return H
+
+    def totalOutletEnthalpy(self, units):
+        H = 0
+        for stream in self.outlets:
+            
+            H += stream.get_enthalpy(units)
+        return H
+
+    def totalInletEntropy(self,units):
+        S = 0
+        for stream in self.inlets:
+            S += stream.get_entropy(units)
+        return S
+
+    def totalOutletEntropy(self,units):
+        S = 0
+        for stream in self.outlets:
+            S += stream.get_entropy(units)
+        return S
+
+    def deltaH(self, units):
+        return self.totalOutletEnthalpy(units) - self.totalInletEnthalpy(units)
+    
+    def deltaS(self, units):
+        return self.totalOutletEntropy(units) - self.totalInletEnthalpy(units)
+            
+class Mixer(ProcessObject):
+    
+    """A mixer blends multiple inlet streams into one outlet stream"""
+
+    def __init__(self, name, outlet_pressure = None, **kwargs):
+        ProcessObject.__init__(self, **kwargs)
+        
+        self.outlets = [Stream(name = '%s_outlet' % name)]
+        
+        #Need to solve for the outlet stream pressure, temperature, and composition
+        #pressure is easy -- it is assumed that the pressure drops to the LOWEST stream pressure entering the mixer if an outlet pressure is not specified
+        self._calc_outlet_pressure(outlet_pressure)
+        self._calc_outlet_flowrate()
+        self._calc_outlet_temperature()
+
+    def recalc(self, outlet_pressure = None):
+        self._calc_outlet_pressure(outlet_pressure)
+        self._calc_outlet_flowrate()
+        self._calc_outlet_temperature()
+
+    def _calc_outlet_pressure(self, outlet_pressure):
+        conv = uc.UnitConverter()
+        if outlet_pressure is None:
+
+            minP = None
+            mode = "scalar"
+            for stream in self.inlets:
+                if stream.mode == "vector":
+                    mode = "vector"
+        
+            getattr(self, "_calc_outlet_pressure_%s" % mode)()
+
+        else:
+            self.outlets[0].set_pressure(outlet_pressure)
+
+    def _calc_outlet_pressure_scalar(self):
+        conv = uc.UnitConverter()
+        minP = None
+        for stream in self.inlets:
+            if minP is None or conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa') < minP:
+                minP = conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa')
+               
+        self.outlets[0].set_pressure((minP, 'Pa'))
+
+    def _calc_outlet_pressure_vector(self):
+        
+        conv = uc.UnitConverter()
+        minP = np.zeros(self.inlets[0].length)
+        minP[:] = np.nan
+        for i in range(0,self.inlets[0].length):
+            for stream in self.inlets:
+                
+                if np.isnan(minP[i]) or conv.convert_units(stream.pressure[0][i], stream.pressure[1], 'Pa') < minP[i]:
+                    minP[i] = conv.convert_units(stream.pressure[0][i], stream.pressure[1], 'Pa')
+        self.outlets[0].set_pressure((minP, 'Pa'))
+                
+
+        
+
+
+    def _calc_outlet_flowrate(self):
+        conv = uc.UnitConverter()
+        #Need to put everything on a consistent basis - if everything the same, just add them all together; otherwise use mass
+        #Also, need to set the composition of the outlet
+        c = True
+        basis_fl_dict = {'molar':'mol/s', 'mass':'kg/s', 'gas_volume':'m^3/s', 'std_gas_volume':'m^3/s'}
+        basis_choice = self.inlets[0].basis
+        #if we have vectors for outlet flowrates, convert all the streams to vector streams
+        mode = None
+        for inlet in self.inlets:
+            
+            if isinstance(inlet.flowrate[0], np.ndarray):
+                mode = "vector"
+                length = len(inlet.flowrate[0])
+        if mode == "vector":
+            for inlet in self.inlets:
+                inlet.convert_scalar_to_vector(length)
+
+        for inlet in self.inlets:
+            if inlet.basis != basis_choice or inlet.basis == 'gas_volume' or inlet.basis == 'std_gas_volume':
+                c = False
+
+        if not c:
+            #convert all streams to a mass basis
+            for inlet in self.inlets:
+                if inlet.basis != 'mass':
+                    inlet.convert_to_mass_basis()
+            basis_choice = 'mass'
+        
+        self.outlets[0].basis = basis_choice
+        fl_sum = 0
+        for inlet in self.inlets:
+            fl_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])
+        self.outlets[0].flowrate = (fl_sum, basis_fl_dict[basis_choice])
+        #need to generate a total species list for compositional matching - then composition is simply the sum of the streams for that species divided by the total flowrate
+        species_list = []
+        for inlet in self.inlets:
+            for species in inlet.composition: 
+                if species not in species_list:
+                    species_list.append(species)
+        composition = {}
+        for species in species_list:
+            spec_sum = 0            
+            for inlet in self.inlets:
+                if species in inlet.composition:               
+                    spec_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])*inlet.composition[species]
+            composition[species] = spec_sum/fl_sum
+        
+        self.outlets[0].set_composition(composition)
+
+        #Just driving all volume directly to mass now -- should work
+        #!!!#Need a function that converts a scalar stream to a vector stream
+
+    def enth_func(self, T):
+        self.outlets[0].set_temperature((T, 'K'))
+        
+        d_H = self.deltaH('J/s')
+        return d_H
+    
+    def _calc_outlet_temperature(self):
+        #Solving the equation dH = 0 (not a heat exchanger, so Q and W are both 0)
+        #guess a temperature for the outlet as a mean of the inlet temperatures
+        conv = uc.UnitConverter()
+        temp_sum = 0.0
+        for inlet in self.inlets:
+            temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
+        
+        temp_avg = temp_sum/len(self.inlets)
+        if self.outlets[0].mode == "vector": 
+            outlet_temp = spo.fsolve(func = self.enth_func, x0 = temp_avg)
+        elif self.outlets[0].mode == "scalar":
+            outlet_temp = spo.newton(func = self.enth_func, x0 = temp_avg)
+        self.outlets[0].set_temperature((outlet_temp, 'K')) 
+
+
+
+    
+        
+class Reactor(ProcessObject):
+    """Reactor Class..."""
+    def __init__(self, temperature = None, pressure = None, **kwargs):
+        ProcessObject.__init__(**kwargs)
+    def calc_species_generation(self):
+        pass
+    def calc_species_consumption(self):
+        pass
+    def calc_enthalpy_change(self, units):
+        return self.deltaH(units)
+    def calc_entropy_change(self, units):
+        return self.deltaS(units)
+        
+class Condenser(ProcessObject):
+    def __init__(self, **kwargs):
+        ProcessObject.__init__(**kwargs)
+        
 class PhysicalConstants:
     """Class to hold global physical constant variables"""
     std_temp = 298   #In K
@@ -738,10 +1182,10 @@ class Element:
     """A physical element.  Will have properties of the elements, plus a handy reference library"""
     Elements = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au','Hg', 'Tl', 'Pb','Bi', 'Po', 'At', 'Rn', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu']
     MW = {}
-    MW['C'] = 12.01
-    MW['H'] = 1.01
-    MW['O'] = 16.00
-    MW['N'] = 14.01
+    MW['C'] = 12.0107
+    MW['H'] = 1.00794
+    MW['O'] = 15.9994
+    MW['N'] = 14.0067
     MW['S'] = 32.065
     MW['Cl'] = 35.453
     MW['Ar'] = 39.948
@@ -763,11 +1207,11 @@ class Molecule:
 class SpecialMolecule(Molecule):
     """This class holds specially designated molcules, so that I can calculate molecular weights without too much of a problem"""
     MW = {}
-    MW['LigH'] = 0
-    MW['LigO'] = 0
-    MW['LigC'] = 0
-    MW['Cell'] = 162
-    MW['HemiC'] = 0
+    MW['LIGH'] = 436
+    MW['LIGO'] = 422
+    MW['LIGC'] = 258
+    MW['CELL'] = 162
+    MW['HCE'] = 132
 
 class ProcTS(ts_data):
 
@@ -924,11 +1368,12 @@ class ProcTS(ts_data):
 
     def enthalpy_change(self, units):
         """Returns the enthalpy change in the process"""
-        H = self.outlet_enthalpy(units) - self.inlet_enthalpy(units)
-        return (H, units)
+        #Create a reactor object with inlet and outlet streams
+        r = Reactor(self.inlet_streams, self.outlet_streams)
+        return r.enthalpy_change(units)
 
     def generate_enthalpy_change(self, units):
-        """Generates a new column with enthalpy change in the data sereies"""
+        """Generates a new column with enthalpy change in the data series"""
         self['delta_H'], self.units['delta_H'] = self.enthalpy_change(self, units)
         
 
@@ -1015,17 +1460,33 @@ class GasifierProcTS(ProcTS):
 
     def calc_space_time(self, reactor_vol, excluded_species):
         """Calculates the inlet space time of the reactor based on the inlet streams"""
+        #Right now excluded_species must be in their own stream, find a way to fix this if I can... Maybe create temporary streams without the excluded species.
         conv = uc.UnitConverter()
         vol = conv.convert_units(reactor_vol[0], reactor_vol[1], 'm^3')
-        V_dot = 0
+        
+        excl_inlets = []
         for stream in self.inlet_streams:
+            stream_flow = 0
+            non_excl_species = {}
             for species in stream.composition:
-                if species not in excluded_species:
-                    V_dot += stream.calcSpeciesVolumetricFlowrate(species)
+                if species in excluded_species:
+                    excl_inlets.append(stream)
+        
+        #need a mixer that works on both the FULL streams as well as the gas-only
+                
+        temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
+        
+        mix = Mixer('inlet_mix', inlets = temp_inlets)
+        mix.recalc()
+        
+        V_dot = mix.outlets[0].gas_volumetric_flowrate('m^3/s')
+        
+
 
         tau = vol/V_dot
-        self['space_time'] = tau
-        self.units['space_time'] = 's'
+        return tau
+#        self['space_time'] = tau
+#        self.units['space_time'] = 's'
 
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""
