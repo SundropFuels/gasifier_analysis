@@ -1260,7 +1260,33 @@ class SpaceTimeTests(unittest.TestCase):
         
         self.assertTrue((np.round(hand_st,2)==np.round(space_time,2)).all())
         
+    def testSpaceTimeWithMassBasis(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = gts.val_units('PT_101'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        steam = lfl.Stream('steam', flowrate = (gts.val_units('FE_101')[0],'g/min'), composition = {'H2O':1.00}, basis = 'mass', temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
 
+
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3, steam] 
+        reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
+
+        # Hand calculate residence time...
+
+        hand_vol = 1.5*1.5*np.pi/4*24*0.0163871 #Convert to liters
+        hand_mole_steam = steam.flowrate[0]/18.02
+        total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*0.04139 + hand_mole_steam #moles/min
+        total_flow = total_flow*0.0821*298/((50+14.7)/14.7) # L/s
+        hand_st = np.array([0.6270,0.6236,0.6299,0.6277,0.6238]) #Calculated in Excel.  Checked with Chris' hand calcs above in testSpaceTime.
+        
+        space_time = gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+
+        
+        self.assertTrue((np.round(hand_st,3)==np.round(space_time,3)).all())
 
         #!!!#This needs to have cases where streams have a mass basis to start (e.g. steam), and/or where they include biomass
 
