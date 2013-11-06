@@ -44,7 +44,9 @@ class GasifierDataAnalysis:
         if self.run_info.info['tube_dia'] == 2.0:
             self.reactor_size = (24.0*1.5*1.5*np.pi/4, 'in^3')
         elif self.run_info.info['tube_dia'] == 1.5:
-            self.reactor_size = (24*1.0*1.0*np.pi/4, 'in^3')
+
+            self.reactor_size = (24.0*1.0*1.0*np.pi/4, 'in^3')
+
         else:
             self.reactor_size = (None, None)
         
@@ -113,10 +115,6 @@ class GasifierDataAnalysis:
         methane_gas_feed = Stream('methane_feed', flowrate = self.gts.val_units('mass_flow_methane'),composition = {'CH4':1.00}, basis = "std_gas_volume")
         
 
-        
-
-
-        
         #Convert steam to mass flow 
         self.gts.convert_col_units('setpoint_steam_HPLC_pump', 'mL/hr')
         self.gts['steam_flow'] = self.gts['setpoint_steam_HPLC_pump']
@@ -129,24 +127,24 @@ class GasifierDataAnalysis:
         MFC_SP = (101325.0, 'Pa')
         MFC_ST = (70.0, 'F')
 
-        biomass_feed.temperature = (25.0, 'C')
-        cross_brush_feed.temperature = (25.0, 'C')
-        down_bed_feed.temperature = (25.0, 'C')
-        makeup_feed.temperature = (25.0, 'C')
-        argon_tracer_feed.temperature = (25.0, 'C')
-        methane_gas_feed.temperature = (25.0, 'C')
+        biomass_feed.set_temperature((25.0, 'C'))
+        cross_brush_feed.set_temperature((25.0, 'C'))
+        down_bed_feed.set_temperature((25.0, 'C'))
+        makeup_feed.set_temperature((25.0, 'C'))
+        argon_tracer_feed.set_temperature((25.0, 'C'))
+        methane_gas_feed.set_temperature((25.0, 'C'))
         
         
-        steam_feed.temperature = self.gts.val_units('temp_steam_reactor_entry')
+        steam_feed.set_temperature(self.gts.val_units('temp_steam_reactor_entry'))
         
-        biomass_feed.pressure = self.gts.val_units('pressure_reactor_gas_inlet')
-        cross_brush_feed.pressure = self.gts.val_units('pressure_reactor_gas_inlet')
-        down_bed_feed.pressure = self.gts.val_units('pressure_reactor_gas_inlet')
-        makeup_feed.pressure = self.gts.val_units('pressure_reactor_gas_inlet')
-        argon_tracer_feed.pressure = self.gts.val_units('pressure_reactor_gas_inlet')
-        methane_gas_feed.pressure = self.gts.val_units('pressure_reactor_gas_inlet')
+        biomass_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
+        cross_brush_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
+        down_bed_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
+        makeup_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
+        argon_tracer_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
+        methane_gas_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
         
-        steam_feed.pressure = self.gts.val_units('pressure_reactor_gas_inlet')
+        steam_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
 
         #Setup the standard temperatures and pressures
         cross_brush_feed.std_temperature = MFC_ST
@@ -175,9 +173,9 @@ class GasifierDataAnalysis:
         ppm_list = ['C6H6','H2S','C10H8','C7H8']
         for key in ppm_list:
             composition[key] /= 10000.0
-        gas_exit.pressure = self.gts.val_units('pressure_product_gas_downstream_filters')
-        gas_exit.composition = composition
-        gas_exit.temperature = self.gts.val_units('temp_exit_gas')
+        gas_exit.set_pressure(self.gts.val_units('pressure_product_gas_downstream_filters'))
+        gas_exit.set_composition(composition)
+        gas_exit.set_temperature(self.gts.val_units('temp_exit_gas'))
         self.gts['exit_gas_flowrate'] = gas_exit.flowrate[0]
         self.gts.units['exit_gas_flowrate'] = 'mol/s'
                
@@ -189,11 +187,12 @@ class GasifierDataAnalysis:
             self.gts['%s_GC_interp' % specie] = self.gts.interpolate_col('counter', '%s_GC' % specie)
 
         gas_exit_GC = self.gts.outlet_stream_from_tracer([argon_tracer_feed], 'Molar', 'Ar', self.gts['Ar_GC_interp']/100.0, 'gas_exit_interp')
-        gas_exit_GC.pressure = self.gts.val_units('pressure_product_gas_downstream_filters')
-        gas_exit_GC.temperature = self.gts.val_units('temp_exit_gas')
+        gas_exit_GC.set_pressure(self.gts.val_units('pressure_product_gas_downstream_filters'))
+        gas_exit_GC.set_temperature(self.gts.val_units('temp_exit_gas'))
+        gc_composition = {}
         for specie in GC_list:
-            gas_exit_GC.composition[specie] = self.gts["%s_GC_interp" % specie]
-
+            gc_composition[specie] = self.gts["%s_GC_interp" % specie]
+            gas_exit_GC.set_composition(gc_composition)
 
 
         self.gts.inlet_streams = [down_bed_feed, cross_brush_feed, makeup_feed, argon_tracer_feed, methane_gas_feed, steam_feed, biomass_feed]
@@ -226,7 +225,7 @@ class GasifierDataAnalysis:
         
 
         #3. Calculate changes in enthalpy and entropy
-        #self.gts.generate_enthalpy_change(self, 'kW')
+        self.gts.generate_enthalpy_change(self, 'kW')
         #self.gts.generate_entropy_change(self, 'kW/K')
 
         #4. Normalize the compositions
