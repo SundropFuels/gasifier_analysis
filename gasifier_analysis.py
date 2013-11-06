@@ -97,7 +97,7 @@ class GasifierDataAnalysis:
             m_type = "CO2"
         """
         m_type = "CO2"
-        ###this is a problem!!!!###
+        ###this is a problem!!!!###l
         cross_brush_feed = Stream('cross_brush_feed', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {e_type:1.0}, basis = "std_gas_volume")
         if self.run_info.info['downbed_flow_rate'] < 0.01:
             down_bed_feed = Stream('down_bed_feed', flowrate = (self.gts['mass_flow_down_brush']*0.0,'L/min'), composition = {db_type:1.0}, basis = "std_gas_volume")
@@ -294,6 +294,7 @@ class GasifierDataAnalysis:
         objects['w_c'] = str(self.run_info.info['w_c'])
         objects['N_total'] = str(self.gts.numrows())
         objects['N_MS'] = str(len(self.gts['CO_MS'][np.isfinite(self.gts['CO_MS'].astype(float))]))
+        objects['analysis_timestamp'] = datetime.datetime.strftime(datetime.datetime.today(), '%Y-%m-%d %H:%M:%S')
         for key in self.gts.avgs:
             objects['%s_avg' % key] = str(self.gts.avgs[key])
         for key in self.gts.stdevs:
