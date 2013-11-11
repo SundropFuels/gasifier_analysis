@@ -2,7 +2,7 @@ units(length = "cm", time = "s", quantity = "mol", act_energy = "cal/mol")
 
 ideal_gas(name = "gas",
       elements = " C  H  O Ar N",
-      species = """CELL  HCE  LIGC  LIGH  LIGO CH4 CO CO2 H2 H2O O2 N2 AR C2H6 C2H4 C2H2 C3H8 C3H6 C6H6 C10H8 
+      species = """CELL  HCE  LIGC  LIGH  LIGO CH4 CO CO2 H2 H2O O2 N2 AR C2H6 C2H4 C2H2 C3H8 C3H6 C6H6 C7H8 C10H8 
                   """,
       reactions = "all",
       transport = "Mix",
@@ -338,6 +338,26 @@ species(name = "C6H6",
                      rot_relax = 1)
        )
 
+species(name = "C7H8",
+    atoms = " C:7  H:8 ",
+    thermo = (
+       NASA( [  300.00,  1000.00], [ -4.695182000E+00,   6.951080300E-02, 
+               -4.384450200E-05,   1.040464800E-08,   0.000000000E+00,
+                4.693355000E+03,   4.640732000E+01] ),
+       NASA( [ 1000.00,  5000.00], [  9.889287000E+00,   3.123517000E-02, 
+               -1.104664100E-05,   1.297951000E-09,   0.000000000E+00,
+                5.907564170E+02,  -2.942635460E+01] )
+             ),
+    transport = gas_transport(
+                     geom = "nonlinear",
+                     diam = 5.68,
+                     well_depth = 495.3,
+                     polar = 12.3,
+                     dipole = 0.43,
+                     rot_relax = 1)
+       )
+
+       
 species(name = "C10H8",
     atoms = " C:10  H:8 ",
     thermo = (
@@ -355,6 +375,5 @@ species(name = "C10H8",
                      polar = 16.5,
                      rot_relax = 1)
        )
-
 
 
