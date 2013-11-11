@@ -1216,7 +1216,23 @@ class MixerTests(unittest.TestCase):
         
         hand_temperature = 394 #K.  Found using solver in Excel.
         
-        self.assertAlmostEqual(mix.outlets[0].temperature[0], hand_temperature, 0)
+    def testOutletTemperatureArray(self):
+        """Outlet temperature must be correctly calculated for the mixer object."""
+        inlet1 = lfl.Stream('inlet1', temperature = (np.array([300, 300, 300]), 'K'), pressure = (np.array([50, 50, 50]), 'psig'), \
+                            composition = {'CO2':1}, flowrate = (np.array([1, 1, 1]), 'mol/s'), basis = 'molar')
+        
+        inlet2 = lfl.Stream('inlet2', temperature = (np.array([500, 500, 500]), 'K'), pressure = (np.array([50, 50, 50]), 'psig'), \
+                            composition = {'H2O':1}, flowrate = (np.array([18.02, 18.02, 18.02]) , 'g/s'), basis = 'mass')
+        
+        inlets = [inlet1, inlet2]
+        mix = lfl.Mixer('mix', inlets = inlets)
+        
+        hand_temperature = np.array([394, 394, 394]) #K.  Found using solver in Excel.
+        print hand_temperature
+        print mix.outlets[0].temperature[0]
+        
+        self.assertTrue((np.round(mix.outlets[0].temperature[0],0)==np.round(hand_temperature,0)).all())
+#        self.assertAlmostEqual(mix.outlets[0].temperature[0], hand_temperature, 0)
         
     def testOutletPressure(self):
         inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
