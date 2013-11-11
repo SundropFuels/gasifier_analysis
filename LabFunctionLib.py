@@ -19,6 +19,7 @@ import collections
 import element_parser as ep
 import scipy.optimize as spo
 import Cantera as ct
+import time
 
 conv = uc.UnitConverter()
 
@@ -762,9 +763,16 @@ class Stream:
 
     def ct_setcomp(self, composition = None):
         """Returns a string that can be used to input the stream's composition into a Cantera object"""
+        # Missing transport data for H2S necessary to work with Cantera.  Prevent Stream object from putting H2S into Cantera composition, for now.  Shouldn't have too much of an impact in calculations, as H2S is a trace species.
+        ignore_species = ['H2S']
+        
         if composition == None:
             composition = self.composition
-        
+            
+        for specie in ignore_species:
+            if specie in composition:
+                del(composition[specie])
+                
         #First, need to format everything into the Cantera Species
         if self.basis == 'molar' or self.basis == 'gas_volume' or self.basis == 'std_gas_volume':
             #This is the easiest case -- just pull all the compositional values and set the phase appropriately
@@ -1135,31 +1143,35 @@ class Mixer(ProcessObject):
         self.outlets[0].set_temperature((T, 'K'))
         
         d_H = self.deltaH('J/s')
+        print T
+        print d_H
         return d_H
     
     def _calc_outlet_temperature(self):
         #Solving the equation dH = 0 (not a heat exchanger, so Q and W are both 0)
         #guess a temperature for the outlet as a mean of the inlet temperatures
+        
+        for s in self.inlets:
+            print s.name
+            
+            print s.get_enthalpy('J/s')[0]
         conv = uc.UnitConverter()
         temp_sum = 0.0
         for inlet in self.inlets:
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
         
         temp_avg = temp_sum/len(self.inlets)
+        
         if self.outlets[0].mode == "vector": 
             outlet_temp = spo.fsolve(func = self.enth_func, x0 = temp_avg)
         elif self.outlets[0].mode == "scalar":
             outlet_temp = spo.newton(func = self.enth_func, x0 = temp_avg)
-        self.outlets[0].set_temperature((outlet_temp, 'K')) 
-
-
-
-    
+        self.outlets[0].set_temperature((outlet_temp, 'K'))   
         
 class Reactor(ProcessObject):
     """Reactor Class..."""
     def __init__(self, temperature = None, pressure = None, **kwargs):
-        ProcessObject.__init__(**kwargs)
+        ProcessObject.__init__(self,**kwargs)
     def calc_species_generation(self):
         pass
     def calc_species_consumption(self):
@@ -1369,12 +1381,14 @@ class ProcTS(ts_data):
     def enthalpy_change(self, units):
         """Returns the enthalpy change in the process"""
         #Create a reactor object with inlet and outlet streams
-        r = Reactor(self.inlet_streams, self.outlet_streams)
-        return r.enthalpy_change(units)
+        r = Reactor(inlets = self.inlet_streams, outlets = self.outlet_streams)
+        return r.deltaH(units)
 
     def generate_enthalpy_change(self, units):
         """Generates a new column with enthalpy change in the data series"""
-        self['delta_H'], self.units['delta_H'] = self.enthalpy_change(self, units)
+        
+        self['delta_H'] = self.enthalpy_change(units)
+        self.units['delta_H'] = units
         
 
     def collected_enthalpy(self, streams, units):
