@@ -1133,8 +1133,7 @@ class ProcessObjectTests(unittest.TestCase):
         outlets = [outlet1, outlet2, outlet3]
         
         self.test_ProcessObject = lfl.ProcessObject(inlets, outlets)
-        
-                                
+                                       
     def testInletEnthalpy(self):
         inlet_enth = self.test_ProcessObject.totalInletEnthalpy('J/s')
         hand1_enth = self.ct_inlet1.enthalpy_mole()/1000
@@ -1228,8 +1227,7 @@ class MixerTests(unittest.TestCase):
         mix = lfl.Mixer('mix', inlets = inlets)
         
         hand_temperature = np.array([394, 394, 394]) #K.  Found using solver in Excel.
-        print hand_temperature
-        print mix.outlets[0].temperature[0]
+
         
         self.assertTrue((np.round(mix.outlets[0].temperature[0],0)==np.round(hand_temperature,0)).all())
 #        self.assertAlmostEqual(mix.outlets[0].temperature[0], hand_temperature, 0)
@@ -1272,7 +1270,8 @@ class SpaceTimeTests(unittest.TestCase):
         total_flow = total_flow*0.0821*298/((50+14.7)/14.7) # L/s
         hand_st = np.array([5.6638,5.6803,5.7035,5.6737,5.6376])
         
-        space_time = gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        space_time = gts['space_time']
         
         self.assertTrue((np.round(hand_st,2)==np.round(space_time,2)).all())
         
@@ -1299,13 +1298,11 @@ class SpaceTimeTests(unittest.TestCase):
         total_flow = total_flow*0.0821*298/((50+14.7)/14.7) # L/s
         hand_st = np.array([0.6270,0.6236,0.6299,0.6277,0.6238]) #Calculated in Excel.  Checked with Chris' hand calcs above in testSpaceTime.
         
-        space_time = gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        space_time = gts['space_time']
 
-        
         self.assertTrue((np.round(hand_st,3)==np.round(space_time,3)).all())
-
-        #!!!#This needs to have cases where streams have a mass basis to start (e.g. steam), and/or where they include biomass
-
+        
 if __name__ == "__main__":
     
     unittest.main()
