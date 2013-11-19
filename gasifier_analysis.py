@@ -39,9 +39,9 @@ class GasifierDataAnalysis:
         if self.run_info.info['tube_dia'] == 2.0:
             self.reactor_size = (24.0*1.5*1.5*np.pi/4, 'in^3')
         elif self.run_info.info['tube_dia'] == 1.5:
-
             self.reactor_size = (24.0*1.0*1.0*np.pi/4, 'in^3')
-
+        elif self.run_info.info['tube_dia'] == 2.5:
+            self.reactor_size = (24.0*2.0*2.0*np.pi/4, 'in^3')
         else:
             self.reactor_size = (None, None)
         
