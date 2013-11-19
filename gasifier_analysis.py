@@ -23,10 +23,7 @@ class GasifierDataAnalysis:
         q = db.use_Query("lab_proc_db")
         self.interface_proc.query(q)
 
-
         self.run_id = run_id
-
-        
 
         self.run_info = RunInformation()
         #self.run_info.info = run_information
@@ -34,10 +31,8 @@ class GasifierDataAnalysis:
         self._load_timeseries_data()
         self._setup_standard_streams()
         
-
     def _load_run_info(self):
 
-        
         #see if we can get a complete view from this
         self.run_info.SQL_load(self.interface_proc, table = 'gas_run_info_tbl', run_id = self.run_id)
         #set up the tube size
@@ -50,8 +45,6 @@ class GasifierDataAnalysis:
         else:
             self.reactor_size = (None, None)
         
-        
-
         #WILL NEED TO DO THE APPROPRIATE GLOSSARY SWITCHES OR JUST RENAME THINGS IN RUN_INFO TO THE RIGHT STUFF
 
     def _load_timeseries_data(self):
@@ -223,7 +216,6 @@ class GasifierDataAnalysis:
         #2. Calculate carbon conversions
         self.gts.generate_carbon_conversions()
         
-
         #3. Calculate changes in enthalpy and entropy
         self.gts.generate_enthalpy_change('kW')
         #self.gts.generate_entropy_change(self, 'kW/K')
@@ -248,7 +240,6 @@ class GasifierDataAnalysis:
         #8. Calculate uncertainties
         ####NOT IMPLEMENTED YET
        
-
     def generate_output_file(self, filename):
         """Writes a csv file to filename from the timeseries data"""
         #Meta-data first
@@ -266,10 +257,7 @@ class GasifierDataAnalysis:
         self.gts.write_csv(filename, mode = 'append')
 
     def upload_to_database(self):
-        
-        
 
-        
         #upload the time series data
         
         self.gts.SQL_db_upload(self.interface_proc, table = "gas_proc_data_tbl")
@@ -278,9 +266,6 @@ class GasifierDataAnalysis:
         #upload the integral data
         self.upload_integral_data()
 
-
-        
-        
     def upload_integral_data(self):
         #need to build the query elements
         objects = {}
@@ -324,7 +309,6 @@ class GasifierDataAnalysis:
 
         return col_list
 
-
     def generate_standard_report(self, rpt_fmt):
         #generate a standard report -- maybe given an xml format file to direct what goes into the report
         pass
@@ -339,7 +323,6 @@ def parse_list(txt):
             run_id_list.extend(range(int(left), int(right)+1))
         else:
             run_id_list.append(int(sublist))
-
 
     return run_id_list  
 
@@ -360,9 +343,8 @@ if __name__ == '__main__':
         f = open(args.file)
         a = f.readline()
         a = a[:-1]
-        
+
         run_id_list = parse_list(a)
-        
 
     for run_id in run_id_list:
         print "Analyzing run %s..." % run_id
@@ -373,6 +355,3 @@ if __name__ == '__main__':
         #analyzer.generate_output_file('run100.csv')
         analyzer.upload_to_database()
         #print "Data uploaded to database"
-
-
-
