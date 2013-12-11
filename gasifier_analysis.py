@@ -201,8 +201,11 @@ class GasifierDataAnalysis:
         biomass_breakdown['biomass'] = {}
         for item in ['c', 'h', 'n']:
             biomass_breakdown['biomass'][item.upper()] = self.run_info['w_%s' % item]/100.0
-        biomass_breakdown['biomass']['O'] = 1 - sum(biomass_breakdown['biomass'].values())
         
+        #Added following row to set carbon % as constant value.  Removed 'c' from above for loop
+        biomass_breakdown['biomass']['C'] = 0.5437
+        #End additional row
+        biomass_breakdown['biomass']['O'] = 1 - sum(biomass_breakdown['biomass'].values())
         biomass_feed.special_species = biomass_breakdown
         
         
