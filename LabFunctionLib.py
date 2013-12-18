@@ -1121,10 +1121,12 @@ class Mixer(ProcessObject):
         temp_avg = temp_sum/len(self.inlets)
         
         if self.outlets[0].mode == "vector": 
-            outlet_temp = spo.newton_krylov(F = self.enth_func, xin = temp_avg)
+            outlet_temp = spo.newton_krylov(F = self.enth_func, xin = temp_avg, f_tol = 1E-3)
         elif self.outlets[0].mode == "scalar":
             outlet_temp = spo.newton(func = self.enth_func, x0 = temp_avg)
-        self.outlets[0].set_temperature((outlet_temp, 'K'))   
+        self.outlets[0].set_temperature((outlet_temp, 'K'))  
+        print self.outlets[0].temperature[0].mean()
+        
         
 class Reactor(ProcessObject):
     """Reactor Class..."""
