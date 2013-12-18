@@ -85,13 +85,13 @@ class GasifierDataAnalysis:
             db_type = "CO2"
 
 
-        """
+        
         if self.gts['makeup_gas_type'][0] == 0:
             m_type = "N2"
         elif self.gts['makeup_gas_type'][0] == 1:
             m_type = "CO2"
-        """
-        m_type = "CO2"
+        
+#        m_type = "CO2"
         ###this is a problem!!!!###l
         cross_brush_feed = Stream('cross_brush_feed', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {e_type:1.0}, basis = "std_gas_volume")
         if self.run_info.info['downbed_flow_rate'] < 0.01:
