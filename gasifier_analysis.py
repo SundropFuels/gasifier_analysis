@@ -74,8 +74,7 @@ class GasifierDataAnalysis:
         if self.gts['entrainment_gas_type'][0] == 0:
             e_type = "N2"
         elif self.gts['entrainment_gas_type'][0] == 1:
-            e_type = "CO2"
-        
+            e_type = "CO2"       
 
         if self.run_info.info['downbed_gas_type'] == 0:
             db_type = "N2"
@@ -83,16 +82,12 @@ class GasifierDataAnalysis:
             db_type = "CO2"
         else:
             db_type = "CO2"
-
-
-        
+       
         if self.gts['makeup_gas_type'][0] == 0:
             m_type = "N2"
         elif self.gts['makeup_gas_type'][0] == 1:
             m_type = "CO2"
-        
-#        m_type = "CO2"
-        ###this is a problem!!!!###l
+
         cross_brush_feed = Stream('cross_brush_feed', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {e_type:1.0}, basis = "std_gas_volume")
         if self.run_info.info['downbed_flow_rate'] < 0.01:
             down_bed_feed = Stream('down_bed_feed', flowrate = (self.gts['mass_flow_down_brush']*0.0,'L/min'), composition = {db_type:1.0}, basis = "std_gas_volume")
@@ -107,7 +102,6 @@ class GasifierDataAnalysis:
         argon_tracer_feed = Stream('argon_tracer', flowrate = self.gts.val_units('mass_flow_argon_tracer'), composition = {'Ar':1.0}, basis = "std_gas_volume")
         methane_gas_feed = Stream('methane_feed', flowrate = self.gts.val_units('mass_flow_methane'),composition = {'CH4':1.00}, basis = "std_gas_volume")
         
-
         #Convert steam to mass flow 
         self.gts.convert_col_units('setpoint_steam_HPLC_pump', 'mL/hr')
         self.gts['steam_flow'] = self.gts['setpoint_steam_HPLC_pump']
