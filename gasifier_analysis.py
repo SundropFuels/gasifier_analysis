@@ -7,18 +7,20 @@ import db_toolbox as db
 import Thermo
 import argparse
 import csv
+import getpass
 
 class GasifierDataAnalysis:
     """The basic data analysis class for gasifier experiments"""
 
-    def __init__(self, run_id, run_information = None):
+    def __init__(self, run_id, user, password, run_information = None):
         #Create the gasifier data frame, and load the data from the SQL database (this will be automated through the interface later)
-        self.interface_raw = db.db_interface(host = "192.168.13.51", user = "dbmaint", passwd = "f9p2#nH1")
+               
+        self.interface_raw = db.db_interface(host = "192.168.13.51", user = user, passwd = password)
         self.interface_raw.connect()
         q = db.use_Query("lab_run_db")
         self.interface_raw.query(q)
 
-        self.interface_proc = db.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
+        self.interface_proc = db.db_interface(host = "192.168.13.51", user = user, passwd = password)
         self.interface_proc.connect()
         q = db.use_Query("lab_proc_db")
         self.interface_proc.query(q)
@@ -330,6 +332,9 @@ if __name__ == '__main__':
     parser.add_argument('--file',type=str,action = 'store')
     args = parser.parse_args()
 
+    user = raw_input('User: ')
+    pswd = getpass.getpass()
+        
     if args.run_id is not None:
         run_id_list = [args.run_id]
 
@@ -345,7 +350,7 @@ if __name__ == '__main__':
 
     for run_id in run_id_list:
         print "Analyzing run %s..." % run_id
-        analyzer = GasifierDataAnalysis(run_id = run_id)
+        analyzer = GasifierDataAnalysis(run_id = run_id, user = user, password = pswd)
         #print "Data loaded"
         analyzer.calculate_standard_things()
         #print "Standard things calculated"
