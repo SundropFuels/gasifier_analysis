@@ -705,9 +705,7 @@ class Stream:
 
             elif current_char.isdigit():
                 #we have gotten to the end of an element name
-#                print current_element
                 while i < len(species_str) and species_str[i].isdigit():
-#                    print current_char
                     current_char = species_str[i]
                     current_number_str = "".join([current_number_str, current_char])
                     i +=  1
@@ -1124,8 +1122,7 @@ class Mixer(ProcessObject):
             outlet_temp = spo.newton_krylov(F = self.enth_func, xin = temp_avg, f_tol = 1E-3)
         elif self.outlets[0].mode == "scalar":
             outlet_temp = spo.newton(func = self.enth_func, x0 = temp_avg)
-        self.outlets[0].set_temperature((outlet_temp, 'K'))  
-        print self.outlets[0].temperature[0].mean()
+        self.outlets[0].set_temperature((outlet_temp, 'K'))
         
         
 class Reactor(ProcessObject):
