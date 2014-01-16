@@ -18,8 +18,13 @@ import dataFrame_v2 as df
 import Cantera as ct
 import scipy as sp
 import random
+import getpass
+
+user = raw_input('User: ')
+pswd = getpass.getpass()
 
 class LoadDataTests(unittest.TestCase):
+
     timestamp = np.ndarray(0, dtype = 'object')
     timestamp = np.append(timestamp, datetime.datetime(1981,7,6,13,13,12))
     timestamp = np.append(timestamp, datetime.datetime(1981,7,6,13,13,13))
@@ -252,7 +257,7 @@ class LoadDataTests(unittest.TestCase):
     
 #    def testDataLoadCorrect(self):
 #        """Test whether all the data is loaded correctly and no extraneous data exists"""
-#        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
+#        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
 #        interface.connect()
 #        q = db.use_Query("gas_unit_test")
 #        interface.query(q)
@@ -273,20 +278,20 @@ class LoadDataTests(unittest.TestCase):
 
     def testUnconnectedInterface(self):
         """An unconnected interface should raise an error"""
-        interface = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
     def testNoDatabaseSelected(self):
         """An interface with no selected database should raise an error:"""
-        interface = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
         interface.connect()
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
 #    def testDataIsTimeseries(self):
 #        """The data should have a timestamp column (actually be timeseries data)"""
-#        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
+#        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
 #        interface.connect()
 #        q = db.use_Query("gas_unit_test")
 #        interface.query(q)
