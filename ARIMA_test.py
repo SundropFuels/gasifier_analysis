@@ -14,10 +14,10 @@ import statsmodels.tsa.arima_model as ARIMA
 class ARIMA_test:
     """The basic data analysis class for gasifier experiments"""
 
-    def __init__(self, run_id, run_information = None):
+    def __init__(self, run_id, user, password, run_information = None):
         #Create the gasifier data frame, and load the data from the SQL database (this will be automated through the interface later)
         
-        self.interface_proc = db.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
+        self.interface_proc = db.db_interface(host = "192.168.13.51", user = user, passwd = password)
         self.interface_proc.connect()
         q = db.use_Query("lab_proc_db")
         self.interface_proc.query(q)
@@ -50,7 +50,12 @@ class ARIMA_test:
         
 
 if __name__ == "__main__":
-    test = ARIMA_test(run_id = 106)
+
+    user = raw_input('User: ')
+    pswd = getpass.getpass()
+    
+    test = ARIMA_test(run_id = 106, user = user, password = pswd)
+    
     print test.gts['timestamp']
     model = ARIMA.ARMA(test.gts['mass_flow_brush_feeder'], order = (1,1))
     result = model.fit()
