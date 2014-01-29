@@ -281,7 +281,7 @@ class Dataframe:
         
         for key in glossary.keys():
             if key not in self.data.keys():
-                raise BadGlossaryTagError, "There is a tag in the glossary that is not in the dataframe"
+                raise BadGlossaryTagError, "There is a tag (%s) in the glossary that is not in the dataframe" % key
             
             if key != glossary[key]:
                 self.data[glossary[key]] = self.data[key]

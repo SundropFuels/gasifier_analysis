@@ -68,12 +68,12 @@ class ts_data(df.Dataframe):
         self.avgs = {}
         self.stdevs = {}
 
-    def SQL_load(self, db_interface, table = ""):
+    def SQL_load(self, db_interface, table = "", glossary = 'tag_glossary_tbl'):
         if not isinstance(db_interface, SQL.db_interface):
             raise SQLInterfaceError, "The passed interface to the database is not valid"
 
-        start_condition = "timestamp >=  '%s'" % self.start.strftime("%Y-%m-%d %H:%M:%S")
-        end_condition = "timestamp <=  '%s'" % self.end.strftime("%Y-%m-%d %H:%M:%S")
+        start_condition = "ts >=  '%s'" % self.start.strftime("%Y-%m-%d %H:%M:%S")
+        end_condition = "ts <=  '%s'" % self.end.strftime("%Y-%m-%d %H:%M:%S")
         try:
             self.SQL_load_data(db_interface, table, conditions = [start_condition, end_condition])
         except SQL.NoDBInUseError:
@@ -85,7 +85,7 @@ class ts_data(df.Dataframe):
 
         for i in self.data:
             try:
-                q=SQL.select_Query(objects=['units'], table='tag_glossary_tbl', condition_list=["simple_name='%s'" % i])
+                q=SQL.select_Query(objects=['units'], table=glossary, condition_list=["simple_name='%s'" % i])
                 self.units[i]=db_interface.query(q)[0]['units']
             except IndexError:
                 self.units[i]=None
@@ -165,12 +165,12 @@ class ts_data(df.Dataframe):
                             conc = float(row[icol])/10000
                         else:
                             conc = float(row[icol])
-                        self[i][np.where(self['timestamp'] == time)[0]] = conc
+                        self[i][np.where(self['ts'] == time)[0]] = conc
                     
     def calc_rel_time(self):
         rel_time = []
-        for i in self['timestamp']:
-            rel_time.append((i-self['timestamp'][0]).seconds)
+        for i in self['ts']:
+            rel_time.append((i-self['ts'][0]).seconds)
         rel_time = np.array(rel_time)
         return rel_time
 
@@ -192,9 +192,9 @@ class ts_data(df.Dataframe):
         for key in cols:
             try:
                 #by default, I ignore nan and inf values
-                
-                self.avgs[key] = self[key][np.isfinite(self[key].astype(float))].mean()
-                self.stdevs[key] = self[key][np.isfinite(self[key].astype(float))].std()
+
+                self.avgs[key] = self[key][np.isfinite(self[key].astype(float))].mean(dtype='float64')
+                self.stdevs[key] = self[key][np.isfinite(self[key].astype(float))].std(dtype='float64')
             except KeyError:
                 raise lflExeception, "%s is not a key in the dataframe" % key
             except ZeroDivisionError:
@@ -337,6 +337,7 @@ class Stream:
     species['LIGH'] = {'C':22, 'H':28, 'O':9, 'name':'Lig-H', 'phase':'s'}
     species['LIGO'] = {'C':20, 'H':22, 'O':10, 'name':'Lig-O', 'phase':'s'}
     species['LIGC'] = {'C':15, 'H':14, 'O':4, 'name':'Lig-C', 'phase':'s'}
+    species['O2'] = {'O':2, 'name':'Oxygen','phase':'g'}
     
     ct_trans = {}
     ct_trans['Ar'] = {'AR':1.0}
@@ -1147,9 +1148,10 @@ class Mixer(ProcessObject):
         
         temp_avg = temp_sum/len(self.inlets)
         if self.outlets[0].mode == "vector": 
-            outlet_temp = spo.fsolve(func = self.enth_func, x0 = temp_avg)
+            outlet_temp = spo.newton_krylov(F = self.enth_func, xin = temp_avg, f_tol = 6E-3)
         elif self.outlets[0].mode == "scalar":
             outlet_temp = spo.newton(func = self.enth_func, x0 = temp_avg)
+        
         self.outlets[0].set_temperature((outlet_temp, 'K')) 
 
 
@@ -1159,7 +1161,7 @@ class Mixer(ProcessObject):
 class Reactor(ProcessObject):
     """Reactor Class..."""
     def __init__(self, temperature = None, pressure = None, **kwargs):
-        ProcessObject.__init__(**kwargs)
+        ProcessObject.__init__(self, **kwargs)
     def calc_species_generation(self):
         pass
     def calc_species_consumption(self):
@@ -1369,12 +1371,12 @@ class ProcTS(ts_data):
     def enthalpy_change(self, units):
         """Returns the enthalpy change in the process"""
         #Create a reactor object with inlet and outlet streams
-        r = Reactor(self.inlet_streams, self.outlet_streams)
-        return r.enthalpy_change(units)
+        r = Reactor(inlets = self.inlet_streams, outlets = self.outlet_streams)
+        return r.calc_enthalpy_change(units)
 
     def generate_enthalpy_change(self, units):
         """Generates a new column with enthalpy change in the data series"""
-        self['delta_H'], self.units['delta_H'] = self.enthalpy_change(self, units)
+        self['delta_H'] = self.enthalpy_change(units)
         
 
     def collected_enthalpy(self, streams, units):
@@ -1477,16 +1479,16 @@ class GasifierProcTS(ProcTS):
         temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
         
         mix = Mixer('inlet_mix', inlets = temp_inlets)
-        mix.recalc()
+        #mix.recalc()
         
         V_dot = mix.outlets[0].gas_volumetric_flowrate('m^3/s')
         
 
 
         tau = vol/V_dot
-        return tau
-#        self['space_time'] = tau
-#        self.units['space_time'] = 's'
+#        return tau
+        self['space_time'] = tau
+        self.units['space_time'] = 's'
 
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""
@@ -1505,7 +1507,11 @@ class RunInformation:
 
     def SQL_load(self, interface, table, run_id):
         """Load the data in from the given table into member objects"""
-        query = SQL.select_Query(objects = ['*'], table = table, condition_list = ['run_id=%s' % run_id])
+        if isinstance(run_id, int):
+            query = SQL.select_Query(objects = ['*'], table = table, condition_list = ['run_id=%s' % run_id])
+        else:
+            query = SQL.select_Query(objects = ['*'], table = table, condition_list = ["run_id='%s'" % run_id])
+        
         results = interface.query(query)
 
         #results will be a list of dicts

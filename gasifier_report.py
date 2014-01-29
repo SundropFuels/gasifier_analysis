@@ -29,7 +29,7 @@ class GasifierReport:
         self.interface_proc.connect()
         q = db.use_Query("lab_proc_db")
         self.interface_proc.query(q)
-
+        print "databases connected"
 
         self.run_id = run_id
         self.run_info = RunInformation()
@@ -319,8 +319,8 @@ if __name__ == '__main__':
            
     for run_id in run_id_list:
         print "Generating a Report for Run %s..." % run_id
-        try: report = GasifierReport(run_id = run_id)
-        except: print "Report Generation Failed for Run %s" %run_id
+        report = GasifierReport(run_id = run_id)
+        #except: print "Report Generation Failed for Run %s" %run_id
 
 
 
