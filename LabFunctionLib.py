@@ -10,7 +10,7 @@
 
 import numpy as np
 import db_toolbox as SQL
-import dataFrame_v2 as df
+import dataFrame_pd as df
 import datetime
 import unitConversion as uc
 import Thermo
@@ -55,8 +55,8 @@ class ConversionError(lflException):
 
 class ts_data(df.Dataframe):
     """General timeseries data class"""
-    def __init__(self, start, end, array_dict = None, units_dict = None):
-        df.Dataframe.__init__(self, array_dict = array_dict, units_dict = units_dict)
+    def __init__(self, start, end, data = None, units_dict = None):
+        df.Dataframe.__init__(self, data = data, units_dict = units_dict)
         if type(start) !=  datetime.datetime or type(end) !=  datetime.datetime:
             raise TimeError, "The start and end times for a timeseries must be datetime.datetime objects"
         if start > end:
@@ -68,8 +68,13 @@ class ts_data(df.Dataframe):
 
         self.avgs = {}
         self.stdevs = {}
+   
+
+    def reinitialize_data(self, data):
+        self.__init__(self.start, self.end, data = data, units_dict = self.units)
 
     def SQL_load(self, db_interface, table = "", glossary = 'tag_glossary_tbl'):
+
         if not isinstance(db_interface, SQL.db_interface):
             raise SQLInterfaceError, "The passed interface to the database is not valid"
 
@@ -81,10 +86,10 @@ class ts_data(df.Dataframe):
             raise SQLInterfaceError, "No database selected for the passed interface"
         except SQL.InterfaceNotConnectedError:
             raise SQLInterfaceError, "Passed interface is not connected to a server"
-        counter = np.arange(self.numrows())
-        self.data['counter'] = counter
+        counter = np.arange(len(self))
+        self['counter'] = counter
 
-        for i in self.data:
+        for i in self.columns:
             try:
                 q=SQL.select_Query(objects=['units'], table=glossary, condition_list=["simple_name='%s'" % i])
                 self.units[i]=db_interface.query(q)[0]['units']
@@ -111,27 +116,27 @@ class ts_data(df.Dataframe):
 
     def interpolate_col(self, x, y):
         """Interpolates between None or np.nan values on a given column ('y') relative to 'x' and adds the interpolated column as 'Name'_interp"""
-        if x not in self.data.keys() or y not in self.data.keys():
+        if x not in self.columns or y not in self.columns:
             raise InterpArgumentError, "The given column name is not in the data frame -- cannot interpolate"
 
-        interp_col = self.data[y].copy()
+        interp_col = self[y].copy()
         #Scroll forward to find the first non-nan/non-None value
         i = 0
         try:
-            while (self.data[y][i] ==  None or np.isnan(self.data[y][i])) and i < self.nRows:
+            while (self[y][i] ==  None or np.isnan(self[y][i])) and i < len(self):
                 i+= 1
-            if i ==  self.nRows:
+            if i ==  len(self):
                 #The column was empty -- nothing to do
                 return interp_col
             begin = i
-            while i < self.nRows:
+            while i < len(self):
                 i +=  1
-                if i ==  self.nRows:
+                if i ==  len(self):
                     #Trailing nones/nans
                     return interp_col
-                elif self.data[y][i] ==  None or np.isnan(self.data[y][i]):
+                elif self[y][i] ==  None or np.isnan(self[y][i]):
                     continue
-                elif i ==  self.nRows:
+                elif i ==  len(self):
                     #Trailing nones/nans
                     return interp_col
                 elif i - begin ==  1:
@@ -141,7 +146,7 @@ class ts_data(df.Dataframe):
                     #Now interpolate between the values
                     end = i
                     for j in range(begin+1,end):
-                        interp_col[j] = (self.data[y][end] - self.data[y][begin])/(self.data[x][end] - self.data[x][begin])*(self.data[x][j] - self.data[x][begin]) + self.data[y][begin]
+                        interp_col[j] = (self[y][end] - self[y][begin])/(self[x][end] - self[x][begin])*(self[x][j] - self[x][begin]) + self[y][begin]
                     begin = i
         except IndexError:
             return interp_col
@@ -249,7 +254,7 @@ class ts_data(df.Dataframe):
     def convert_col_units(self, column, units):
         """Will convert the given column into the new units from the existing units"""
         
-        if column not in self.data.keys():
+        if column not in self.columns:
             raise df.NoColumnError, "The requested column is not in the data frame."
 
         if self.units ==  {}:
@@ -258,7 +263,7 @@ class ts_data(df.Dataframe):
         conv = uc.UnitConverter()
 
         try:
-            self.data[column] = conv.convert_units(self.data[column], self.units[column], units)
+            self[column] = conv.convert_units(self[column], self.units[column], units)
         except uc.UnitNotFoundError:
             raise UnitConversionError, "The unit was not in the database"
         except uc.InconsistentUnitError:
@@ -1190,14 +1195,16 @@ class SpecialMolecule(Molecule):
 class ProcTS(ts_data):
 
     """Timeseries data for chemical processes"""
-    def __init__(self, start, end, array_dict = None, units_dict = None):
-        ts_data.__init__(self, start, end, array_dict, units_dict)
+    def __init__(self, start, end, data = None, units_dict = None):
+        ts_data.__init__(self, start, end, data, units_dict)
         
         self.inlet_streams = []
         self.outlet_streams = []
         self.proc_elements = []
         self.proc_species = []
         self.inert_species = []
+
+    
 
     def generate_inlet_outlet_elemental_flows(self, name_qualifier = None):
         """Generates the standard inlet and outlet elemental flows for elements in self.proc_elements"""
@@ -1298,7 +1305,7 @@ class ProcTS(ts_data):
 
     def _calc_conversion(self, inlet_carbon = None, outlet_carbon = None):
         """Calculates a conversion from the given lists of names"""
-        if inlet_carbon ==  None or outlet_carbon ==  None:
+        if inlet_carbon is None or outlet_carbon is None:
             pass #raise an error here on a problematic list
 
 
@@ -1363,8 +1370,10 @@ class ProcTS(ts_data):
 
 class GasifierProcTS(ProcTS):
     """Timeseries data for the gasification chemical process"""
-    def __init__(self, start, end, array_dict = {}, units_dict = {}):
-        ProcTS.__init__(self, start, end, array_dict, units_dict)
+    def __init__(self, start, end, data = None, units_dict = None):
+        ProcTS.__init__(self, start, end, data, units_dict)
+
+    
 
     def generate_carbon_conversions(self, inlet_qualifier = "", qualifier = ""):
         """This calculates the four "standard" conversions/yields that we look for in the biomass gasification on an instantaneous basis"""
@@ -1394,7 +1403,7 @@ class GasifierProcTS(ProcTS):
             self.filter_vals('X_tot%s' % qualifier, 1.00, 'high')
             self.filter_vals('X_tot%s' % qualifier, 0.00, 'low')
 
-        except df.NoColumnError:
+        except KeyError:
             raise ConversionError, "The necessary columns to calculate CO yield have not been generated yet."
 
     def generate_normalized_compositions(self, name_qualifier = ""):
