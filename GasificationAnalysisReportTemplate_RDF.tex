@@ -1,0 +1,139 @@
+\documentclass[11pt]{article}
+\usepackage{caption}
+\usepackage{anysize}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+%\usepackage{media9}
+\usepackage{subcaption}
+\usepackage{color}
+
+\marginsize{1in}{1in}{.5in}{.5in}
+\pagestyle{fancy}
+\rhead{\today}
+\lhead{\includegraphics[height=2.0cm]{./logo.jpg}}
+\rfoot{\thepage}
+\cfoot{}
+\renewcommand{\headrulewidth}{0pt} %removes line from fancy header
+\renewcommand{\thispagestyle}[1]{} %placers header and footer on first page 
+\date{}
+\title{Gasification Analysis Report\\Run ID run-id \vspace{-6ex}}
+
+\begin{document}
+\maketitle
+
+\section*{Run Setpoints and Process Values}
+\vspace{-2ex}
+
+\begin{table}[hb]
+\centering
+\begin{tabular}{r l c c c c}
+	Process Variable		& Units							& Setpoint					&Average						& St Dev					& \% St Dev						\\
+\hline 	Biomass Feed Rate 		& biomass-feedrate-units 				& biomass-rate				& biomass-feedrate-avg			& biomass-feedrate-std		& biomass-feedrate-pstd			\\
+        Steam Flow Rate			& steamflowrate-units					& steamflowrate				& steamflowrate-avg			& steamflowrate-std		& steamflowrate-pstd			\\
+	Entrainment Gas Rate		& entrainment-units					& entrainment				& entrainment-avg			& entrainment-std		&entrainment-pstd			\\
+	Zone 1 Temp			& zone1temp-units					& zone1temp				& zone1temp-avg				& zone1temp-std			& zone1temp-pstd			\\
+	Zone 2 Temp			& zone2temp-units					& zone2temp				& zone2temp-avg				& zone2temp-std			& zone2temp-pstd			\\
+	Zone 3 Temp			& zone3temp-units					& zone3temp				& zone3temp-avg				& zone3temp-std			& zone3temp-pstd			\\
+        Steam Temp			& steamtemp-units					& steamtemp				& steamtemp-avg				& steamtemp-std			& steamtemp-pstd			\\
+	Pressure			& pressure-units					& pressure				& pressure-avg				& pressure-std			& pressure-pstd				
+	
+	
+\end{tabular}
+\end{table}
+
+\vspace{-4ex}
+\section*{Normalized Average Product Gas Composition}
+\vspace{-4ex}
+
+\begin{table}[h]
+\begin{minipage}[th]{0.5\linewidth}
+\centering
+\begin{tabular}{r l c c}
+	Species		& Units				& Average				& St Dev				\\
+\hline 	Carbon Monoxide	& CO-normalized-units		& CO-normalized-avg		& CO-normalized-std		\\
+	Carbon Dioxide	& CO2-normalized-units		& CO2-normalized-avg		& CO2-normalized-std		\\
+	Methane		& CH4-normalized-units		& CH4-normalized-avg		& CH4-normalized-std		\\
+	Hydrogen		& H2-normalized-units		& H2-normalized-avg		& H2-normalized-std		\\
+	Ethane		& C2H6-normalized-units		& C2H6-normalized-avg		& C2H6-normalized-std		\\
+	Ethylene		& C2H4-normalized-units		& C2H4-normalized-avg		& C2H4-normalized-std		\\
+	Propane		& C3H8-normalized-units		& C3H8-normalized-avg		& C3H8-normalized-std		\\
+	Propylene		& C3H6-normalized-units		& C3H6-normalized-avg		& C3H6-normalized-std		\\
+	
+\end{tabular}
+\end{minipage}
+\begin{minipage}[bh]{0.5\linewidth}
+\includegraphics[width=3in]{piegas}
+\end{minipage}
+\end{table}
+
+
+\section*{Process}
+
+
+\begin{table}[hb]
+\centering
+\begin{tabular}{r l c c c}
+	Process Variable	& Units			& Average Value			& Std Dev		& \% Std Dev \\
+\hline
+	Tube Skin Temp 1	& tube-temp-1-units	& tube-temp-1-avg		& tube-temp-1-std	& tube-temp-1-pstd \\
+	Tube Skin Temp 2	& tube-temp-2-units	& tube-temp-2-avg		& tube-temp-2-std	& tube-temp-2-pstd \\
+	Tube Skin Temp 3	& tube-temp-3-units	& tube-temp-3-avg		& tube-temp-3-std	& tube-temp-3-pstd \\
+	Tube Skin Temp 4	& tube-temp-4-units	& tube-temp-4-avg		& tube-temp-4-std	& tube-temp-4-pstd \\
+	Tube Skin Temp 5	& tube-temp-5-units	& tube-temp-5-avg		& tube-temp-5-std	& tube-temp-5-pstd \\
+	Outlet Temp		& producttemp-units	& producttemp-avg		& producttemp-std	& producttemp-pstd 
+\end{tabular}
+\end{table}
+\vspace{-2ex}
+
+\section*{Performance}
+
+\begin{table}[hb]
+\centering
+\begin{tabular}{r l c c c}
+	Calculated Variable	& Units		& Calculated Value		& Std Dev		& \% Std Dev	\\
+\hline 	Total Conversion	& \%			& X-tot-avg			& X-tot-std		& X-tot-pstd		\\
+	Std Conversion	& \%			& X-std-avg			& X-std-std		& X-std-pstd		\\
+	Good Conversion	& \%			& X-good-avg		& X-good-std		& X-good-pstd	\\
+\end{tabular}
+\end{table}
+
+\newpage
+
+\vspace{-4ex}
+\section*{Feedstock Information}
+\vspace{-2ex}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{c c c c c c c}
+	C \%wt$_{d}$	& H \%w$_{d}$	& N \%wt$_{d}$	& Moisture \%wt$_{w}$		\\
+\hline 	C-pct			& H-pct			& N-pct			& biomass-moisture		\\
+\end{tabular}
+\end{table}
+
+
+\section*{Picking Steady State}
+
+A steady state period for which to perform analysis on was chosen manually by selecting a segment of the run where biomass feed rate is near the setpoint, variation in feed rate is minimal and the CO reading from the mass spectrometer is level.
+
+Run Start Time: timestamp-start 
+
+Run End Time: timestamp-end  
+
+Analysis Start Time: ss-start 
+
+Analysis End Time: ss-end 
+
+\centering
+\clearpage
+timeseriesplots 
+\clearpage
+\newpage
+
+fourplots 
+\clearpage
+\newpage
+
+controlplots 
+\clearpage
+\end{document}
