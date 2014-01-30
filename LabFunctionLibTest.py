@@ -18,8 +18,13 @@ import dataFrame_v2 as df
 import Cantera as ct
 import scipy as sp
 import random
+import getpass
+
+user = raw_input('User: ')
+pswd = getpass.getpass()
 
 class LoadDataTests(unittest.TestCase):
+
     timestamp = np.ndarray(0, dtype = 'object')
     timestamp = np.append(timestamp, datetime.datetime(1981,7,6,13,13,12))
     timestamp = np.append(timestamp, datetime.datetime(1981,7,6,13,13,13))
@@ -252,7 +257,7 @@ class LoadDataTests(unittest.TestCase):
     
 #    def testDataLoadCorrect(self):
 #        """Test whether all the data is loaded correctly and no extraneous data exists"""
-#        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
+#        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
 #        interface.connect()
 #        q = db.use_Query("gas_unit_test")
 #        interface.query(q)
@@ -273,20 +278,20 @@ class LoadDataTests(unittest.TestCase):
 
     def testUnconnectedInterface(self):
         """An unconnected interface should raise an error"""
-        interface = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
     def testNoDatabaseSelected(self):
         """An interface with no selected database should raise an error:"""
-        interface = db.db_interface(host = "192.168.13.15", user = "chris", passwd = "udflyer87")
+        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
         interface.connect()
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
 #    def testDataIsTimeseries(self):
 #        """The data should have a timestamp column (actually be timeseries data)"""
-#        interface = db.db_interface(host = "192.168.10.20", user = "ryon", passwd = "3lectron*")
+#        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
 #        interface.connect()
 #        q = db.use_Query("gas_unit_test")
 #        interface.query(q)
@@ -1133,8 +1138,7 @@ class ProcessObjectTests(unittest.TestCase):
         outlets = [outlet1, outlet2, outlet3]
         
         self.test_ProcessObject = lfl.ProcessObject(inlets, outlets)
-        
-                                
+                                       
     def testInletEnthalpy(self):
         inlet_enth = self.test_ProcessObject.totalInletEnthalpy('J/s')
         hand1_enth = self.ct_inlet1.enthalpy_mole()/1000
@@ -1216,7 +1220,22 @@ class MixerTests(unittest.TestCase):
         
         hand_temperature = 394 #K.  Found using solver in Excel.
         
-        self.assertAlmostEqual(mix.outlets[0].temperature[0], hand_temperature, 0)
+    def testOutletTemperatureArray(self):
+        """Outlet temperature must be correctly calculated for the mixer object."""
+        inlet1 = lfl.Stream('inlet1', temperature = (np.array([300, 300, 300]), 'K'), pressure = (np.array([50, 50, 50]), 'psig'), \
+                            composition = {'CO2':1}, flowrate = (np.array([1, 1, 1]), 'mol/s'), basis = 'molar')
+        
+        inlet2 = lfl.Stream('inlet2', temperature = (np.array([500, 500, 500]), 'K'), pressure = (np.array([50, 50, 50]), 'psig'), \
+                            composition = {'H2O':1}, flowrate = (np.array([18.02, 18.02, 18.02]) , 'g/s'), basis = 'mass')
+        
+        inlets = [inlet1, inlet2]
+        mix = lfl.Mixer('mix', inlets = inlets)
+        
+        hand_temperature = np.array([394, 394, 394]) #K.  Found using solver in Excel.
+
+        
+        self.assertTrue((np.round(mix.outlets[0].temperature[0],0)==np.round(hand_temperature,0)).all())
+#        self.assertAlmostEqual(mix.outlets[0].temperature[0], hand_temperature, 0)
         
     def testOutletPressure(self):
         inlet1 = lfl.Stream('inlet1', temperature = (300, 'K'), pressure = (50, 'psig'), \
@@ -1256,14 +1275,39 @@ class SpaceTimeTests(unittest.TestCase):
         total_flow = total_flow*0.0821*298/((50+14.7)/14.7) # L/s
         hand_st = np.array([5.6638,5.6803,5.7035,5.6737,5.6376])
         
-        space_time = gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        space_time = gts['space_time']
         
         self.assertTrue((np.round(hand_st,2)==np.round(space_time,2)).all())
         
+    def testSpaceTimeWithMassBasis(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = gts.val_units('PT_101'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        steam = lfl.Stream('steam', flowrate = (gts.val_units('FE_101')[0],'g/min'), composition = {'H2O':1.00}, basis = 'mass', temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
 
 
-        #!!!#This needs to have cases where streams have a mass basis to start (e.g. steam), and/or where they include biomass
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3, steam] 
+        reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
 
+        # Hand calculate residence time...
+
+        hand_vol = 1.5*1.5*np.pi/4*24*0.0163871 #Convert to liters
+        hand_mole_steam = steam.flowrate[0]/18.02
+        total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*0.04139 + hand_mole_steam #moles/min
+        total_flow = total_flow*0.0821*298/((50+14.7)/14.7) # L/s
+        hand_st = np.array([0.6270,0.6236,0.6299,0.6277,0.6238]) #Calculated in Excel.  Checked with Chris' hand calcs above in testSpaceTime.
+        
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        space_time = gts['space_time']
+
+        self.assertTrue((np.round(hand_st,3)==np.round(space_time,3)).all())
+        
 if __name__ == "__main__":
     
     unittest.main()

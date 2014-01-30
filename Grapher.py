@@ -1,6 +1,7 @@
 import LabFunctionLib as lfl
 import numpy as np
 import db_toolbox as SQL
+import db_toolbox as db
 import datetime
 
 import pygtk
@@ -15,8 +16,12 @@ class Lab_Gasifier_GUI:
     def generate_dataFrame(self):
         start = self.startentry.get_text()
         end=self.endentry.get_text()
-        dbconn=SQL.db_interface(host='io', user='jmp_user', passwd='jmpyourface')
+        
+        dbconn = db.db_interface(host = "192.168.13.51", user = "dbmaint", passwd = "f9p2#nH1")
         dbconn.connect()
+        q = db.use_Query("lab_run_db")
+        dbconn.query(q)
+        
         dtstart=datetime.datetime.strptime(start, '%Y-%m-%d %H:%M:%S')
         dtend=datetime.datetime.strptime(end, '%Y-%m-%d %H:%M:%S')
         df=lfl.ts_data(dtstart, dtend)

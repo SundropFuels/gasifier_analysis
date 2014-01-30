@@ -14,18 +14,18 @@ import subprocess
 import statsmodels.tsa.arima_model as ARIMA
 import dataFrame_v2 as df
 from plots_toolbox import *
-
+import getpass
 
 class GasifierReport:
     """The basic data analysis class for gasifier experiments"""
 
-    def __init__(self, run_id, run_information = None):
+    def __init__(self, run_id, user, password, run_information = None):
         #Create the gasifier data frame, and load the data from the SQL database (this will be automated through the interface later)
-        self.interface_raw = db.db_interface(host = "192.168.13.51", user = "dbmaint", passwd = "f9p2#nH1")
+        self.interface_raw = db.db_interface(host = "192.168.13.51", user = user, passwd = password)
         self.interface_raw.connect()
         q = db.use_Query("lab_run_db")
         self.interface_raw.query(q)
-        self.interface_proc = db.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
+        self.interface_proc = db.db_interface(host = "192.168.13.51", user = user, passwd = password)
         self.interface_proc.connect()
         q = db.use_Query("lab_proc_db")
         self.interface_proc.query(q)
@@ -107,10 +107,10 @@ class GasifierReport:
         ARIMA_captions = {'mass_flow_brush_feeder':'biomass flow rate','temp_steam_reactor_entry':'reactor inlet steam temperature'}        
 
         cp_plots = {}
-        cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS', 'mass_feed_ARIMA','temp_steam_ARIMA']
-        cp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS']
+        cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS', 'X_tot', 'mass_feed_ARIMA','temp_steam_ARIMA']
+        cp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS', 'X_tot']
         cp_caption = []
-        items = ['biomass flow rate', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)']
+        items = ['biomass flow rate', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)', 'total conversion']
         for col in ARIMA_list:
             cp_keys.append('%s_ARIMA' % col)
             cp_Y.append('%s_ARIMA_resid' % col)
@@ -118,9 +118,6 @@ class GasifierReport:
         for item in items:
             cp_caption.append("Individuals control chart for %s ARIMA(1,1) residuals" % item)
         
-            
-
-
         LaTeX_cp = ""
         for key, Y, caption in zip(cp_keys, cp_Y, cp_caption):
             input_df = ControlChartfromDataframe(data = self.ss, y_col = Y, x_col = 'timestamp', ignore_nan = True)
@@ -136,13 +133,7 @@ class GasifierReport:
         self.run_info.info['fourplots'] = LaTeX_fp
         self.run_info.info['controlplots'] = LaTeX_cp
            
-        
-       
-
-        
         self.generate_standard_report()
-        
-        
         
     def _create_file_structure(self):
         self.directory='rpt/%s/' % str(self.run_info.info['run_id'])
@@ -303,6 +294,9 @@ if __name__ == '__main__':
     parser.add_argument('--file',type=str,action = 'store')
     args = parser.parse_args()
 
+    user = raw_input('User: ')
+    pswd = getpass.getpass()
+        
     if args.run_id is not None:
         run_id_list = [args.run_id]
 
@@ -319,8 +313,11 @@ if __name__ == '__main__':
            
     for run_id in run_id_list:
         print "Generating a Report for Run %s..." % run_id
-        report = GasifierReport(run_id = run_id)
+
+        report = GasifierReport(run_id = run_id, user = user, password = pswd)
+        #try: 
         #except: print "Report Generation Failed for Run %s" %run_id
+
 
 
 

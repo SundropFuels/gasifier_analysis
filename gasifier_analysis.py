@@ -7,26 +7,25 @@ import db_toolbox as db
 import Thermo
 import argparse
 import csv
+import getpass
 
 class GasifierDataAnalysis:
     """The basic data analysis class for gasifier experiments"""
 
-    def __init__(self, run_id, run_information = None):
+    def __init__(self, run_id, user, password, run_information = None):
         #Create the gasifier data frame, and load the data from the SQL database (this will be automated through the interface later)
-        self.interface_raw = db.db_interface(host = "192.168.13.51", user = "dbmaint", passwd = "f9p2#nH1")
+               
+        self.interface_raw = db.db_interface(host = "192.168.13.51", user = user, passwd = password)
         self.interface_raw.connect()
         q = db.use_Query("lab_run_db")
         self.interface_raw.query(q)
 
-        self.interface_proc = db.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
+        self.interface_proc = db.db_interface(host = "192.168.13.51", user = user, passwd = password)
         self.interface_proc.connect()
         q = db.use_Query("lab_proc_db")
         self.interface_proc.query(q)
 
-
         self.run_id = run_id
-
-        
 
         self.run_info = RunInformation()
         #self.run_info.info = run_information
@@ -34,24 +33,20 @@ class GasifierDataAnalysis:
         self._load_timeseries_data()
         self._setup_standard_streams()
         
-
     def _load_run_info(self):
 
-        
         #see if we can get a complete view from this
         self.run_info.SQL_load(self.interface_proc, table = 'gas_run_info_tbl', run_id = self.run_id)
         #set up the tube size
         if self.run_info.info['tube_dia'] == 2.0:
             self.reactor_size = (24.0*1.5*1.5*np.pi/4, 'in^3')
         elif self.run_info.info['tube_dia'] == 1.5:
-
             self.reactor_size = (24.0*1.0*1.0*np.pi/4, 'in^3')
-
+        elif self.run_info.info['tube_dia'] == 2.5:
+            self.reactor_size = (24.0*2.0*2.0*np.pi/4, 'in^3')
         else:
             self.reactor_size = (None, None)
         
-        
-
         #WILL NEED TO DO THE APPROPRIATE GLOSSARY SWITCHES OR JUST RENAME THINGS IN RUN_INFO TO THE RIGHT STUFF
 
     def _load_timeseries_data(self):
@@ -81,8 +76,7 @@ class GasifierDataAnalysis:
         if self.gts['entrainment_gas_type'][0] == 0:
             e_type = "N2"
         elif self.gts['entrainment_gas_type'][0] == 1:
-            e_type = "CO2"
-        
+            e_type = "CO2"       
 
         if self.run_info.info['downbed_gas_type'] == 0:
             db_type = "N2"
@@ -90,16 +84,12 @@ class GasifierDataAnalysis:
             db_type = "CO2"
         else:
             db_type = "CO2"
-
-
-        """
+       
         if self.gts['makeup_gas_type'][0] == 0:
             m_type = "N2"
         elif self.gts['makeup_gas_type'][0] == 1:
             m_type = "CO2"
-        """
-        m_type = "CO2"
-        ###this is a problem!!!!###
+
         cross_brush_feed = Stream('cross_brush_feed', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {e_type:1.0}, basis = "std_gas_volume")
         if self.run_info.info['downbed_flow_rate'] < 0.01:
             down_bed_feed = Stream('down_bed_feed', flowrate = (self.gts['mass_flow_down_brush']*0.0,'L/min'), composition = {db_type:1.0}, basis = "std_gas_volume")
@@ -114,7 +104,6 @@ class GasifierDataAnalysis:
         argon_tracer_feed = Stream('argon_tracer', flowrate = self.gts.val_units('mass_flow_argon_tracer'), composition = {'Ar':1.0}, basis = "std_gas_volume")
         methane_gas_feed = Stream('methane_feed', flowrate = self.gts.val_units('mass_flow_methane'),composition = {'CH4':1.00}, basis = "std_gas_volume")
         
-
         #Convert steam to mass flow 
         self.gts.convert_col_units('setpoint_steam_HPLC_pump', 'mL/hr')
         self.gts['steam_flow'] = self.gts['setpoint_steam_HPLC_pump']
@@ -208,8 +197,11 @@ class GasifierDataAnalysis:
         biomass_breakdown['biomass'] = {}
         for item in ['c', 'h', 'n']:
             biomass_breakdown['biomass'][item.upper()] = self.run_info['w_%s' % item]/100.0
-        biomass_breakdown['biomass']['O'] = 1 - sum(biomass_breakdown['biomass'].values())
         
+        #Added following row to set carbon % as constant value.  Removed 'c' from above for loop
+        biomass_breakdown['biomass']['C'] = 0.5437
+        #End additional row
+        biomass_breakdown['biomass']['O'] = 1 - sum(biomass_breakdown['biomass'].values())
         biomass_feed.special_species = biomass_breakdown
         
         
@@ -223,9 +215,8 @@ class GasifierDataAnalysis:
         #2. Calculate carbon conversions
         self.gts.generate_carbon_conversions()
         
-
         #3. Calculate changes in enthalpy and entropy
-        self.gts.generate_enthalpy_change(self, 'kW')
+        self.gts.generate_enthalpy_change('kW')
         #self.gts.generate_entropy_change(self, 'kW/K')
 
         #4. Normalize the compositions
@@ -248,7 +239,6 @@ class GasifierDataAnalysis:
         #8. Calculate uncertainties
         ####NOT IMPLEMENTED YET
        
-
     def generate_output_file(self, filename):
         """Writes a csv file to filename from the timeseries data"""
         #Meta-data first
@@ -266,10 +256,7 @@ class GasifierDataAnalysis:
         self.gts.write_csv(filename, mode = 'append')
 
     def upload_to_database(self):
-        
-        
 
-        
         #upload the time series data
         
         self.gts.SQL_db_upload(self.interface_proc, table = "gas_proc_data_tbl")
@@ -278,9 +265,6 @@ class GasifierDataAnalysis:
         #upload the integral data
         self.upload_integral_data()
 
-
-        
-        
     def upload_integral_data(self):
         #need to build the query elements
         objects = {}
@@ -293,6 +277,7 @@ class GasifierDataAnalysis:
         objects['w_c'] = str(self.run_info.info['w_c'])
         objects['N_total'] = str(self.gts.numrows())
         objects['N_MS'] = str(len(self.gts['CO_MS'][np.isfinite(self.gts['CO_MS'].astype(float))]))
+        objects['analysis_timestamp'] = datetime.datetime.strftime(datetime.datetime.today(), '%Y-%m-%d %H:%M:%S')
         for key in self.gts.avgs:
             objects['%s_avg' % key] = str(self.gts.avgs[key])
         for key in self.gts.stdevs:
@@ -323,7 +308,6 @@ class GasifierDataAnalysis:
 
         return col_list
 
-
     def generate_standard_report(self, rpt_fmt):
         #generate a standard report -- maybe given an xml format file to direct what goes into the report
         pass
@@ -339,7 +323,6 @@ def parse_list(txt):
         else:
             run_id_list.append(int(sublist))
 
-
     return run_id_list  
 
 if __name__ == '__main__':
@@ -349,6 +332,9 @@ if __name__ == '__main__':
     parser.add_argument('--file',type=str,action = 'store')
     args = parser.parse_args()
 
+    user = raw_input('User: ')
+    pswd = getpass.getpass()
+        
     if args.run_id is not None:
         run_id_list = [args.run_id]
 
@@ -359,19 +345,15 @@ if __name__ == '__main__':
         f = open(args.file)
         a = f.readline()
         a = a[:-1]
-        
+
         run_id_list = parse_list(a)
-        
 
     for run_id in run_id_list:
         print "Analyzing run %s..." % run_id
-        analyzer = GasifierDataAnalysis(run_id = run_id)
+        analyzer = GasifierDataAnalysis(run_id = run_id, user = user, password = pswd)
         #print "Data loaded"
         analyzer.calculate_standard_things()
         #print "Standard things calculated"
         #analyzer.generate_output_file('run100.csv')
         analyzer.upload_to_database()
         #print "Data uploaded to database"
-
-
-

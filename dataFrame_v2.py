@@ -246,7 +246,7 @@ class Dataframe:
                     query = SQL.update_Query(objects = row, table = table, conditions = ["timestamp = '%s'" % row['timestamp']])
                     #print query.getQuery()
                     db_interface.query(query)
-                except SQL.DBToolboxError:
+                except SQL.DBToolboxError:                    
                     raise dfException, "Whoa...can't load that into the table, brah.  Don't know why."
 
 
