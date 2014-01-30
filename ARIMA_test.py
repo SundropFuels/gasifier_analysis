@@ -10,7 +10,6 @@ import csv
 import dataFrame_v2 as df
 import statsmodels.tsa.arima_model as ARIMA
 
-
 class ARIMA_test:
     """The basic data analysis class for gasifier experiments"""
 
@@ -28,10 +27,8 @@ class ARIMA_test:
         self._load_run_info()
         self._load_timeseries_data()
         
-
     def _load_run_info(self):
 
-        
         #see if we can get a complete view from this
         self.run_info.SQL_load(self.interface_proc, table = 'gas_run_info_tbl', run_id = self.run_id)
         #set up the tube size
@@ -42,12 +39,10 @@ class ARIMA_test:
         else:
             self.reactor_size = (None, None)
 
-
     def _load_timeseries_data(self):
 
         self.gts = df.Dataframe()
         self.gts.SQL_load_data(self.interface_proc,'gas_proc_data_tbl', conditions = ["timestamp >= '%s'" % self.run_info.info['ss_start'],"timestamp < '%s'" % self.run_info.info['ss_stop']]) #This line needs to automatically load the units
-        
 
 if __name__ == "__main__":
 
