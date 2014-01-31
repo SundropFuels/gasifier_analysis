@@ -265,7 +265,7 @@ class GasifierReport:
     def fit_ARIMA(self, col, order = (1,1)):
         try:
             
-            model = ARIMA.ARMA(self.ss[col])
+            model = ARIMA.ARMA(self.ss[col].values)
             
             result = model.fit(order=order)
             self.ss['%s_ARIMA_fitted' % col] = result.fittedvalues
