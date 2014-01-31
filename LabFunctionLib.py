@@ -123,20 +123,21 @@ class ts_data(df.Dataframe):
         #Scroll forward to find the first non-nan/non-None value
         i = 0
         try:
-            while (self[y][i] ==  None or np.isnan(self[y][i])) and i < len(self):
+            
+            while i < len(self[y]) and (self[y][i] ==  None or np.isnan(self[y][i])):
                 i+= 1
-            if i ==  len(self):
+            if i ==  len(self[y]):
                 #The column was empty -- nothing to do
                 return interp_col
             begin = i
-            while i < len(self):
+            while i < len(self[y]):
                 i +=  1
-                if i ==  len(self):
+                if i ==  len(self[y]):
                     #Trailing nones/nans
                     return interp_col
                 elif self[y][i] ==  None or np.isnan(self[y][i]):
                     continue
-                elif i ==  len(self):
+                elif i ==  len(self[y]):
                     #Trailing nones/nans
                     return interp_col
                 elif i - begin ==  1:
@@ -1421,8 +1422,8 @@ class GasifierProcTS(ProcTS):
 
         outlet_vol_rate = exit_stream.flowrate[0] * 0.0224	#Nm^3/s, assuming mol/s for basis of original flowrate -- make it more general later
 
-        total_tar = np.zeros(self.nRows)
-        total_tar_incl = np.zeros(self.nRows)
+        total_tar = np.zeros(len(self.index))
+        total_tar_incl = np.zeros(len(self.index))
         #total tar mass rate
         
         for molecule in tar_list:
