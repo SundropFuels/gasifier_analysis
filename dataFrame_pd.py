@@ -196,6 +196,7 @@ class Dataframe(pd.DataFrame):
 
         for key in glossary.keys():
             if key not in self.columns:
+                print key
                 raise BadGlossaryTagError, "There is a tag in the glossary that is not in the dataframe"
             
 
@@ -231,6 +232,13 @@ class Dataframe(pd.DataFrame):
 
         ret_val = self[column].copy()
 
+
+
+
+
+
+
+
         if action == 'high':
             ret_val[ret_val>v] = np.nan
         else:
@@ -239,13 +247,21 @@ class Dataframe(pd.DataFrame):
         return ret_val
 
     ###HERE -- there are specific functions to do this within pandas, I should rely on those
+    #def replace_None_w_nan(self, column):
+    #    if column not in self.columns:
+    #        raise NoColumnError, "The specified column is not in the dataframe"
+    #    
+    #    if self[column].dtype != 'int64':
+    #        
+    #        self[column][np.equal(self[column],None)] = np.nan
     def replace_None_w_nan(self, column):
         if column not in self.columns:
             raise NoColumnError, "The specified column is not in the dataframe"
         
-        if self[column].dtype != 'int64':
+        if self[column].dtype != 'int8' and self[column].dtype != 'int16' and self[column].dtype != 'int32' and self[column].dtype != 'int64':
             
-            self[column][np.equal(self[column],None)] = np.nan
+            self[column][self[column].isnull()] = np.nan
+
 
     def replace_None_w_nan_all(self):
         for column in self.columns:
