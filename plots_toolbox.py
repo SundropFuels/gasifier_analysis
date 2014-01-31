@@ -1,5 +1,5 @@
 import numpy as np
-import dataFrame_v2 as df
+import dataFrame_pd as df
 import matplotlib.pyplot as plt
 import LabFunctionLib as lfl
 import os
@@ -393,7 +393,7 @@ class TimeSeriesPlot(nXYPlot):
             for i in item:
                 if not isinstance(i, str):
                     raise Exception, "Each item in the lists in Y_cols must be a string"
-            plot_cols.append(('timestamp',item))
+            plot_cols.append(('ts',item))
 
 
         nXYPlot.__init__(self, plot_cols = plot_cols, **kwargs)
