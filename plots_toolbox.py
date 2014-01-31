@@ -232,8 +232,8 @@ class NormalProbabilityPlot(XYPlot):
             U.append(np.power(0.5,(1/n)))
             U = np.array(U)
 
-            if len(U) != self.data.numrows():
-                fill_nans = np.ones(self.data.numrows() - len(U))
+            if len(U) != len(self.data.index):
+                fill_nans = np.ones(len(self.data.index) - len(U))
                 fill_nans.fill(np.nan)
                 U = np.append(U, fill_nans)
                 ordered = np.append(ordered, fill_nans)
@@ -276,7 +276,7 @@ class LagPlot(XYPlot):
     def _calc_lag(self, data_col):
         if self.ignore_nan:
             lag_data = self.data.finite_vals(data_col)
-            end_nans = np.ones(self.data.numrows() - len(lag_data))
+            end_nans = np.ones(len(self.data.index) - len(lag_data))
             end_nans.fill(np.nan)
             lag_data = np.append(lag_data, end_nans)
         else:
@@ -496,8 +496,8 @@ class ControlChartfromDataframe:
         else:
             working_data = self.data
         
-        grouped_data = [working_data[self.y_col][i-self.sample_size:i] for i in range(0,working_data.numrows(), self.sample_size)[1:]]
-        grouped_x = [working_data[self.x_col][i] for i in range(0, working_data.numrows(), self.sample_size)[1:]] # midpoints
+        grouped_data = [working_data[self.y_col][i-self.sample_size:i] for i in range(0,len(working_data.index), self.sample_size)[1:]]
+        grouped_x = [working_data[self.x_col][i] for i in range(0, len(working_data.index), self.sample_size)[1:]] # midpoints
         #drop the last group if it is too small -- may want to make this optional
         if len(grouped_data) > 0:
             if len(grouped_data[-1]) != self.sample_size:
@@ -535,7 +535,7 @@ class ControlChart(Plot):
         self.data = data
         self.y_label = y_label
         self.x_label = x_label
-        self.sample_size = self.data.numrows()
+        self.sample_size = len(self.data.index)
         self.chart1_UCL = None
         self.chart1_LCL = None
         self.chart1_target = None
