@@ -20,6 +20,7 @@ import element_parser as ep
 import scipy.optimize as spo
 import Cantera as ct
 import time
+import pandas as pd
 
 conv = uc.UnitConverter()
 
@@ -378,20 +379,20 @@ class Stream:
     def convert_scalar_to_vector(self, length):
         if self.mode == "scalar":
             self.mode = "vector"
-            if self.temperature is not None and not isinstance(self.temperature[0], np.ndarray):
-                self.temperature[0] = np.ones(length)*self.temperature[0]
-            if self.pressure is not None and not isinstance(self.pressure[0], np.ndarray):
-                self.pressure[0] = np.ones(length)*self.pressure[0]
+            if self.temperature is not None and not isinstance(self.temperature[0], pd.Series) and not isinstance(self.temperature[0],np.ndarray):
+                self.temperature[0] = pd.Series(np.ones(length)*self.temperature[0])
+            if self.pressure is not None and not isinstance(self.pressure[0], pd.Series) and not isinstance(self.pressure[0],np.ndarray):
+                self.pressure[0] = pd.Series(np.ones(length)*self.pressure[0])
             if self.composition is not None:
                 comp = {}
                 for k in self.composition:
-                    if not isinstance(self.composition[k], np.ndarray):
-                        self.composition[k] = np.ones(length)*self.composition[k] 
+                    if not isinstance(self.composition[k], pd.Series) and not isinstance(self.composition[0],np.ndarray):
+                        self.composition[k] = pd.Series(np.ones(length)*self.composition[k])
         
     def set_temperature(self, temperature):
         
         if temperature is not None:
-            if isinstance(temperature[0], np.ndarray):
+            if isinstance(temperature[0], pd.Series) or isinstance(temperature[0], np.ndarray):
                 if self.mode is None or self.mode == "vector":
                     if self.length is None or len(temperature[0]) == self.length:
                         self.mode = "vector"
@@ -407,7 +408,8 @@ class Stream:
                 if self.mode is None or self.mode == "scalar":
                     self.mode = "scalar"
                 elif self.mode == "vector":
-                    temperature[0] = temperature[0]*np.ones(self.length)
+                    print type(temperature[0])
+                    temperature[0] = pd.Series(temperature[0]*np.ones(self.length))
 
             self.temperature = [temperature[0], temperature[1]]
         else:
@@ -415,7 +417,7 @@ class Stream:
 
     def set_pressure(self, pressure):
         if pressure is not None:
-            if isinstance(pressure[0], np.ndarray):
+            if isinstance(pressure[0], pd.Series) or isinstance(pressure[0], np.ndarray):
                 if self.mode is None or self.mode == "vector":
                     if self.length is None or len(pressure[0]) == self.length:
                         self.mode = "vector"
@@ -430,7 +432,7 @@ class Stream:
                 if self.mode is None or self.mode == "scalar":
                     self.mode = "scalar"
                 elif self.mode == "vector":
-                    pressure[0] = pressure[0]*np.ones(self.length)
+                    pressure[0] = pd.Series(pressure[0]*np.ones(self.length))
                 
             
             self.pressure = [pressure[0], pressure[1]]
@@ -448,7 +450,7 @@ class Stream:
                 raise Exception, "The composition must be provided as a {species:fraction} dictionary"
 
             #mode checking
-            if isinstance(composition[composition.keys()[0]], np.ndarray):
+            if isinstance(composition[composition.keys()[0]], pd.Series) or isinstance(composition[composition.keys()[0]], np.ndarray):
                 if self.mode is None or self.mode == "vector":
                     self.mode = "vector"
                 elif self.mode == "scalar":
@@ -459,7 +461,7 @@ class Stream:
                 if self.mode == "vector":
                     #convert the composition to a vector to allow for simple scalar assignment
                     for k in composition:
-                        composition[k] = composition[k]*np.ones(self.length)
+                        composition[k] = pd.Series(composition[k]*np.ones(self.length))
                 elif self.mode is None or self.mode == "scalar":
                     self.mode = "scalar"
                 else:
@@ -1069,7 +1071,7 @@ class Mixer(ProcessObject):
         mode = None
         for inlet in self.inlets:
             
-            if isinstance(inlet.flowrate[0], np.ndarray):
+            if isinstance(inlet.flowrate[0], pd.Series) or isinstance(inlet.flowrate[0], np.ndarray):
                 mode = "vector"
                 length = len(inlet.flowrate[0])
         if mode == "vector":
