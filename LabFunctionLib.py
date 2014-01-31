@@ -386,7 +386,7 @@ class Stream:
             if self.composition is not None:
                 comp = {}
                 for k in self.composition:
-                    if not isinstance(self.composition[k], pd.Series) and not isinstance(self.composition[0],np.ndarray):
+                    if not isinstance(self.composition[k], pd.Series) and not isinstance(self.composition[k],np.ndarray):
                         self.composition[k] = pd.Series(np.ones(length)*self.composition[k])
         
     def set_temperature(self, temperature):
