@@ -54,7 +54,7 @@ class db_interface:
             self.cursor.execute(myQuery.getQuery())
             result = self.cursor.fetchall()
         except MySQLdb.Error, e:
-            print "This is the error I got: %s" % e
+            #print "This is the error I got: %s" % e
             raise DBToolboxError
         
         if isinstance(myQuery, use_Query):
@@ -131,7 +131,7 @@ class set_Query(Query):
     def getQuery(self):
         try:
             self.query.extend([self['command'][0],self['variable'],self['command'][1],self['objects']])
-            print self.query
+            #print self.query
         except KeyError:
             print "Error - Missing Query Key"
         return Query.getQuery(self)   
@@ -355,7 +355,6 @@ if __name__ == '__main__':
     #Call Query
     callQuery = call_Query(procedure = 'add_duplicate_samples',objects = ['2','1','1'])
     setQuery = set_Query(variable = '@last_run_id',objects = 'last_insert_id()')
-    print selectQuery.getQuery()
-    print updateQuery.getQuery()
-    print callQuery.getQuery()
-    print setQuery.getQuery()
+    #print selectQuery.getQuery()
+    #print updateQuery.getQuery()
+    #print callQuery.getQuery()

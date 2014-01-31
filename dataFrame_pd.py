@@ -127,7 +127,7 @@ class Dataframe(pd.DataFrame):
         self.__init__(data = data, units_dict = self.units)
 
 
-    def SQL_upload_data(self, db_interface, table = "", conditions = None, index_col = "timestamp"):
+    def SQL_upload_data(self, db_interface, table = "", conditions = None, index_col = "ts"):
         """Allows the user to upload data to a MySQL database; tries an INSERT command first, then an UPDATE if an error is received"""
         if conditions is None:
             conditions = []
@@ -150,12 +150,12 @@ class Dataframe(pd.DataFrame):
                 
             try:
                 query = SQL.insert_Query(objects = row, table = table)
-                print query
+                #print query
                 db_interface.query(query)
             except SQL.DBToolboxError:
                 try:
                     query = SQL.update_Query(objects = row, table = table, conditions = ["%s = '%s'" % (index_col,row['%s' % index_col])])
-                    print query.getQuery()
+                    #print query.getQuery()
                     db_interface.query(query)
                 except SQL.DBToolboxError:
                     raise dfSQLError, "Whoa...can't load that into the table, brah.  Don't know why."
@@ -196,7 +196,7 @@ class Dataframe(pd.DataFrame):
 
         for key in glossary.keys():
             if key not in self.columns:
-                print key
+                #print key
                 raise BadGlossaryTagError, "There is a tag in the glossary that is not in the dataframe"
             
 
@@ -231,6 +231,7 @@ class Dataframe(pd.DataFrame):
             raise NoColumnError, "The specified column is not in the dataframe"
 
         ret_val = self[column].copy()
+
 
 
 

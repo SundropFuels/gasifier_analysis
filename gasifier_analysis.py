@@ -275,7 +275,7 @@ class GasifierDataAnalysis:
         objects['d90'] = str(self.run_info.info['d90'])
         objects['campaign_id'] = str(self.run_info.info['campaign_id'])
         objects['w_c'] = str(self.run_info.info['w_c'])
-        objects['N_total'] = str(self.gts.numrows())
+        objects['N_total'] = str(len(self.gts.index))
         objects['N_MS'] = str(len(self.gts['CO_MS'][np.isfinite(self.gts['CO_MS'].astype(float))]))
         objects['analysis_timestamp'] = datetime.datetime.strftime(datetime.datetime.today(), '%Y-%m-%d %H:%M:%S')
         for key in self.gts.avgs:
