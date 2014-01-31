@@ -73,7 +73,7 @@ class GasifierReport:
         for key, cols, label, caption, marker in zip(ts_keys,ts_Ycols, ts_ylabels, ts_captions, ts_markers):
             ts_plots[key] = TimeSeriesPlot(data = self.ts, Y_cols = [cols], y_labels = [label], caption = caption, save_loc = "%s%s_%s" % (self.directory, self.run_id, key), markers =[marker])
             ts_plots[key].plot()
-            ts_plots[key].fill(self.ss['timestamp'])
+            ts_plots[key].fill(self.ss['ts'])
             ts_plots[key].save()
             LaTeX_ts += ts_plots[key].LaTeX_insert("ts_%s" % key)
             ts_plots[key].close()
@@ -88,7 +88,7 @@ class GasifierReport:
         LaTeX_fp = ""
 
         for key, Y, label, caption in zip(fp_keys, fp_Y, fp_label, fp_caption):
-            fp_plots[key] = FourPlot(data = self.ss, x_label = 'Time', y_label = label, x_var = 'timestamp', y_var = Y, caption = caption,save_loc = "%s%s_%s" % (self.directory, self.run_id, key))
+            fp_plots[key] = FourPlot(data = self.ss, x_label = 'Time', y_label = label, x_var = 'ts', y_var = Y, caption = caption,save_loc = "%s%s_%s" % (self.directory, self.run_id, key))
             fp_plots[key].plot()
             fp_plots[key].save()
             LaTeX_fp += fp_plots[key].LaTeX_insert("fp_%s" % key)
@@ -120,7 +120,7 @@ class GasifierReport:
         
         LaTeX_cp = ""
         for key, Y, caption in zip(cp_keys, cp_Y, cp_caption):
-            input_df = ControlChartfromDataframe(data = self.ss, y_col = Y, x_col = 'timestamp', ignore_nan = True)
+            input_df = ControlChartfromDataframe(data = self.ss, y_col = Y, x_col = 'ts', ignore_nan = True)
             cp_plots[key] = IndividualsXBarControlChart(data = input_df.getDataframe(), caption = caption, save_loc = "%s%s_%s" % (self.directory, self.run_id, key))
             cp_plots[key].plot()
             cp_plots[key].annotate(1)
