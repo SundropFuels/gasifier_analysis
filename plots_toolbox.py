@@ -496,17 +496,22 @@ class ControlChartfromDataframe:
         else:
             working_data = self.data
         
-        grouped_data = [working_data[self.y_col][i-self.sample_size:i] for i in range(0,len(working_data.index), self.sample_size)[1:]]
-        grouped_x = [working_data[self.x_col][i] for i in range(0, len(working_data.index), self.sample_size)[1:]] # midpoints
+        grouped_data = [working_data[self.y_col][i-self.sample_size:i].values for i in range(0,len(working_data.index), self.sample_size)[1:]]
+        grouped_x = [working_data[self.x_col][i].to_datetime() for i in range(0, len(working_data.index), self.sample_size)[1:]] # midpoints
+        
         #drop the last group if it is too small -- may want to make this optional
         if len(grouped_data) > 0:
-            if len(grouped_data[-1]) != self.sample_size:
+            if len(grouped_data[-1]) != self.sample_size:   #this needs to be a while statement to pop the grouped data down to the right size
                 grouped_data.pop()
             self.output_data = df.Dataframe()
             p = 0
+            
             for group, x in zip(grouped_data,grouped_x):
+                #print type(group)
+                #print type(x)
                 self.output_data[x] = group
                 p += 1
+            
             return self.output_data
         else:
             return df.Dataframe()
@@ -595,8 +600,8 @@ class XBarControlChart(ControlChart):
         
         self.X_bar = np.array([])
         self.ord_pts = np.array([])
-        for col in self.data.cols():
-            self.X_bar = np.append(self.X_bar, self.data[col].mean())   #This is unlikely to work if there are NaN's...need to fix later
+        for col in self.data.columns:
+            self.X_bar = np.append(self.X_bar, self.data[col][self.data[col].notnull()].mean())   #This is unlikely to work if there are NaN's...need to fix later
             self.ord_pts = np.append(self.ord_pts,col)
         self.X_bar_bar = self.X_bar.mean()
 
@@ -604,10 +609,12 @@ class XBarControlChart(ControlChart):
         self._calcXBarPoints()
         self._calcControlLimits()
         try:
-            data = df.Dataframe(array_dict = {'x-bar':self.X_bar, chart2:getattr(self,chart2), 'x':self.ord_pts})
-            self.chart1_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')        
+            print self.X_bar
+            data = df.Dataframe({'x-bar':self.X_bar, chart2:getattr(self,chart2), 'x':self.ord_pts})
+            #print data
+            self.chart1_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')     
             self.chart1_plot.plot()
-        
+            
             if chart2 is not None:
                 self.chart2_plot = XYPlot(data = data, x_label = self.x_label, y_label = chart2, X_col = 'x', Y_cols = [chart2], auto_scale = True, subplot = True, subplot_num = 212, marker = 'o')
                 self.chart2_plot.plot()
@@ -631,8 +638,8 @@ class XBarControlChart(ControlChart):
                                 if getattr(self, "chart%s_UCL" % ch_num) > getattr(self, "chart%s_plot" % ch_num).y_max or getattr(self, "chart%s_plot" % ch_num).y_max is not np.nan:
                                     getattr(self, "chart%s_plot" % ch_num).rescale(ymax=getattr(self,"chart%s_UCL" % ch_num)+0.05*(getattr(self, "chart%s_UCL" % ch_num) - getattr(self, "chart%s_LCL" % ch_num)), padded = False)
 
-        except Exception:
-            print "Warning: Could not plot control chart due to empty dataframe"
+        except Exception, e:
+            print "Warning: Could not plot control chart due to empty dataframe: %s" % e
                                     
         
 
@@ -710,6 +717,7 @@ class IndividualsXBarControlChart(XBarControlChart):
 
     def _calcControlLimits(self):
         self.MR = np.array([])
+        
         for index in range(1,len(self.ord_pts)):
             self.MR = np.append(self.MR, np.abs(self.data[self.ord_pts[index]] - self.data[self.ord_pts[index-1]]))
         self.MR_bar = self.MR.mean()

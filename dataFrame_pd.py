@@ -240,6 +240,8 @@ class Dataframe(pd.DataFrame):
 
 
 
+
+
         if action == 'high':
             ret_val[ret_val>v] = np.nan
         else:
@@ -274,15 +276,15 @@ class Dataframe(pd.DataFrame):
         """Returns only the finite values -- will build on this later to add the ability to return indices as well, to allow for pairs indexed on finite only"""
         if key not in self.columns:
             raise NoColumnError, "The specified column is not in the dataframe"
-        return self[key][np.isfinite(self[key].astype(float))].values
+        return (self[key][self[key].notnull()]).values
 
     def finite_set(self, key, cols = None):
         """Returns a dataframe built up from only the finite values for key"""
         array_dict = {}
-        array_dict[key] = self[key][np.isfinite(self[key].astype(float))]
+        array_dict[key] = (self[key][self[key].notnull()]).values
         if cols is not None:
             for col in cols:
-                array_dict[col] = self[col][np.isfinite(self[key].astype(float))]
+                array_dict[col] = (self[col][self[key].notnull()]).values
         return Dataframe(data = array_dict)
 
     
