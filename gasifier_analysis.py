@@ -198,8 +198,9 @@ class GasifierDataAnalysis:
         for item in ['c', 'h', 'n']:
             biomass_breakdown['biomass'][item.upper()] = self.run_info['w_%s' % item]/100.0
         
-        #Added following row to set carbon % as constant value.  Removed 'c' from above for loop
-        biomass_breakdown['biomass']['C'] = 0.5437
+        #Following line overrides assignment for individual sample carbon content and uses bag average carbon content instead. 
+        biomass_breakdown['biomass']['C'] = self.run_info['bag_c']/100
+        
         #End additional row
         biomass_breakdown['biomass']['O'] = 1 - sum(biomass_breakdown['biomass'].values())
         biomass_feed.special_species = biomass_breakdown

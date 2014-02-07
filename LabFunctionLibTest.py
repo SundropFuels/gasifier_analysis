@@ -255,26 +255,26 @@ class LoadDataTests(unittest.TestCase):
     """
 
     
-#    def testDataLoadCorrect(self):
-#        """Test whether all the data is loaded correctly and no extraneous data exists"""
-#        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
-#        interface.connect()
-#        q = db.use_Query("gas_unit_test")
-#        interface.query(q)
-#        
-#        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
-#        ts.SQL_load(interface, table = "gas_data_test_tbl")
-#        for key in LoadDataTests.general_library.keys():
-#                for i in range(len(ts[key])):
-#                    self.assertEqual(ts[key][i], LoadDataTests.general_library[key][i])
-#        for key in ts.data.keys():
-#            self.assertIn(key,LoadDataTests.general_library.keys())
+    def testDataLoadCorrect(self):
+        """Test whether all the data is loaded correctly and no extraneous data exists"""
+        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
+        interface.connect()
+        q = db.use_Query("gas_unit_test")
+        interface.query(q)
+        
+        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
+        ts.SQL_load(interface, table = "gas_data_test_tbl")
+        for key in LoadDataTests.general_library.keys():
+                for i in range(len(ts[key])):
+                    self.assertEqual(ts[key][i], LoadDataTests.general_library[key][i])
+        for key in ts.data.keys():
+            self.assertIn(key,LoadDataTests.general_library.keys())
 
-#    def testBadInterface(self):
-#        """Test whether an interface is bad or if it is connected"""
-#        interface = ""
-#        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
-#        self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
+    def testBadInterface(self):
+        """Test whether an interface is bad or if it is connected"""
+        interface = ""
+        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
+        self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
     def testUnconnectedInterface(self):
         """An unconnected interface should raise an error"""
@@ -291,15 +291,15 @@ class LoadDataTests(unittest.TestCase):
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
 
-#    def testDataIsTimeseries(self):
-#        """The data should have a timestamp column (actually be timeseries data)"""
-#        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
-#        interface.connect()
-#        q = db.use_Query("gas_unit_test")
-#        interface.query(q)
-#        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
-#        ts.SQL_load(interface, table = "gas_data_test_tbl")
-#        self.assertIn("timestamp", ts.data.keys())
+    def testDataIsTimeseries(self):
+        """The data should have a timestamp column (actually be timeseries data)"""
+        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
+        interface.connect()
+        q = db.use_Query("gas_unit_test")
+        interface.query(q)
+        ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
+        ts.SQL_load(interface, table = "gas_data_test_tbl")
+        self.assertIn("ts", ts.data.keys())
 
 
     def testSensibleStartandEnd(self):
