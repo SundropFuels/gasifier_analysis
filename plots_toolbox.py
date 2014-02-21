@@ -3,6 +3,7 @@ import dataFrame_pd as df
 import matplotlib.pyplot as plt
 import LabFunctionLib as lfl
 import os
+import datetime as dt
 
 class Plot:
     """Abstract Data Type for a Plot...this should never be instantiated by itself"""
@@ -415,8 +416,9 @@ class TimeSeriesPlot(nXYPlot):
 
     def fill(self, times, subplot_num = 1, color = 'yellow', alpha = 0.2):
         """Fills in the space between the times in the numpy array given as times"""
+        times1 = times.values.astype(dt.datetime)
         plt.subplot(len(self.plot_cols), 1, subplot_num)
-        plt.fill_between(times,2000,-2000,facecolor=color,alpha=alpha)
+        plt.fill_between(times1,2000,-2000,facecolor=color,alpha=alpha)
 
     #Need to add fill function and latex interface functions, if necessary
 
