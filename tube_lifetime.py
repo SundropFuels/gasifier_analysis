@@ -1,73 +1,65 @@
-import dataFrame_v2 as df
-import datetime
-import numpy as np
-import matplotlib.pyplot as plt
-import db_toolbox as db
+import MySQLdb as db
 import argparse
+import getpass
+import pandas as pd
+import datetime
 
-class TubeHistoryReport:
 
-    def __init__(self, start, stop):
-        #Create the gasifier data frame, and load the data from the SQL database
-        self.start=start
-        self.stop=stop
-        self.interface_proc = db.db_interface(host = "192.168.10.20", user = "chris", passwd = "cmp87ud01")
-        self.interface_proc.connect()
-        q = db.use_Query("lab_proc_db")
-        self.interface_proc.query(q)
-        self._load_dataframe()
-        self.tubehistorysummary()
-        self.write_csv()
+class TubeLifetimeReport:
+    """The basic data analysis class for gasifier experiments"""
 
-    def _load_dataframe(self):
-        self.data=df.Dataframe()
-        self.data.SQL_load_data(self.interface_proc, "gas_run_info_tbl", ["ts_start >= '%s' and ts_start < '%s'" %(self.start,self.stop)])
-        self.data['hours']=np.array([i.seconds/3600. for i in (self.data['ts_stop']-self.data['ts_start'])])
-
-    def tubehistorysummary(self):
-        temperatures=np.unique(self.data['tic510_sp'])
-        feedrates=np.unique(self.data['biomass_rate'])
-        self.summary=[]
-        for temp in temperatures:
-            for fr in feedrates:
-                time=0
-                for run in range(len(self.data['run_id'])):
-                    if self.data['tic510_sp'][run]==temp and self.data['biomass_rate'][run]==fr:
-                        time+=self.data['hours'][run]
-                self.summary.append({'temperature':temp, 'biomass feedrate':fr, 'hours':time})
-        print 'Tube run history for %s through %s' %(self.start, self.stop)
-        print 'Temperature\tBiomass Feedrate\tHours'
-        for i in range(len(self.summary)):
-            if self.summary[i]['hours']>0:
-                print self.summary[i]['temperature'], '\t\t', self.summary[i]['biomass feedrate'], '\t\t\t', self.summary[i]['hours']
-                
-    def write_csv(self):
-        with open('tube_history.csv','a') as f:
-            f.write('Tube run history for %s through %s\n' %(self.start, self.stop))
-            f.write('Temperature,Biomass Feedrate,Hours\n')
-            for i in range(len(self.summary)):
-                if self.summary[i]['hours']>0:
-                    f.write(str(self.summary[i]['temperature'])+',')
-                    f.write(str(self.summary[i]['biomass feedrate'])+',')
-                    f.write(str(self.summary[i]['hours'])+'\n')
-            f.write('\n')
-                
+    def __init__(self, user, password):
         
-                                    
-                    
-if __name__=='__main__':
-    parser = argparse.ArgumentParser(description = "Run a gasifier analysis")
-    parser.add_argument('--start', type=str, action = 'store')
-    parser.add_argument('--stop',type=str, action ='store')
-    args = parser.parse_args()
+        tube_removal_dates = (
+                    datetime.datetime(*(2012,1,1)),
+                    datetime.datetime(*(2012,4,19)),
+                    datetime.datetime(*(2012,5,25)),
+                    datetime.datetime(*(2012,7,19)),
+                    datetime.datetime(*(2012,8,22)),
+                    datetime.datetime(*(2012,9,18)),
+                    datetime.datetime(*(2012,11,13)),
+                    datetime.datetime(*(2012,11,14)),
+                    datetime.datetime(*(2013,1,17)),
+                    datetime.datetime(*(2013,1,25)),
+                    datetime.datetime(*(2013,2,14)),
+                    datetime.datetime(*(2013,3,21)),
+                    datetime.datetime(*(2013,3,27)),
+                    datetime.datetime(*(2013,5,30)),
+                    datetime.datetime(*(2013,6,3)),
+                    datetime.datetime(*(2013,8,2)),
+                    datetime.datetime(*(2014,2,4)),
+                    datetime.datetime(*(2014,2,20)),
+                    datetime.datetime.today()
+                    )
+                           
+        conn = db.connect(user = user, host = '192.168.13.51', passwd = password, db = "lab_run_db")
+        report = pd.DataFrame(columns = ['Start', 'End', 'Minutes Hot', 'Minutes Hot with Biomass', 'Minutes Hot with Steam', 'Minutes Hot with Biomass and Steam'])
+        for i in range(len(tube_removal_dates)-1):
+            start = datetime.datetime.strftime(tube_removal_dates[i], "%Y-%m-%d %H:%M:%S")
+            end = datetime.datetime.strftime(tube_removal_dates[i+1], "%Y-%m-%d %H:%M:%S")
+            print "This could take a minute..."
+            print "Investigating tube life from %s to %s\n" %(start, end)
+            df = pd.io.sql.read_frame("SELECT ts, TI_510, fr_q, MF_201, FT_310_SP FROM lv_data_gas_tbl \
+                                                WHERE ts BETWEEN '%s' AND '%s' \
+                                                AND TI_510>800 AND TI_510<1600 \
+                                                AND ts LIKE '%%:00'" %(start, end), conn)
+            
+            d = pd.Series({'Start':start,
+                 'End':end,
+                 'Minutes Hot':len(df.index), 
+                 'Minutes Hot with Biomass':len(df.query('(fr_q>0.3 & fr_q<10) | (MF_201>0.3 & MF_201<10)').index), 
+                 'Minutes Hot with Steam':len(df.query('(FT_310_SP>1)').index), 
+                 'Minutes Hot with Biomass and Steam':len(df.query('((fr_q>0.3 & fr_q<10) | (MF_201>0.3 & MF_201<10)) & (FT_310_SP>1)').index)})
+            report.loc[i+1] = d    
+            
+        report.to_csv('tube_lifetime.csv')
+        conn.close()
+if __name__ == '__main__':
 
-    if args.start is not None:
-        start = args.start
-        
-    if args.stop is not None:
-        stop = args.stop
-
-    #start='2012-12-10 00:00'
-    #stop='2013-02-28 00:00'
-    tubehistory=TubeHistoryReport(start,stop)
+    user = raw_input('User: ')
+    pswd = getpass.getpass()
+    
+    print "Beginning tube lifetime log.\n"
+    
+    tlr = TubeLifetimeReport(user, pswd)
     
