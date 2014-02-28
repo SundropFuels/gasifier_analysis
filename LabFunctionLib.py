@@ -1465,7 +1465,8 @@ class GasifierProcTS(ProcTS):
         #mix.recalc()
 
 
-
+        self['mixing_temp'] = mix.outlets[0].temperature[0]
+        self.units['mixing_temp'] = 'K'
         
         V_dot = mix.outlets[0].gas_volumetric_flowrate('m^3/s')
      
