@@ -1,0 +1,5 @@
+#Files related to report output
+*.pdf
+*.aux
+*.log
+*_report.tex
