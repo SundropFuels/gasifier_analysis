@@ -4,7 +4,7 @@ DROP TABLE IF EXISTS gas_proc_data_tbl;
 
 CREATE TABLE gas_proc_data_tbl
 (
-timestamp datetime PRIMARY KEY,
+ts datetime PRIMARY KEY,
 counter int,
 space_time float,
 mass_flow_brush_feeder float,

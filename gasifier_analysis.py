@@ -350,10 +350,14 @@ if __name__ == '__main__':
 
     for run_id in run_id_list:
         print "Analyzing run %s..." % run_id
-        analyzer = GasifierDataAnalysis(run_id = run_id, user = user, password = pswd)
-        #print "Data loaded"
-        analyzer.calculate_standard_things()
-        #print "Standard things calculated"
-        #analyzer.generate_output_file('run100.csv')
-        analyzer.upload_to_database()
+        try:
+            analyzer = GasifierDataAnalysis(run_id = run_id, user = user, password = pswd)
+            #print "Data loaded"
+            analyzer.calculate_standard_things()
+            #print "Standard things calculated"
+            #analyzer.generate_output_file('run100.csv')
+            analyzer.upload_to_database()
+        except Exception, e:
+            print "Had a problem: %s" % e
+            pass
         #print "Data uploaded to database"

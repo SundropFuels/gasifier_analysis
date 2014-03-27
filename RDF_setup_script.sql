@@ -331,7 +331,7 @@ DROP TABLE IF EXISTS RDF_integral_tbl;
 
 CREATE TABLE RDF_integral_tbl
 (
-run_id VARCHAR(10),
+run_id VARCHAR(10) PRIMARY_KEY,
 space_time_avg float,
 space_time_std float,
 pp_CO2_avg float,
