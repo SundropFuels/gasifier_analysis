@@ -28,28 +28,38 @@ class eq_set:
         self.points[point[0]]=point[1]
 
 
-    def contains(self, point, method = "reldiff", tol=0.1):
+    def contains(self, point, method = "reldiff", rtol=0.1, atol=0.1):
         if not isinstance(point, tuple):
             raise TypeError, "The data point needs to be a tuple"
+        if self.label != 0:
+            tol = rtol
+        else:
+            tol = atol
         return getattr(self, "_%s" % method)(point[1]) < tol
 
     def _reldiff(self, val):
+        #print self.label
         if self.label != 0:
-            return (val - self.label)/self.label
-        else: return 0
+            return abs((val - self.label))/self.label
+        else:
+            return abs(val - self.label)
 
     def output(self):
         print "Equivalence set: %s" % self.label
         for key in self.points:
             print "%s:\t%s" % (key, self.points[key])
 
+    def keys(self):
+        return self.points.keys()
+
 class partitionDataframe(df.Dataframe):
 
     def __init__(self, **kwargs):
         df.Dataframe.__init__(self, **kwargs)
         self.partition_tolerance = 0.1
+        self.partition_tolerance_abs = 0.1
 
-    def partition(self, cols):
+    def partition(self, cols, id_col):
         if not isinstance(cols, list):
             raise TypeError, "The list of columns to partition on must be a list object" ##!!FINISH 
 
@@ -58,13 +68,13 @@ class partitionDataframe(df.Dataframe):
         for col in cols:
             i = 1
             #Need to walk the data and determine which equivalence set each piece belongs to
-            eq_sets[col] = [eq_set(base_set = (self.index[0], self[col][0]))]
+            eq_sets[col] = [eq_set(base_set = (self[id_col][0], self[col][0]))]
             while i < len(self.index):
                 #check if the next point is in the existing list of equivalence sets -- stop when you find one
                 found = False
                 for es in eq_sets[col]:
-                    point = (self.index[i], self[col][i])
-                    if es.contains(point):
+                    point = (self[id_col][i], self[col][i])
+                    if es.contains(point, rtol = self.partition_tolerance, atol = self.partition_tolerance_abs):
                         found = True
                         es.extend(point)
                         break	#quit early -- we found the right enclosing set
@@ -103,6 +113,17 @@ class partitionDataframe(df.Dataframe):
                     new_lists.append(new_list)
         return new_lists
 
+    def find_unique_sets(self, cols, id_col):
+        self.partition(cols, id_col)
+        #Create the list of lists
+        l = []
+        for col in self.eq_sets:
+            li = []
+            for es in self.eq_sets[col]:
+                li.append(es.keys())
+            l.append(li)
+        return self.unique_set(l)
+
 class EquivalentSetFinder:
 
     def __init__(self, user, password):
@@ -115,15 +136,18 @@ class EquivalentSetFinder:
         self.runs = partitionDataframe()
         self.runs.SQL_load_data(self.interface, table = 'gas_integral_tbl')
 
-        #print self.runs.index
-        #print self.runs.columns
-
+        
     def find_unique_sets(self, cols):
         #create the partition of the data frame
-        self.runs.partition(cols)
-        for es in self.runs.eq_sets.values():
-            es[0].output()
-            
+        self.unique = self.runs.find_unique_sets(cols, "run_id")
+        #for es in self.runs.eq_sets.values():
+        #    print es
+        #    for i in range(0,len(es)):
+        #        es[i].output()
+        #build the list of lists
+        for un in self.unique:
+            print un
+           
             
 
         
@@ -134,5 +158,5 @@ if __name__ == "__main__":
     user = raw_input('User: ')
     pswd = getpass.getpass()
 
-    finder = EquivalentSetFinder("chris", "$dH0sv69")
-    finder.find_unique_sets(cols = ["space_time_avg","mass_flow_brush_feeder_avg"])
+    finder = EquivalentSetFinder(user, pswd)
+    finder.find_unique_sets(cols = ["space_time_avg","temp_skin_tube_middle_avg", "mass_flow_brush_feeder_avg"])
