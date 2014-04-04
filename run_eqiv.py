@@ -134,7 +134,7 @@ class EquivalentSetFinder:
         self.interface.query(q)
 
         self.runs = partitionDataframe()
-        self.runs.SQL_load_data(self.interface, table = 'gas_integral_tbl')
+        self.runs.SQL_load_data(self.interface, table = 'integral_summary')
 
         
     def find_unique_sets(self, cols):
@@ -159,4 +159,4 @@ if __name__ == "__main__":
     pswd = getpass.getpass()
 
     finder = EquivalentSetFinder(user, pswd)
-    finder.find_unique_sets(cols = ["space_time_avg","temp_skin_tube_middle_avg", "mass_flow_brush_feeder_avg"])
+    finder.find_unique_sets(cols = ["space_time_avg","temp_skin_tube_middle_avg", "d50", "pp_H2O_avg", "tube_dia", "pp_CO2_avg"])
