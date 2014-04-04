@@ -1310,7 +1310,146 @@ class SpaceTimeTests(unittest.TestCase):
         space_time = gts['space_time']
 
         self.assertTrue((np.round(hand_st,3)==np.round(space_time,3)).all())
+
+class OpticalThicknessTests(unittest.TestCase):
+    """Needs to:
+    0 Correctly calculate optical thickness
+    0 Set value to np.nan if particle size is missing
+    0 Set value to np.nan if tube diameter is missing
+    """
+
+    def testCorrectOpticalThicknessCalc(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = gts.val_units('PT_101'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
         
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3] 
+        reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
+
+	#set up parameters for optical thickness calculation - these should have units
+        particle_size = {'d90':[555E-6,'m^-3'],'d50':[122E-6,'m^-3']}
+        diameter = [1.5,"in"]
+        density = [1400.0, "kg/m^3"]
+
+
+        # Hand calculate optical thickness...
+
+        hand_vol = 1.5*1.5*np.pi/4*24*0.0163871 #Convert to liters
+        total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*0.04139#moles/min
+        total_flow = total_flow*0.0821*298/((50+14.7)/14.7)/1000 # m^3/s
+        conv = uc.UnitConverter()
+        mdot = conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')
+        kappa_50 = 1.5*mdot/density[0]/particle_size['d50'][0]/total_flow
+        kappa_90 = 1.5*mdot/density[0]/particle_size['d90'][0]/total_flow
+        hand_ot_50 = kappa_50*conv.convert_units(diameter[0],diameter[1], 'm')
+        hand_ot_90 = kappa_90*conv.convert_units(diameter[0],diameter[1], 'm')
+
+              
+
+
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')    #This will generate the necessary columns (space time, inlet_vol_flowrate, mixing_temp_gas)
+        gts.calc_optical_thickness(diameter, density, particle_size)
+        optical_thickness_50 = gts['optical_thickness_d50']
+        optical_thickness_90 = gts['optical_thickness_d90']
+        
+        self.assertTrue((np.round(hand_ot_50,2)==np.round(optical_thickness_d50,2)).all())
+        self.assertTrue((np.round(hand_ot_90,2)==np.round(optical_thickness_d90,2)).all())
+       
+
+    def testMissingParticleSizeHandling(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = gts.val_units('PT_101'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3] 
+        reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
+
+	#set up parameters for optical thickness calculation - these should have units
+        particle_size = {'d90':[np.nan],'d50':[None]}
+        diameter = [1.5,"in"]
+        density = [1400.0, "kg/m^3"]
+
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')    #This will generate the necessary columns (space time, inlet_vol_flowrate, mixing_temp_gas)
+        gts.calc_optical_thickness(diameter, density, particle_size)
+        optical_thickness_50 = gts['optical_thickness_d50']
+        optical_thickness_90 = gts['optical_thickness_d90']
+
+        #need to assert that each of the optical thickness measurements is np.nan for both 50 and 90
+
+        self.assertTrue((np.isnan(optical_thickness_50)).all())
+        self.assertTrue((np.isnan(optical_thickness_90)).all())
+
+    def testMissingTubeDiameterHandling(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = gts.val_units('PT_101'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3] 
+        reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
+
+	#set up parameters for optical thickness calculation - these should have units
+        particle_size = {'d90':[555E-6,'m^-3'],'d50':[122E-6,'m^-3']}
+        diameter = None
+        density = [1400.0, "kg/m^3"]
+
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')    #This will generate the necessary columns (space time, inlet_vol_flowrate, mixing_temp_gas)
+        gts.calc_optical_thickness(diameter, density, particle_size)
+        optical_thickness_50 = gts['optical_thickness_d50']
+        optical_thickness_90 = gts['optical_thickness_d90']
+
+        #need to assert that each of the optical thickness measurements is np.nan for both 50 and 90
+
+        self.assertTrue((np.isnan(optical_thickness_50)).all())
+        self.assertTrue((np.isnan(optical_thickness_90)).all())
+
+        diameter = [np.nan, 'm']
+        
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        gts.calc_optical_thickness(diameter, density_particle_size)
+        optical_thickness_50 = gts['optical_thickness_d50']
+        optical_thickness_90 = gts['optical_thickness_d90']
+
+        #need to assert that each of the optical thickness measurements is np.nan for both 50 and 90
+
+        self.assertTrue((np.isnan(optical_thickness_50)).all())
+        self.assertTrue((np.isnan(optical_thickness_90)).all())
+    
+
+class MaterialBalanceTests(unittest.TestCase):
+    """Needs to:
+    0 Correctly calculate a gas material balance on C
+    0 Set value to np.nan if outlet_C is missing
+    0 Set value to np.nan if inlet_C is missing
+    0 Raise an error if called before outlet_C or inlet_C are set
+    """
+
+    def testCorrectMaterialBalance(self):
+        self.assertEqual(0,1)
+    
+    def testMissingOutletCHandling(self):
+        self.assertEqual(0,1)
+
+    def testMissingInletCHandling(self):
+        self.assertEqual(0,1)
+
+    def testEarlyCallError(self):
+        self.assertEqual(0,1)
+    
 if __name__ == "__main__":
     
     unittest.main()
