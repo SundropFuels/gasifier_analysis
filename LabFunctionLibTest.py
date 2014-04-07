@@ -1432,7 +1432,7 @@ class OpticalThicknessTests(unittest.TestCase):
 
 class MaterialBalanceTests(unittest.TestCase):
     """Needs to:
-    0 Correctly calculate a gas material balance on C
+    + Correctly calculate a gas material balance on C
     0 Set value to np.nan if outlet_C is missing
     0 Set value to np.nan if inlet_C is missing
     0 Raise an error if called before outlet_C or inlet_C are set
@@ -1700,9 +1700,7 @@ class MaterialBalanceTests(unittest.TestCase):
         biomass_feed.special_species = biomass_breakdown
         
         
-        gts.generate_C_mass_balance()
-
-        self.assertRaises(gts.generate_C_mass_balance, lfl.NoInletOutletFlowrateError)
+        self.assertRaises(lfl.NoInletOutletFlowrateError, gts.generate_C_mass_balance, )
     
 if __name__ == "__main__":
     
