@@ -1481,8 +1481,15 @@ class MaterialBalanceTests(unittest.TestCase):
         gts.generate_inlet_outlet_species_flows()
         gts.generate_C_mass_balance()        
         
+        conv = uc.UnitConverter()
+        bio_C_inlet = conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')/0.012*0.5
+        methane_C_inlet = conv.convert_units(methane_gas_feed.flowrate[0], methane_gas_feed.flowrate[1], 'm^3/s')*101325/8.314/(25+273.15)
+        inlet_C = bio_C_inlet + methane_C_inlet
+        outlet_C = conv.convert_units(gas_exit.flowrate[0], gas_exit.flowrate[1], 'm^3/s')*101325/8.314/(25+273.15) * (gts['CO_GC'] + gts['CO2_GC'] + gts['CH4_GC'] + gts['C2H6_GC']*2.0)        
+        balance = (inlet_C-outlet_C)/inlet_C
         
-        self.assertEqual(gts['C_gas_mass_balance'], (inlet_C-outlet_C)/inlet_C)
+
+        self.assertTrue((np.round(balance,2) == np.round(gts['C_gas_mass_balance'],2)).all())
     
     def testMissingOutletCHandling(self):
         gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
