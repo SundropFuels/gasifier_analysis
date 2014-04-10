@@ -217,6 +217,7 @@ class ts_data(df.Dataframe):
         self.units['rel_time']='s'
         for i in self.data:
             if i.endswith('_MS') or i.endswith('_GC'):
+
                 colname = i
                 try:
                     interpcol = self.interpolate_col('rel_time', colname)
@@ -1517,6 +1518,11 @@ class GasifierProcTS(ProcTS):
             raise NoInletOutletFlowrateError, "The inlet and outlet flowrates of carbon must be solved for first"
         self['C_gas_mass_balance'] = (self['C_inlet'] - self['C_outlet'])/self['C_inlet']
         self['C_gas_mass_balance'][np.logical_not(np.isfinite(self['C_gas_mass_balance']))] = np.nan
+
+    def generate_CH4_yield(self):
+        if 'C_inlet' not in self.columns or 'CH4_outlet' not in self.columns:
+            raise NoInletOutletFlowrateError, "The inlet and outlet flowrates of carbon/CH4 must be solved for first"
+        self['CH4_yield'] = (self['CH4_outlet']-self['CH4_inlet'])/(self['C_inlet']-self['CH4_inlet'])
 
 class RunInformation:
     """Container class for information about experimental runs -- wrapper class around the dictionary object"""
