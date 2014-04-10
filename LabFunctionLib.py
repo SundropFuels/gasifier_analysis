@@ -1502,6 +1502,10 @@ class GasifierProcTS(ProcTS):
 
 	rho = conv.convert_units(density[0], density[1], 'kg/m^3') #passed in for now, but should be able to add this as a material property later and get it through stream introspection
         Vdot = conv.convert_units(self['volumetric_inlet_gas_only'], self.units['volumetric_inlet_gas_only'], 'm^3/s')
+        if tubeD is None:
+            tubeD = [np.nan, 'm']
+        if tubeD[0] is None:
+            tubeD[0] = np.nan
         D = conv.convert_units(tubeD[0], tubeD[1], 'm')
         for dp in particle_size:
             if particle_size[dp][0] is None:

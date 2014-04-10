@@ -1356,8 +1356,7 @@ class OpticalThicknessTests(unittest.TestCase):
         gts.calc_optical_thickness(diameter, density, particle_size)
         optical_thickness_d50 = gts['optical_thickness_d50']
         optical_thickness_d90 = gts['optical_thickness_d90']
-        print optical_thickness_d50
-	print hand_ot_50
+        
         self.assertTrue((np.round(hand_ot_50,2)==np.round(optical_thickness_d50,2)).all())
         self.assertTrue((np.round(hand_ot_90,2)==np.round(optical_thickness_d90,2)).all())
        
@@ -1404,7 +1403,7 @@ class OpticalThicknessTests(unittest.TestCase):
         reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
 
 	#set up parameters for optical thickness calculation - these should have units
-        particle_size = {'d90':[555E-6,'m^-3'],'d50':[122E-6,'m^-3']}
+        particle_size = {'d90':[555E-6,'m'],'d50':[122E-6,'m']}
         diameter = None
         density = [1400.0, "kg/m^3"]
 
@@ -1421,7 +1420,7 @@ class OpticalThicknessTests(unittest.TestCase):
         diameter = [np.nan, 'm']
         
         gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
-        gts.calc_optical_thickness(diameter, density_particle_size)
+        gts.calc_optical_thickness(diameter, density, particle_size)
         optical_thickness_50 = gts['optical_thickness_d50']
         optical_thickness_90 = gts['optical_thickness_d90']
 
