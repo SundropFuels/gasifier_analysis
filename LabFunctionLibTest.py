@@ -1332,16 +1332,16 @@ class OpticalThicknessTests(unittest.TestCase):
         reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
 
 	#set up parameters for optical thickness calculation - these should have units
-        particle_size = {'d90':[555E-6,'m^-3'],'d50':[122E-6,'m^-3']}
+        particle_size = {'d90':[555E-6,'m'],'d50':[122E-6,'m']}
         diameter = [1.5,"in"]
         density = [1400.0, "kg/m^3"]
 
 
         # Hand calculate optical thickness...
-
-        hand_vol = 1.5*1.5*np.pi/4*24*0.0163871 #Convert to liters
-        total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*0.04139#moles/min
-        total_flow = total_flow*0.0821*298/((50+14.7)/14.7)/1000 # m^3/s
+	conv = uc.UnitConverter()
+        
+        total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*101325.0/conv.convert_units(ent_1.pressure[0], ent_1.pressure[1], 'Pa')
+        total_flow = conv.convert_units(total_flow, 'L/min', 'm^3/s')
         conv = uc.UnitConverter()
         mdot = conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')
         kappa_50 = 1.5*mdot/density[0]/particle_size['d50'][0]/total_flow
@@ -1354,9 +1354,10 @@ class OpticalThicknessTests(unittest.TestCase):
 
         gts.calc_space_time(reactor_vol, excluded_species = 'biomass')    #This will generate the necessary columns (space time, inlet_vol_flowrate, mixing_temp_gas)
         gts.calc_optical_thickness(diameter, density, particle_size)
-        optical_thickness_50 = gts['optical_thickness_d50']
-        optical_thickness_90 = gts['optical_thickness_d90']
-        
+        optical_thickness_d50 = gts['optical_thickness_d50']
+        optical_thickness_d90 = gts['optical_thickness_d90']
+        print optical_thickness_d50
+	print hand_ot_50
         self.assertTrue((np.round(hand_ot_50,2)==np.round(optical_thickness_d50,2)).all())
         self.assertTrue((np.round(hand_ot_90,2)==np.round(optical_thickness_d90,2)).all())
        
