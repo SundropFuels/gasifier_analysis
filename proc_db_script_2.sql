@@ -108,4 +108,10 @@ INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('space_time', '1')
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('pp_H2O', '1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('pp_CO2', '1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('pp_Ar', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('volumetric_inlet_gas_only', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('T_cupmix_gas_only', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('optical_thickness_d10','1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('optical_thickness_d50','1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('optical_thickness_d90','1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C_gas_mass_balance','1');
 
