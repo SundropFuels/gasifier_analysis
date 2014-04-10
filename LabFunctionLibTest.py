@@ -1629,13 +1629,12 @@ class MaterialBalanceTests(unittest.TestCase):
         
 
         gts.set_units(LoadDataTests.units)
-        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        biomass_feed = lfl.Stream('ME_101',flowrate = [np.array([np.nan,np.nan,np.nan,np.nan,np.nan]),'lb/hr'], composition = {'biomass':1.00}, basis = "mass")
         entrainment_gas_feed = lfl.Stream('MFC_101', flowrate = gts.get_val('MFC_101'), composition = {'N2':0.95, 'Ar':0.05}, basis = "gas_volume")
         methane_gas_feed = lfl.Stream('MFC_102', flowrate = gts.get_val('MFC_102'), composition = {'CH4':1.00}, basis = "gas_volume")
         gas_exit = lfl.Stream('FE_101', flowrate = gts.get_val('FE_101'),basis = "gas_volume")
         
-        #Set the inlet biomass flowrate to np.nan values
-        biomass_feed.flowrate[0] = np.array([np.nan, np.nan, np.nan, np.nan, np.nan])
+        
 
 
         biomass_feed.temperature = (25,"C")
