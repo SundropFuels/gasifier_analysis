@@ -1504,6 +1504,8 @@ class GasifierProcTS(ProcTS):
         Vdot = conv.convert_units(self['volumetric_inlet_gas_only'], self.units['volumetric_inlet_gas_only'], 'm^3/s')
         D = conv.convert_units(tubeD[0], tubeD[1], 'm')
         for dp in particle_size:
+            if particle_size[dp][0] is None:
+                particle_size[dp][0] = np.nan
             self['optical_thickness_%s' % dp] = 1.5*mdot/rho/conv.convert_units(particle_size[dp][0], particle_size[dp][1], 'm')/Vdot*D
 
     def generate_C_mass_balance(self):

@@ -1376,7 +1376,7 @@ class OpticalThicknessTests(unittest.TestCase):
         reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
 
 	#set up parameters for optical thickness calculation - these should have units
-        particle_size = {'d90':[np.nan],'d50':[None]}
+        particle_size = {'d90':[np.nan, 'm'],'d50':[None, 'm']}
         diameter = [1.5,"in"]
         density = [1400.0, "kg/m^3"]
 
