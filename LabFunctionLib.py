@@ -207,7 +207,7 @@ class ts_data(df.Dataframe):
                 self.stdevs[key] = self[key][np.isfinite(self[key].astype(float))].std(dtype='float64')
 
             except KeyError:
-                raise lflExeception, "%s is not a key in the dataframe" % key
+                raise lflException, "%s is not a key in the dataframe" % key
             except ZeroDivisionError:
                 self.avgs[key] = np.nan
                 self.stdevs[key] = np.nan
