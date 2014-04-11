@@ -1310,7 +1310,417 @@ class SpaceTimeTests(unittest.TestCase):
         space_time = gts['space_time']
 
         self.assertTrue((np.round(hand_st,3)==np.round(space_time,3)).all())
+
+class OpticalThicknessTests(unittest.TestCase):
+    """Needs to:
+    0 Correctly calculate optical thickness
+    0 Set value to np.nan if particle size is missing
+    0 Set value to np.nan if tube diameter is missing
+    """
+
+    def testCorrectOpticalThicknessCalc(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = gts.val_units('PT_101'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
         
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3] 
+        reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
+
+	#set up parameters for optical thickness calculation - these should have units
+        particle_size = {'d90':[555E-6,'m'],'d50':[122E-6,'m']}
+        diameter = [1.5,"in"]
+        density = [1400.0, "kg/m^3"]
+
+
+        # Hand calculate optical thickness...
+	conv = uc.UnitConverter()
+        
+        total_flow = (ent_1.flowrate[0] + ent_2.flowrate[0] + ent_3.flowrate[0])*101325.0/conv.convert_units(ent_1.pressure[0], ent_1.pressure[1], 'Pa')
+        total_flow = conv.convert_units(total_flow, 'L/min', 'm^3/s')
+        conv = uc.UnitConverter()
+        mdot = conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')
+        kappa_50 = 1.5*mdot/density[0]/particle_size['d50'][0]/total_flow
+        kappa_90 = 1.5*mdot/density[0]/particle_size['d90'][0]/total_flow
+        hand_ot_50 = kappa_50*conv.convert_units(diameter[0],diameter[1], 'm')
+        hand_ot_90 = kappa_90*conv.convert_units(diameter[0],diameter[1], 'm')
+
+              
+
+
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')    #This will generate the necessary columns (space time, inlet_vol_flowrate, mixing_temp_gas)
+        gts.calc_optical_thickness(diameter, density, particle_size)
+        optical_thickness_d50 = gts['optical_thickness_d50']
+        optical_thickness_d90 = gts['optical_thickness_d90']
+        
+        self.assertTrue((np.round(hand_ot_50,2)==np.round(optical_thickness_d50,2)).all())
+        self.assertTrue((np.round(hand_ot_90,2)==np.round(optical_thickness_d90,2)).all())
+       
+
+    def testMissingParticleSizeHandling(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = gts.val_units('PT_101'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3] 
+        reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
+
+	#set up parameters for optical thickness calculation - these should have units
+        particle_size = {'d90':[np.nan, 'm'],'d50':[None, 'm']}
+        diameter = [1.5,"in"]
+        density = [1400.0, "kg/m^3"]
+
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')    #This will generate the necessary columns (space time, inlet_vol_flowrate, mixing_temp_gas)
+        gts.calc_optical_thickness(diameter, density, particle_size)
+        optical_thickness_50 = gts['optical_thickness_d50']
+        optical_thickness_90 = gts['optical_thickness_d90']
+
+        #need to assert that each of the optical thickness measurements is np.nan for both 50 and 90
+
+        self.assertTrue((np.isnan(optical_thickness_50)).all())
+        self.assertTrue((np.isnan(optical_thickness_90)).all())
+
+    def testMissingTubeDiameterHandling(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12), end = datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass_feed', flowrate = gts.val_units('ME_101'), composition = {'biomass':1.00}, basis = "mass", temperature = gts.val_units('TE_101'), pressure = gts.val_units('PT_101'))
+        ent_1 = lfl.Stream('ent_1', flowrate = gts.val_units('MFC_102'), composition = {'N2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_2 = lfl.Stream('ent_2', flowrate = gts.val_units('MFC_103'), composition = {'CO2':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        ent_3 = lfl.Stream('ent_3', flowrate = gts.val_units('MFC_104'), composition = {'Ar':1.00}, basis = "std_gas_volume", temperature = (25, 'C'), pressure = gts.val_units('PT_101'))
+        
+        gts.inlet_streams = [biomass_feed, ent_1, ent_2, ent_3] 
+        reactor_vol = (1.5*1.5*np.pi/4*24, 'in^3')
+
+	#set up parameters for optical thickness calculation - these should have units
+        particle_size = {'d90':[555E-6,'m'],'d50':[122E-6,'m']}
+        diameter = None
+        density = [1400.0, "kg/m^3"]
+
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')    #This will generate the necessary columns (space time, inlet_vol_flowrate, mixing_temp_gas)
+        gts.calc_optical_thickness(diameter, density, particle_size)
+        optical_thickness_50 = gts['optical_thickness_d50']
+        optical_thickness_90 = gts['optical_thickness_d90']
+
+        #need to assert that each of the optical thickness measurements is np.nan for both 50 and 90
+
+        self.assertTrue((np.isnan(optical_thickness_50)).all())
+        self.assertTrue((np.isnan(optical_thickness_90)).all())
+
+        diameter = [np.nan, 'm']
+        
+        gts.calc_space_time(reactor_vol, excluded_species = 'biomass')
+        gts.calc_optical_thickness(diameter, density, particle_size)
+        optical_thickness_50 = gts['optical_thickness_d50']
+        optical_thickness_90 = gts['optical_thickness_d90']
+
+        #need to assert that each of the optical thickness measurements is np.nan for both 50 and 90
+
+        self.assertTrue((np.isnan(optical_thickness_50)).all())
+        self.assertTrue((np.isnan(optical_thickness_90)).all())
+    
+
+class MaterialBalanceTests(unittest.TestCase):
+    """Needs to:
+    + Correctly calculate a gas material balance on C
+    0 Set value to np.nan if outlet_C is missing
+    0 Set value to np.nan if inlet_C is missing
+    0 Raise an error if called before outlet_C or inlet_C are set
+    """
+
+    def testCorrectMaterialBalance(self):
+        
+               
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        
+
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        entrainment_gas_feed = lfl.Stream('MFC_101', flowrate = gts.get_val('MFC_101'), composition = {'N2':0.95, 'Ar':0.05}, basis = "gas_volume")
+        methane_gas_feed = lfl.Stream('MFC_102', flowrate = gts.get_val('MFC_102'), composition = {'CH4':1.00}, basis = "gas_volume")
+        gas_exit = lfl.Stream('FE_101', flowrate = gts.get_val('FE_101'),basis = "gas_volume")
+        
+        biomass_feed.temperature = (25,"C")
+        biomass_feed.pressure = (101325, "Pa")
+
+
+        entrainment_gas_feed.temperature = (25,"C")
+        methane_gas_feed.temperature = (25, "C")
+        gas_exit.temperature = (25, "C")
+        entrainment_gas_feed.pressure = (101325, "Pa")
+        methane_gas_feed.pressure = (101325, "Pa")
+        gas_exit.pressure = (101325, 'kg/s^2/m')
+
+        exit_list = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2', 'Ar']
+        for specie in exit_list:
+            key = "%s_GC" % specie
+            gas_exit.composition[specie] = gts[key]
+        gts.inlet_streams = [entrainment_gas_feed, methane_gas_feed, biomass_feed]
+        gts.outlet_streams = [gas_exit]
+        gts.proc_elements = ['C', 'H', 'O']
+        gts.proc_species = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2']
+        biomass_breakdown = {}
+        biomass_breakdown['biomass'] = {'C':0.5, 'O': 0.4, 'H': 0.1}
+        biomass_feed.special_species = biomass_breakdown
+        
+
+        gts.generate_inlet_outlet_elemental_flows()
+        gts.generate_inlet_outlet_species_flows()
+        gts.generate_C_mass_balance()        
+        
+        conv = uc.UnitConverter()
+        bio_C_inlet = conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')/0.012*0.5
+        methane_C_inlet = conv.convert_units(methane_gas_feed.flowrate[0], methane_gas_feed.flowrate[1], 'm^3/s')*101325/8.314/(25+273.15)
+        inlet_C = bio_C_inlet + methane_C_inlet
+        outlet_C = conv.convert_units(gas_exit.flowrate[0], gas_exit.flowrate[1], 'm^3/s')*101325/8.314/(25+273.15) * (gts['CO_GC'] + gts['CO2_GC'] + gts['CH4_GC'] + gts['C2H6_GC']*2.0)        
+        balance = (inlet_C-outlet_C)/inlet_C
+        
+
+        self.assertTrue((np.round(balance,2) == np.round(gts['C_gas_mass_balance'],2)).all())
+    
+    def testMissingOutletCHandling(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        
+	#Set the outlet C to np.nan
+        gts['CO_GC'] = np.array([np.nan, np.nan, np.nan, np.nan, np.nan])
+
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        entrainment_gas_feed = lfl.Stream('MFC_101', flowrate = gts.get_val('MFC_101'), composition = {'N2':0.95, 'Ar':0.05}, basis = "gas_volume")
+        methane_gas_feed = lfl.Stream('MFC_102', flowrate = gts.get_val('MFC_102'), composition = {'CH4':1.00}, basis = "gas_volume")
+        gas_exit = lfl.Stream('FE_101', flowrate = gts.get_val('FE_101'),basis = "gas_volume")
+        
+        biomass_feed.temperature = (25,"C")
+        biomass_feed.pressure = (101325, "Pa")
+
+
+        entrainment_gas_feed.temperature = (25,"C")
+        methane_gas_feed.temperature = (25, "C")
+        gas_exit.temperature = (25, "C")
+        entrainment_gas_feed.pressure = (101325, "Pa")
+        methane_gas_feed.pressure = (101325, "Pa")
+        gas_exit.pressure = (101325, 'kg/s^2/m')
+
+        exit_list = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2', 'Ar']
+        for specie in exit_list:
+            key = "%s_GC" % specie
+            gas_exit.composition[specie] = gts[key]
+        gts.inlet_streams = [entrainment_gas_feed, methane_gas_feed, biomass_feed]
+        gts.outlet_streams = [gas_exit]
+        gts.proc_elements = ['C', 'H', 'O']
+        gts.proc_species = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2']
+        biomass_breakdown = {}
+        biomass_breakdown['biomass'] = {'C':0.5, 'O': 0.4, 'H': 0.1}
+        biomass_feed.special_species = biomass_breakdown
+        gts.generate_inlet_outlet_elemental_flows()
+        gts.generate_inlet_outlet_species_flows()
+        gts.generate_C_mass_balance()  
+
+	self.assertTrue((np.isnan(gts['C_gas_mass_balance'])).all())
+
+        
+
+
+    def testMissingInletCHandling(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        
+	#Set the outlet C to np.nan
+        gts['CO_GC'] = np.array([np.nan, np.nan, np.nan, np.nan, np.nan])
+
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        entrainment_gas_feed = lfl.Stream('MFC_101', flowrate = gts.get_val('MFC_101'), composition = {'N2':0.95, 'Ar':0.05}, basis = "gas_volume")
+        methane_gas_feed = lfl.Stream('MFC_102', flowrate = gts.get_val('MFC_102'), composition = {'CH4':1.00}, basis = "gas_volume")
+        gas_exit = lfl.Stream('FE_101', flowrate = gts.get_val('FE_101'),basis = "gas_volume")
+        
+        biomass_feed.temperature = (25,"C")
+        biomass_feed.pressure = (101325, "Pa")
+
+
+        entrainment_gas_feed.temperature = (25,"C")
+        methane_gas_feed.temperature = (25, "C")
+        gas_exit.temperature = (25, "C")
+        entrainment_gas_feed.pressure = (101325, "Pa")
+        methane_gas_feed.pressure = (101325, "Pa")
+        gas_exit.pressure = (101325, 'kg/s^2/m')
+
+        exit_list = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2', 'Ar']
+        for specie in exit_list:
+            key = "%s_GC" % specie
+            gas_exit.composition[specie] = gts[key]
+        gts.inlet_streams = [entrainment_gas_feed, methane_gas_feed, biomass_feed]
+        gts.outlet_streams = [gas_exit]
+        gts.proc_elements = ['C', 'H', 'O']
+        gts.proc_species = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2']
+        biomass_breakdown = {}
+        biomass_breakdown['biomass'] = {'C':0.5, 'O': 0.4, 'H': 0.1}
+        biomass_feed.special_species = biomass_breakdown
+        gts.generate_inlet_outlet_elemental_flows()
+        gts.generate_inlet_outlet_species_flows()
+        gts.generate_C_mass_balance()  
+
+	self.assertTrue((np.isnan(gts['C_gas_mass_balance'])).all())
+
+        #Do it for the None values as well here
+
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        
+	
+        
+
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('ME_101',flowrate = [np.array([np.nan,np.nan,np.nan,np.nan,np.nan]),'lb/hr'], composition = {'biomass':1.00}, basis = "mass")
+        entrainment_gas_feed = lfl.Stream('MFC_101', flowrate = gts.get_val('MFC_101'), composition = {'N2':0.95, 'Ar':0.05}, basis = "gas_volume")
+        methane_gas_feed = lfl.Stream('MFC_102', flowrate = gts.get_val('MFC_102'), composition = {'CH4':1.00}, basis = "gas_volume")
+        gas_exit = lfl.Stream('FE_101', flowrate = gts.get_val('FE_101'),basis = "gas_volume")
+        
+        
+
+
+        biomass_feed.temperature = (25,"C")
+        biomass_feed.pressure = (101325, "Pa")
+
+
+        entrainment_gas_feed.temperature = (25,"C")
+        methane_gas_feed.temperature = (25, "C")
+        gas_exit.temperature = (25, "C")
+        entrainment_gas_feed.pressure = (101325, "Pa")
+        methane_gas_feed.pressure = (101325, "Pa")
+        gas_exit.pressure = (101325, 'kg/s^2/m')
+
+        exit_list = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2', 'Ar']
+        for specie in exit_list:
+            key = "%s_GC" % specie
+            gas_exit.composition[specie] = gts[key]
+        gts.inlet_streams = [entrainment_gas_feed, methane_gas_feed, biomass_feed]
+        gts.outlet_streams = [gas_exit]
+        gts.proc_elements = ['C', 'H', 'O']
+        gts.proc_species = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2']
+        biomass_breakdown = {}
+        biomass_breakdown['biomass'] = {'C':0.5, 'O': 0.4, 'H': 0.1}
+        biomass_feed.special_species = biomass_breakdown
+        gts.generate_inlet_outlet_elemental_flows()
+        gts.generate_inlet_outlet_species_flows()
+        gts.generate_C_mass_balance()  
+
+        self.assertTrue((np.isnan(gts['C_gas_mass_balance'])).all())
+
+    def testEarlyCallError(self):
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        entrainment_gas_feed = lfl.Stream('MFC_101', flowrate = gts.get_val('MFC_101'), composition = {'N2':0.95, 'Ar':0.05}, basis = "gas_volume")
+        methane_gas_feed = lfl.Stream('MFC_102', flowrate = gts.get_val('MFC_102'), composition = {'CH4':1.00}, basis = "gas_volume")
+        gas_exit = lfl.Stream('FE_101', flowrate = gts.get_val('FE_101'),basis = "gas_volume")
+        
+        biomass_feed.temperature = (25,"C")
+        biomass_feed.pressure = (101325, "Pa")
+
+
+        entrainment_gas_feed.temperature = (25,"C")
+        methane_gas_feed.temperature = (25, "C")
+        gas_exit.temperature = (25, "C")
+        entrainment_gas_feed.pressure = (101325, "Pa")
+        methane_gas_feed.pressure = (101325, "Pa")
+        gas_exit.pressure = (101325, 'kg/s^2/m')
+
+        exit_list = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2', 'Ar']
+        for specie in exit_list:
+            key = "%s_GC" % specie
+            gas_exit.composition[specie] = gts[key]
+        gts.inlet_streams = [entrainment_gas_feed, methane_gas_feed, biomass_feed]
+        gts.outlet_streams = [gas_exit]
+        gts.proc_elements = ['C', 'H', 'O']
+        gts.proc_species = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2']
+        biomass_breakdown = {}
+        biomass_breakdown['biomass'] = {'C':0.5, 'O': 0.4, 'H': 0.1}
+        biomass_feed.special_species = biomass_breakdown
+        
+        
+        self.assertRaises(lfl.NoInletOutletFlowrateError, gts.generate_C_mass_balance, )
+
+class CH4_yield_tests(unittest.TestCase):
+    """Needs to:
+    + Correctly calculate the CH4 yield
+    0 Raise an error if called before outlet_C or inlet_C are set
+    """
+
+    def testCorrectCH4yield(self):
+        
+               
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        
+
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        entrainment_gas_feed = lfl.Stream('MFC_101', flowrate = gts.get_val('MFC_101'), composition = {'N2':0.95, 'Ar':0.05}, basis = "gas_volume")
+        methane_gas_feed = lfl.Stream('MFC_102', flowrate = gts.get_val('MFC_102'), composition = {'CH4':1.00}, basis = "gas_volume")
+        gas_exit = lfl.Stream('FE_101', flowrate = gts.get_val('FE_101'),basis = "gas_volume")
+        
+        biomass_feed.temperature = (25,"C")
+        biomass_feed.pressure = (101325, "Pa")
+
+
+        entrainment_gas_feed.temperature = (25,"C")
+        methane_gas_feed.temperature = (25, "C")
+        gas_exit.temperature = (25, "C")
+        entrainment_gas_feed.pressure = (101325, "Pa")
+        methane_gas_feed.pressure = (101325, "Pa")
+        gas_exit.pressure = (101325, 'kg/s^2/m')
+
+        exit_list = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2', 'Ar']
+        for specie in exit_list:
+            key = "%s_GC" % specie
+            gas_exit.composition[specie] = gts[key]
+        gts.inlet_streams = [entrainment_gas_feed, methane_gas_feed, biomass_feed]
+        gts.outlet_streams = [gas_exit]
+        gts.proc_elements = ['C', 'H', 'O']
+        gts.proc_species = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2']
+        biomass_breakdown = {}
+        biomass_breakdown['biomass'] = {'C':0.5, 'O': 0.4, 'H': 0.1}
+        biomass_feed.special_species = biomass_breakdown
+        
+
+        gts.generate_inlet_outlet_elemental_flows()
+        gts.generate_inlet_outlet_species_flows()
+        gts.generate_C_mass_balance()        
+        gts.generate_CH4_yield()        
+
+        conv = uc.UnitConverter()
+        bio_C_inlet = conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')/0.012*0.5
+        methane_C_inlet = conv.convert_units(methane_gas_feed.flowrate[0], methane_gas_feed.flowrate[1], 'm^3/s')*101325/8.314/(25+273.15)
+        inlet_C = bio_C_inlet + methane_C_inlet
+        outlet_CH4 = conv.convert_units(gas_exit.flowrate[0], gas_exit.flowrate[1], 'm^3/s')*101325/8.314/(25+273.15) * (gts['CH4_GC'])        
+        methane_yield = (outlet_CH4-methane_C_inlet)/(inlet_C-methane_C_inlet)
+        
+
+        self.assertTrue((np.round(methane_yield,2) == np.round(gts['CH4_yield'],2)).all())
+
+    
 if __name__ == "__main__":
     
     unittest.main()

@@ -54,6 +54,9 @@ class BadStreamError(lflException):
 class ConversionError(lflException):
     pass
 
+class NoInletOutletFlowrateError(lflException):
+    pass
+
 class ts_data(df.Dataframe):
     """General timeseries data class"""
     def __init__(self, start, end, data = None, units_dict = None):
@@ -214,6 +217,7 @@ class ts_data(df.Dataframe):
         self.units['rel_time']='s'
         for i in self.data:
             if i.endswith('_MS') or i.endswith('_GC'):
+
                 colname = i
                 try:
                     interpcol = self.interpolate_col('rel_time', colname)
@@ -1469,7 +1473,12 @@ class GasifierProcTS(ProcTS):
         self.units['mixing_temp'] = 'K'
         
         V_dot = mix.outlets[0].gas_volumetric_flowrate('m^3/s')
-     
+        self['volumetric_inlet_gas_only'] = V_dot
+        self.units['volumetric_inlet_gas_only'] = 'm^3/s'
+
+        self['T_cupmix_gas_only'] = mix.outlets[0].temperature[0]
+        self.units['T_cupmix_gas_only'] = mix.outlets[0].temperature[1]
+
         tau = vol/V_dot
         #return tau
 
@@ -1479,6 +1488,42 @@ class GasifierProcTS(ProcTS):
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""
         pass      
+
+    def calc_optical_thickness(self, tubeD, density, particle_size):
+        """Calculates the optical thickness of the inlet mixture.  Particle size should be a dictionary with d## keys"""
+        conv = uc.UnitConverter()
+        
+        #Need to first get the solids flowrate in
+        mdot = 0.0
+	for stream in self.inlet_streams:
+            for species in stream.composition:
+                if species not in Stream.species or Stream.species[species]['phase'] == 's':  #OK, this is a huge stretch -- I'm assuming that if what we are looking for is not in the species dictionary, it is a solid
+                    if stream.basis == 'mass':
+                        mdot += conv.convert_units(stream.flowrate[0]*stream.composition[species],stream.flowrate[1],'kg/s')
+                    #Need to add something for 'molar' or 'volume' later, but this will get it working
+
+	rho = conv.convert_units(density[0], density[1], 'kg/m^3') #passed in for now, but should be able to add this as a material property later and get it through stream introspection
+        Vdot = conv.convert_units(self['volumetric_inlet_gas_only'], self.units['volumetric_inlet_gas_only'], 'm^3/s')
+        if tubeD is None:
+            tubeD = [np.nan, 'm']
+        if tubeD[0] is None:
+            tubeD[0] = np.nan
+        D = conv.convert_units(tubeD[0], tubeD[1], 'm')
+        for dp in particle_size:
+            if particle_size[dp][0] is None:
+                particle_size[dp][0] = np.nan
+            self['optical_thickness_%s' % dp] = 1.5*mdot/rho/conv.convert_units(particle_size[dp][0], particle_size[dp][1], 'm')/Vdot*D
+
+    def generate_C_mass_balance(self):
+        if 'C_inlet' not in self.columns or 'C_outlet' not in self.columns:
+            raise NoInletOutletFlowrateError, "The inlet and outlet flowrates of carbon must be solved for first"
+        self['C_gas_mass_balance'] = (self['C_inlet'] - self['C_outlet'])/self['C_inlet']
+        self['C_gas_mass_balance'][np.logical_not(np.isfinite(self['C_gas_mass_balance']))] = np.nan
+
+    def generate_CH4_yield(self):
+        if 'C_inlet' not in self.columns or 'CH4_outlet' not in self.columns:
+            raise NoInletOutletFlowrateError, "The inlet and outlet flowrates of carbon/CH4 must be solved for first"
+        self['CH4_yield'] = (self['CH4_outlet']-self['CH4_inlet'])/(self['C_inlet']-self['CH4_inlet'])
 
 class RunInformation:
     """Container class for information about experimental runs -- wrapper class around the dictionary object"""
