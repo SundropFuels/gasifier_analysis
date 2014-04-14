@@ -40,10 +40,13 @@ class GasifierDataAnalysis:
         #set up the tube size
         if self.run_info.info['tube_dia'] == 2.0:
             self.reactor_size = (24.0*1.5*1.5*np.pi/4, 'in^3')
+            self.tube_id = [1.5, 'in']
         elif self.run_info.info['tube_dia'] == 1.5:
             self.reactor_size = (24.0*1.0*1.0*np.pi/4, 'in^3')
+            self.tube_id = [1.0, 'in']
         elif self.run_info.info['tube_dia'] == 2.5:
             self.reactor_size = (24.0*2.0*2.0*np.pi/4, 'in^3')
+            self.tube_id = [2.0, 'in']
         else:
             self.reactor_size = (None, None)
         
@@ -213,8 +216,10 @@ class GasifierDataAnalysis:
         self.gts.generate_inlet_outlet_elemental_flows()
         self.gts.generate_inlet_outlet_species_flows()
 
-        #2. Calculate carbon conversions
+        #2. Calculate carbon conversions and mass balances
         self.gts.generate_carbon_conversions()
+        self.gts.generate_C_mass_balance()
+        self.gts.generate_CH4_yield()
         
         #3. Calculate changes in enthalpy and entropy
         self.gts.generate_enthalpy_change('kW')
@@ -233,11 +238,17 @@ class GasifierDataAnalysis:
 
         #6. Calculate the space time
         self.gts.calc_space_time(self.reactor_size, 'biomass')
-
-        #7. Calculate integral measures
+        
+        #7. Calculate optical thicknesses
+        self.gts.calc_optical_thickness(tubeD = self.tube_id, density = (1400, 'kg/m^3'), 
+                                        particle_size = {'d10':(self.run_info.info['d10']*10**-6, 'm'), 
+                                                         'd50':(self.run_info.info['d50']*10**-6, 'm'), 
+                                                         'd90':(self.run_info.info['d90']*10**-6, 'm')})
+                                                         
+        #8. Calculate integral measures
         self.gts.generate_averages_and_stdevs(cols = self.get_analysis_config_list())
         
-        #8. Calculate uncertainties
+        #9. Calculate uncertainties
         ####NOT IMPLEMENTED YET
        
     def generate_output_file(self, filename):
@@ -259,7 +270,6 @@ class GasifierDataAnalysis:
     def upload_to_database(self):
 
         #upload the time series data
-        
         self.gts.SQL_db_upload(self.interface_proc, table = "gas_proc_data_tbl")
 
         print "completed upload of timeseries data"

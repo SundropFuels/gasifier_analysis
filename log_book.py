@@ -44,7 +44,7 @@ class log:
         q = db.use_Query(database)
         self.db_interface.query(q)
              
-    def load_SQL_time_series_(self, con = None, table = ""):
+    def load_SQL_time_series(self, con = None, table = ""):
         """Loads time series data for specified time frame"""
         
         if con == None:
@@ -65,8 +65,7 @@ class log:
         self.ts.glossary_replace(self.glossary)
         self.ts.set_units(self.gl_units)
         self.ts.replace_None_w_nan_all()
-        
-        print self.ts[['MFC_201_SP', 'MFC_201_PV', 'MFC_101_PV']]
+
     def find_changes(self, column_name):
         """Builds a list of index positions for a column where the values change"""
         col = self.ts[column_name]
@@ -87,7 +86,6 @@ class log:
     def generate_log_dataframe_(self):
         """Generates Pandas DataFrame for system set point changes from time series data"""
         self.log_df = pd.DataFrame(columns = ['ts', 'tag_number', 'old_value', 'new_value'])
-        print self.log_tags
         for col in self.log_tags:
             changes = self.find_changes(col)
             for i in changes:
@@ -97,7 +95,7 @@ class log:
                                                   'new_value':self.ts[col][i]},
                                                  ignore_index = True)
         self.log_df = self.log_df.sort(column = 'ts')                                         
-        
+        print self.log_df
     def upload_log_dataframe(self, con = None, table = 'system_log_tbl'):
         """Uploads log dataframe onto database."""
         
