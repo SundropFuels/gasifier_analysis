@@ -216,7 +216,8 @@ optical_thickenss_d50 double,
 optical_thickness_d90 double,
 volumetric_inlet_gas_only double,
 T_cupmix_gas_only double,
-C_gas_mass_balance double
+C_gas_mass_balance double,
+CH4_yield double,
 );
 
 DROP TABLE IF EXISTS gas_integral_tbl;
@@ -516,6 +517,8 @@ volumetric_inlet_gas_only_std double,
 T_cupmix_gas_only_avg double,
 T_cupmix_gas_only_std double,
 C_gas_mass_balance_avg double,
-C_gas_mass_balance_std double, 
+C_gas_mass_balance_std double,
+CH4_yield_avg double,
+CH4_yield_std double, 
 analysis_timestamp timestamp
 )

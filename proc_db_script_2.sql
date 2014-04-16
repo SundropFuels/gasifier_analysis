@@ -114,4 +114,5 @@ INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('optical_thickness
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('optical_thickness_d50','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('optical_thickness_d90','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C_gas_mass_balance','1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('CH4_yield','1');
 

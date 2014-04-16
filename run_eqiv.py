@@ -26,7 +26,9 @@ class eq_set:
         if not isinstance(point, tuple):
             raise TypeError, "The data point needs to be a tuple"
         self.points[point[0]]=point[1]
-
+        #need to update the label to include the new point
+        self.label = np.array(self.points.values()).mean()
+        print "added run# %s.\tIt's val: %s.\tNew label: %s" % (point[0], point[1], self.label)
 
     def contains(self, point, method = "reldiff", rtol=0.1, atol=0.1):
         if not isinstance(point, tuple):
@@ -124,6 +126,7 @@ class partitionDataframe(df.Dataframe):
             l.append(li)
         return self.unique_set(l)
 
+
 class EquivalentSetFinder:
 
     def __init__(self, user, password):
@@ -144,6 +147,9 @@ class EquivalentSetFinder:
         #    print es
         #    for i in range(0,len(es)):
         #        es[i].output()
+
+        #due to ordering considerations, these lists may not be 
+
         #build the list of lists
         for un in self.unique:
             print un
@@ -159,4 +165,4 @@ if __name__ == "__main__":
     pswd = getpass.getpass()
 
     finder = EquivalentSetFinder(user, pswd)
-    finder.find_unique_sets(cols = ["space_time_avg","temp_skin_tube_middle_avg", "d50", "pp_H2O_avg", "tube_dia", "pp_CO2_avg"])
+    finder.find_unique_sets(cols = ["space_time_avg", "d50", "pp_H2O_avg", "tube_dia", "pp_CO2_avg", "pressure_ash_knockout_vessel_avg", "mass_flow_brush_feeder_avg","temp_skin_tube_middle_avg"])
