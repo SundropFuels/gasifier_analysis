@@ -4,7 +4,7 @@ DROP TABLE IF EXISTS analysis_config_tbl;
 
 CREATE TABLE analysis_config_tbl
 (
-avg_std_cols VARCHAR(100),
+avg_std_cols VARCHAR(100) PRIMARY KEY,
 active INT
 );
 
@@ -45,7 +45,6 @@ INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('TI_631','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('TI_632','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('TI_641','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('TI_642','1');
-INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('pressure_feeder_vessel','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('pressure_feeder_vessel','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('pressure_entrainment','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('pressure_reactor_gas_inlet','1');
@@ -98,6 +97,42 @@ INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C3H6_normalized',
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C6H6_normalized','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C7H8_normalized','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C10H8_normalized','1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('N2_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('Ar_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('H2O_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('H2_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('CO_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('CO2_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('CH4_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C2H6_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C2H4_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C2H2_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C3H8_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C3H6_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C6H6_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C7H8_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C10H8_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('N2_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('Ar_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('H2O_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('H2_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('CO_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('CO2_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('CH4_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C2H6_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C2H4_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C2H2_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C3H8_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C3H6_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C6H6_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C7H8_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C10H8_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('H_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('O_inlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('C_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('H_outlet', '1');
+INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('O_outlet', '1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('X_std','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('X_tot','1');
 INSERT INTO analysis_config_tbl (avg_std_cols,active) VALUES ('X_good','1');
