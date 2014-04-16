@@ -2,12 +2,13 @@ import numpy as np
 import dataFrame_pd as df
 import db_toolbox as db
 import getpass
-
+import scipy.interpolate as spi
+import scipy.stats as st
 
 class eq_set:
 
     #Use of the dictionaries may be a bit slow -- could use dataframes if we did not need to dynamically allocate or if we left a lot of space
-
+    """
     def __init__(self, base_set = None):
         if base_set is None:
             base_set = {}
@@ -20,8 +21,17 @@ class eq_set:
         
         if len(base_set) != 0:
             self.label = np.array(base_set.values()).mean()
-             
+    """
+    def __init__(self, base_set = None):
         
+        if not isinstance(base_set, dict):
+            raise TypeError, "The base set MUST be a dictionary with an 'id' field and a 'value' field"
+        #implementation of this now is with a pair of numpy arrays -- not necessarily fast, but the way the finder works we will add whole sets of lists               
+        self.points = base_set
+        if len(self.points['value']) != 0:
+            self.label = self.points['value'].mean()
+
+    """
     def extend(self, point):
         if not isinstance(point, tuple):
             raise TypeError, "The data point needs to be a tuple"
@@ -29,7 +39,17 @@ class eq_set:
         #need to update the label to include the new point
         self.label = np.array(self.points.values()).mean()
         print "added run# %s.\tIt's val: %s.\tNew label: %s" % (point[0], point[1], self.label)
-
+    """
+    def extend(self, points):
+        if not isinstance(points, tuple):
+            raise TypeError, "The data points need to be a tuple of numpy arrays"
+        for item in points:
+            if not isinstance(item, np.array):
+                raise TypeError, "The data points and ids need to be numpy arrays"
+        self.points['id'] = np.append(self.points['id'], points[0])
+        self.points['value'] = np.append(self.points['value'], points[1])
+        self.label = self.points['value'].mean()
+    """
     def contains(self, point, method = "reldiff", rtol=0.1, atol=0.1):
         if not isinstance(point, tuple):
             raise TypeError, "The data point needs to be a tuple"
@@ -46,13 +66,17 @@ class eq_set:
         else:
             return abs(val - self.label)
 
+    def _reldiff_corr(self, val, corr):
+        if self.label != 0;
+            return abs((val - self.label))
+    """
     def output(self):
         print "Equivalence set: %s" % self.label
         for key in self.points:
             print "%s:\t%s" % (key, self.points[key])
 
     def keys(self):
-        return self.points.keys()
+        return self.points['id'].tolist()
 
 class partitionDataframe(df.Dataframe):
 
@@ -68,9 +92,12 @@ class partitionDataframe(df.Dataframe):
         eq_sets = {}
         
         for col in cols:
+            """
             i = 1
             #Need to walk the data and determine which equivalence set each piece belongs to
             eq_sets[col] = [eq_set(base_set = (self[id_col][0], self[col][0]))]
+            #We will want to subtract away the mean value for all of the data sets so that the relative tolerance better represents deviation
+            mean = self[col].mean()
             while i < len(self.index):
                 #check if the next point is in the existing list of equivalence sets -- stop when you find one
                 found = False
@@ -83,8 +110,57 @@ class partitionDataframe(df.Dataframe):
                 if not found:
                     eq_sets[col].append(eq_set(point))  #add a new equivalence set to the list
                 i += 1
-
+            """
+            eq_sets[col] = self._create_equivalence_sets(col, id_col)
         self.eq_sets = eq_sets
+
+    def _create_equivalence_sets(self, col, id_col):
+        """Creates an equivalence set using a kernel density method for the given column"""
+        #Create the kernel density estimate.  For starters, I am going to use the default bandwidth (although it may not work as well as desired)
+        
+        k = st.gaussian_kde(self[col], bw_method = 0.1)
+        #Create a set from which we can find the maxima and minima
+        h = (self[col].max() - self[col].min())/10000.0 #want 10000 data points in the interpolated set
+        x = np.arange(self[col].min(), self[col].max(), h)
+	#Estimate the derivatives
+        x_plus = x+h
+        x_minus = x-h
+        
+        
+        dk = (k(x_plus) - k(x_minus))/(2.0*h)
+        d2k = (k(x_plus) - 2.0*k(x) + k(x_minus))/(h**2)
+        #Fit splines, find minima
+        dks = spi.InterpolatedUnivariateSpline(x, dk)
+        r = dks.roots()
+        d2ks = spi.InterpolatedUnivariateSpline(x,d2k)
+        bounds = [self[col].min(),]
+        
+        for root in r:
+            if d2ks(root)>0:		#second derivative > 0 means a minimum
+                bounds.append(root)
+            
+        bounds.append(self[col].max()+1.0)
+        intervals = {}
+        print bounds
+        i = 0
+        eq_sets = []
+        while i < len(bounds)-1:
+            
+            #find the points in each interval
+            
+             
+            ids = self[id_col][np.logical_and(self[col]>= bounds[i],self[col]<bounds[i+1])]
+            vals = self[col][np.logical_and(self[col]>= bounds[i],self[col]<bounds[i+1])]
+            
+            es_new = eq_set(base_set = {'id':ids, 'value':vals})
+            
+            eq_sets.append(es_new)
+            i += 1
+        return eq_sets
+
+        
+        
+
 
     def unique_set(self, lists):
         """Finds the set of points with unique conditions on the partition"""
@@ -165,4 +241,4 @@ if __name__ == "__main__":
     pswd = getpass.getpass()
 
     finder = EquivalentSetFinder(user, pswd)
-    finder.find_unique_sets(cols = ["space_time_avg", "d50", "pp_H2O_avg", "tube_dia", "pp_CO2_avg", "pressure_ash_knockout_vessel_avg", "mass_flow_brush_feeder_avg","temp_skin_tube_middle_avg"])
+    finder.find_unique_sets(cols = ["space_time_avg"])#, "d50", "pp_H2O_avg", "tube_dia", "pp_CO2_avg", "pressure_ash_knockout_vessel_avg", "mass_flow_brush_feeder_avg","temp_skin_tube_middle_avg"])
