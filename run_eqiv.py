@@ -31,15 +31,7 @@ class eq_set:
         if len(self.points['value']) != 0:
             self.label = self.points['value'].mean()
 
-    """
-    def extend(self, point):
-        if not isinstance(point, tuple):
-            raise TypeError, "The data point needs to be a tuple"
-        self.points[point[0]]=point[1]
-        #need to update the label to include the new point
-        self.label = np.array(self.points.values()).mean()
-        print "added run# %s.\tIt's val: %s.\tNew label: %s" % (point[0], point[1], self.label)
-    """
+    
     def extend(self, points):
         if not isinstance(points, tuple):
             raise TypeError, "The data points need to be a tuple of numpy arrays"
@@ -49,27 +41,7 @@ class eq_set:
         self.points['id'] = np.append(self.points['id'], points[0])
         self.points['value'] = np.append(self.points['value'], points[1])
         self.label = self.points['value'].mean()
-    """
-    def contains(self, point, method = "reldiff", rtol=0.1, atol=0.1):
-        if not isinstance(point, tuple):
-            raise TypeError, "The data point needs to be a tuple"
-        if self.label != 0:
-            tol = rtol
-        else:
-            tol = atol
-        return getattr(self, "_%s" % method)(point[1]) < tol
-
-    def _reldiff(self, val):
-        #print self.label
-        if self.label != 0:
-            return abs((val - self.label))/self.label
-        else:
-            return abs(val - self.label)
-
-    def _reldiff_corr(self, val, corr):
-        if self.label != 0;
-            return abs((val - self.label))
-    """
+    
     def output(self):
         print "Equivalence set: %s" % self.label
         for key in self.points:
@@ -92,25 +64,7 @@ class partitionDataframe(df.Dataframe):
         eq_sets = {}
         
         for col in cols:
-            """
-            i = 1
-            #Need to walk the data and determine which equivalence set each piece belongs to
-            eq_sets[col] = [eq_set(base_set = (self[id_col][0], self[col][0]))]
-            #We will want to subtract away the mean value for all of the data sets so that the relative tolerance better represents deviation
-            mean = self[col].mean()
-            while i < len(self.index):
-                #check if the next point is in the existing list of equivalence sets -- stop when you find one
-                found = False
-                for es in eq_sets[col]:
-                    point = (self[id_col][i], self[col][i])
-                    if es.contains(point, rtol = self.partition_tolerance, atol = self.partition_tolerance_abs):
-                        found = True
-                        es.extend(point)
-                        break	#quit early -- we found the right enclosing set
-                if not found:
-                    eq_sets[col].append(eq_set(point))  #add a new equivalence set to the list
-                i += 1
-            """
+         
             eq_sets[col] = self._create_equivalence_sets(col, id_col)
         self.eq_sets = eq_sets
 
@@ -141,7 +95,7 @@ class partitionDataframe(df.Dataframe):
             
         bounds.append(self[col].max()+1.0)
         intervals = {}
-        print bounds
+        
         i = 0
         eq_sets = []
         while i < len(bounds)-1:
@@ -241,4 +195,4 @@ if __name__ == "__main__":
     pswd = getpass.getpass()
 
     finder = EquivalentSetFinder(user, pswd)
-    finder.find_unique_sets(cols = ["space_time_avg"])#, "d50", "pp_H2O_avg", "tube_dia", "pp_CO2_avg", "pressure_ash_knockout_vessel_avg", "mass_flow_brush_feeder_avg","temp_skin_tube_middle_avg"])
+    finder.find_unique_sets(cols = ["space_time_avg", "d50", "pp_H2O_avg", "tube_dia", "pp_CO2_avg", "pressure_ash_knockout_vessel_avg", "mass_flow_brush_feeder_avg","temp_skin_tube_middle_avg", "temp_steam_reactor_entry_avg"])
