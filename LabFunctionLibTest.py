@@ -24,12 +24,12 @@ pswd = getpass.getpass()
 
 class LoadDataTests(unittest.TestCase):
 
-    timestamp = np.ndarray(0, dtype = 'object')
-    timestamp = np.append(timestamp, datetime.datetime(1981,7,6,13,13,12))
-    timestamp = np.append(timestamp, datetime.datetime(1981,7,6,13,13,13))
-    timestamp = np.append(timestamp, datetime.datetime(1981,7,6,13,13,14))
-    timestamp = np.append(timestamp, datetime.datetime(1981,7,6,13,13,15))
-    timestamp = np.append(timestamp, datetime.datetime(1981,7,6,13,13,16))
+    ts = np.ndarray(0, dtype = 'object')
+    ts = np.append(ts, datetime.datetime(1981,7,6,13,13,12))
+    ts = np.append(ts, datetime.datetime(1981,7,6,13,13,13))
+    ts = np.append(ts, datetime.datetime(1981,7,6,13,13,14))
+    ts = np.append(ts, datetime.datetime(1981,7,6,13,13,15))
+    ts = np.append(ts, datetime.datetime(1981,7,6,13,13,16))
 
     ME_101 = np.ndarray(0, dtype = 'float64')
     ME_101 = np.append(ME_101, 3.5)
@@ -186,7 +186,7 @@ class LoadDataTests(unittest.TestCase):
     Counter[4] = 4
 
     general_library = {}
-    general_library['timestamp'] = timestamp
+    general_library['ts'] = ts
     general_library['ME_101'] = ME_101
     general_library['TE_101'] = TE_101
     general_library['TE_102'] = TE_102
@@ -211,7 +211,7 @@ class LoadDataTests(unittest.TestCase):
     general_library['counter'] = Counter
 
     units = {}
-    units['timestamp'] = None
+    units['ts'] = None
     units['ME_101'] = 'lb/hr'
     units['TE_101'] = 'K'
     units['TE_102'] = 'K'
@@ -248,7 +248,7 @@ class LoadDataTests(unittest.TestCase):
     + Raise an exception on an unconnected interface
     + Raise an exception on an interface that has no database selected
     + Raise an exception on a bad table name
-    + Raise an exception if there is not a "timestamp" field in the database
+    + Raise an exception if there is not a "ts" field in the database
     + Raise an exception if the start time makes no sense
     + Raise an exception if the stop time makes no sense
     + Raise an exception if start time > stop time
@@ -257,7 +257,7 @@ class LoadDataTests(unittest.TestCase):
     
     def testDataLoadCorrect(self):
         """Test whether all the data is loaded correctly and no extraneous data exists"""
-        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
+        interface = db.db_interface(host = "192.168.10.20", user = user, passwd = pswd)
         interface.connect()
         q = db.use_Query("gas_unit_test")
         interface.query(q)
@@ -267,7 +267,7 @@ class LoadDataTests(unittest.TestCase):
         for key in LoadDataTests.general_library.keys():
                 for i in range(len(ts[key])):
                     self.assertEqual(ts[key][i], LoadDataTests.general_library[key][i])
-        for key in ts.data.keys():
+        for key in ts.columns:
             self.assertIn(key,LoadDataTests.general_library.keys())
 
     def testBadInterface(self):
@@ -278,28 +278,28 @@ class LoadDataTests(unittest.TestCase):
 
     def testUnconnectedInterface(self):
         """An unconnected interface should raise an error"""
-        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
+        interface = db.db_interface(host = "192.168.10.20", user = user, passwd = pswd)
 
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
     def testNoDatabaseSelected(self):
         """An interface with no selected database should raise an error:"""
-        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
+        interface = db.db_interface(host = "192.168.10.20", user = user, passwd = pswd)
         interface.connect()
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         self.assertRaises(lfl.SQLInterfaceError, ts.SQL_load,interface, table = "gasifier_lv_GC_view")
 
 
     def testDataIsTimeseries(self):
-        """The data should have a timestamp column (actually be timeseries data)"""
-        interface = db.db_interface(host = "192.168.13.51", user = user, passwd = pswd)
+        """The data should have a ts column (actually be timeseries data)"""
+        interface = db.db_interface(host = "192.168.10.20", user = user, passwd = pswd)
         interface.connect()
         q = db.use_Query("gas_unit_test")
         interface.query(q)
         ts = lfl.ts_data(start = LoadDataTests.start, end = LoadDataTests.end)
         ts.SQL_load(interface, table = "gas_data_test_tbl")
-        self.assertIn("ts", ts.data.keys())
+        self.assertIn("ts", ts.columns)
 
 
     def testSensibleStartandEnd(self):
