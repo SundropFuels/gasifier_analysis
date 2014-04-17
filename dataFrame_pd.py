@@ -86,36 +86,16 @@ class Dataframe(pd.DataFrame):
             raise dfSQLError, "The passed interface is not a db_toolbox interface"
 
         query = SQL.select_Query(objects = ['*'], table = table, condition_list = conditions)
-        s = []
+        
 
         #try:
-        results = db_interface.query(query)
+        #This should now return a pandas Dataframe object, from which we can initialize our own object
+        s = db_interface.query(query, return_type = 'pandas_dataframe')
         
         #except SQL.DBToolboxError:
         #    raise dfSQLError, "There was an error in using the SQL interface"
 
-        for row in results:
-            s.append(pd.Series(row))
-        """
-        #clear and reset the dataframe -- no indexing, of course
-        for col in self.columns:
-            del self[col]
-
-        #for col in results[0].keys():
-        #    self.columns.append(col)
-        
-        r = pd.DataFrame(s)
-        print "We should have an empty index now"
-        print self
-        self.reindex(index = range(0,len(r)), copy = False)
-        print "We should be reindexed now with a length of %s" % len(r)
-        print self
-        
-        for col in r.columns:
-            
-            self[col] = r[col]
-        print self
-        """
+                
         #try this:
         self.reinitialize_data(s)
       
@@ -231,6 +211,7 @@ class Dataframe(pd.DataFrame):
             raise NoColumnError, "The specified column is not in the dataframe"
 
         ret_val = self[column].copy()
+
 
 
 

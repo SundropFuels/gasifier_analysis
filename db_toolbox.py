@@ -9,6 +9,7 @@ Version 0.1 - Initial implementations
 """
 #! /usr/bin/env python
 import MySQLdb
+import pandas.io.sql as pd_sql
 
 class DBToolboxError(Exception):
     pass
@@ -43,19 +44,27 @@ class db_interface:
     def __getitem__(self,key):
         return self.parameters[key]
 
-    def query(self, myQuery):
+    def query(self, myQuery, return_type = 'default'):
         
         if self.connected == False:
             raise InterfaceNotConnectedError, "Interface not connected to a database server"        
 
         if self.active_db == None and not (isinstance(myQuery, show_Query) or isinstance(myQuery, use_Query)):
             raise NoDBInUseError, "You cannot query a database that is not in use"
-        try:
-            self.cursor.execute(myQuery.getQuery())
-            result = self.cursor.fetchall()
-        except MySQLdb.Error, e:
-            #print "This is the error I got: %s" % e
-            raise DBToolboxError
+        if return_type == 'default' or return_type == 'dict_of_dicts':
+            try:
+                self.cursor.execute(myQuery.getQuery())
+                result = self.cursor.fetchall()
+            except MySQLdb.Error, e:
+                #print "This is the error I got: %s" % e
+                raise DBToolboxError
+        elif return_type == 'pandas_dataframe':
+            try:
+                #call the pandas library to get a dataframe from the request
+                result = pd_sql.read_frame(myQuery.getQuery(), self.connection)
+            except MySQLdb.Error, e:
+                #print "This is the error I got: %s" % e
+                raise DBToolboxError
         
         if isinstance(myQuery, use_Query):
             self.active_db = myQuery.getQuery().lstrip('USE ').rstrip(';')
