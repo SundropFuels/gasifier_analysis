@@ -91,7 +91,7 @@ class Dataframe(pd.DataFrame):
         #try:
         #This should now return a pandas Dataframe object, from which we can initialize our own object
         s = db_interface.query(query, return_type = 'pandas_dataframe')
-        
+           
         #except SQL.DBToolboxError:
         #    raise dfSQLError, "There was an error in using the SQL interface"
 

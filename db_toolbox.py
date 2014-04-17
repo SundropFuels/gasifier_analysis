@@ -56,12 +56,13 @@ class db_interface:
                 self.cursor.execute(myQuery.getQuery())
                 result = self.cursor.fetchall()
             except MySQLdb.Error, e:
-                print "This is the error I got: %s" % e
+                #print "This is the error I got: %s" % e
                 raise DBToolboxError
         elif return_type == 'pandas_dataframe':
             try:
                 #call the pandas library to get a dataframe from the request
                 result = pd_sql.read_frame(myQuery.getQuery(), self.connection)
+                
             except MySQLdb.Error, e:
                 #print "This is the error I got: %s" % e
                 raise DBToolboxError
