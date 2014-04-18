@@ -162,7 +162,7 @@ class UnitConverter:
 
         for checksum in consistency_list:
             if checksum != 0:
-                raise InconsistentUnitError, "The to and from units do not match"
+                raise InconsistentUnitError, "The to and from units do not match: %s vs %s" % (from_str, to_str)
 
         #print consistency_list
 
