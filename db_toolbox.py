@@ -240,6 +240,17 @@ class insert_Query(Query):
         
         return Query.getQuery(self)
 
+class insert_udk_Query(insert_Query):
+    "On duplicate key update type insert"
+    def __init__(self, **kwargs):
+        insert_Query.__init__(self, **kwargs)
+
+    def getQuery(self):
+        """Stiches together query from conditions"""
+        a = insert_Query.getQuery(self)   #just stowing the response, not needed
+        self.query.append('ON DUPLICATE KEY UPDATE')
+        return Query.getQuery(self)
+
 class delete_Query(Query):
     def __init__(self, table = "", conditions = []):
         Query.__init__(self)
