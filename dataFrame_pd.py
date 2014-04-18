@@ -129,8 +129,9 @@ class Dataframe(pd.DataFrame):
                     row[new_key] = 'NULL'
                 
             try:
-                query = SQL.insert_udk_Query(objects = row, table = table)
-                print query
+                query = SQL.insert_Query(objects = row, table = table)
+                #print query.getQuery()
+                
                 db_interface.query(query)
             except SQL.DBToolboxError:
                 try:
