@@ -52,11 +52,11 @@ class eq_set:
 
 class partitionDataframe(df.Dataframe):
 
-    def __init__(self, **kwargs):
+    def __init__(self, kde_bw = 0.1, **kwargs):
         df.Dataframe.__init__(self, **kwargs)
         self.partition_tolerance = 0.1
         self.partition_tolerance_abs = 0.1
-
+        self.kde_bw = kde_bw
     def partition(self, cols, id_col):
         if not isinstance(cols, list):
             raise TypeError, "The list of columns to partition on must be a list object" ##!!FINISH 
@@ -70,31 +70,36 @@ class partitionDataframe(df.Dataframe):
 
     def _create_equivalence_sets(self, col, id_col):
         """Creates an equivalence set using a kernel density method for the given column"""
-        #Create the kernel density estimate.  For starters, I am going to use the default bandwidth (although it may not work as well as desired)
-        
-        k = st.gaussian_kde(self[col], bw_method = 0.1)
-        #Create a set from which we can find the maxima and minima
-        h = (self[col].max() - self[col].min())/10000.0 #want 10000 data points in the interpolated set
-        x = np.arange(self[col].min(), self[col].max(), h)
-	#Estimate the derivatives
-        x_plus = x+h
-        x_minus = x-h
-        
-        
-        dk = (k(x_plus) - k(x_minus))/(2.0*h)
-        d2k = (k(x_plus) - 2.0*k(x) + k(x_minus))/(h**2)
-        #Fit splines, find minima
-        dks = spi.InterpolatedUnivariateSpline(x, dk)
-        r = dks.roots()
-        d2ks = spi.InterpolatedUnivariateSpline(x,d2k)
         bounds = [self[col].min(),]
+        #if all of the values are the same in the col, we don't need to do anything
+        if (self[col]==self[col][0]).all():
+            bounds.append(self[col].max()+1)
+        else:
+            #Create the kernel density estimate.  For starters, I am going to use the default bandwidth (although it may not work as well as desired)
         
-        for root in r:
-            if d2ks(root)>0:		#second derivative > 0 means a minimum
-                bounds.append(root)
+            k = st.gaussian_kde(self[col], bw_method = self.kde_bw)
+            #Create a set from which we can find the maxima and minima
+            h = (self[col].max() - self[col].min())/10000.0 #want 10000 data points in the interpolated set
+            x = np.arange(self[col].min(), self[col].max(), h)
+	    #Estimate the derivatives
+            x_plus = x+h
+            x_minus = x-h
+        
+        
+            dk = (k(x_plus) - k(x_minus))/(2.0*h)
+            d2k = (k(x_plus) - 2.0*k(x) + k(x_minus))/(h**2)
+            #Fit splines, find minima
+            dks = spi.InterpolatedUnivariateSpline(x, dk)
+            r = dks.roots()
+            d2ks = spi.InterpolatedUnivariateSpline(x,d2k)
+        
+        
+            for root in r:
+                if d2ks(root)>0:		#second derivative > 0 means a minimum
+                    bounds.append(root)
             
-        bounds.append(self[col].max()+1.0)
-        intervals = {}
+            bounds.append(self[col].max()+1.0)
+        
         
         i = 0
         eq_sets = []
@@ -110,6 +115,8 @@ class partitionDataframe(df.Dataframe):
             
             eq_sets.append(es_new)
             i += 1
+        for es in eq_sets:
+            print es.label
         return eq_sets
 
         

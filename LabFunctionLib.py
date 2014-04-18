@@ -21,6 +21,8 @@ import scipy.optimize as spo
 import Cantera as ct
 import time
 import pandas as pd
+import run_eqiv as eqv
+import scipy.stats as st
 
 conv = uc.UnitConverter()
 
@@ -1012,9 +1014,9 @@ class Mixer(ProcessObject):
     
     """A mixer blends multiple inlet streams into one outlet stream"""
 
-    def __init__(self, name, outlet_pressure = None, **kwargs):
+    def __init__(self, name, outlet_pressure = None, temp_method = 'default', **kwargs):
         ProcessObject.__init__(self, **kwargs)
-        
+        self.temp_method = temp_method
         self.outlets = [Stream(name = '%s_outlet' % name)]
         
         #Need to solve for the outlet stream pressure, temperature, and composition
@@ -1046,10 +1048,11 @@ class Mixer(ProcessObject):
     def _calc_outlet_pressure_scalar(self):
         conv = uc.UnitConverter()
         minP = None
+        
         for stream in self.inlets:
             if minP is None or conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa') < minP:
                 minP = conv.convert_units(stream.pressure[0], stream.pressure[1], 'Pa')
-               
+        
         self.outlets[0].set_pressure((minP, 'Pa'))
 
     def _calc_outlet_pressure_vector(self):
@@ -1057,12 +1060,14 @@ class Mixer(ProcessObject):
         conv = uc.UnitConverter()
         minP = np.zeros(self.inlets[0].length)
         minP[:] = np.nan
+        
         for i in range(0,self.inlets[0].length):
             for stream in self.inlets:
                 
                 if np.isnan(minP[i]) or conv.convert_units(stream.pressure[0][i], stream.pressure[1], 'Pa') < minP[i]:
                     minP[i] = conv.convert_units(stream.pressure[0][i], stream.pressure[1], 'Pa')
         self.outlets[0].set_pressure((minP, 'Pa'))
+        
 
     def _calc_outlet_flowrate(self):
         conv = uc.UnitConverter()
@@ -1132,12 +1137,58 @@ class Mixer(ProcessObject):
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
         
         temp_avg = temp_sum/len(self.inlets)
+        """
+        #inserting code to find equivalence sets
+        print "starting search for equivalence sets"
+        #create a dataframe to allow use of the run_eqiv.py module
+        data = pd.DataFrame({'id_col':np.arange(0,len(self.inlets[0].flowrate[0]))})
+        for inlet in self.inlets:
+            data['%s_flowrate' % inlet.name] = inlet.flowrate[0]
+            data['%s_temperature' % inlet.name] = inlet.temperature[0]
+            data['%s_pressure' % inlet.name] = inlet.pressure[0]
+        cols = data.columns.values.tolist()
+        cols.remove('id_col')
+        data2 = pd.DataFrame(data = data)
+        
+        pdata = eqv.partitionDataframe(data=data, kde_bw = 0.5)
+        print cols
+        unique = pdata.find_unique_sets(cols, 'id_col')
+        for un in unique:
+            print un
+        """
         
         if self.outlets[0].mode == "vector": 
+            if self.temp_method == 'default':
+                
+                outlet_temp = spo.newton_krylov(F = self.enth_func, xin = temp_avg, f_tol = 1E-3)
+            elif self.temp_method == 'fast_mean':
+                #Create streams for each of the inlet streams at the mean value of flowrate, temperature, and pressure
+                temp_streams = []
+                for inlet in self.inlets:
+                    T = [st.nanmean(inlet.temperature[0]), inlet.temperature[1]]
+                    P = [st.nanmean(inlet.pressure[0]), inlet.pressure[1]]
+                    F = [st.nanmean(inlet.flowrate[0]), inlet.flowrate[1]]
+                    
+                    temp_streams.append(Stream(name = inlet.name, flowrate = F, temperature = T, pressure = P, basis = inlet.basis))
+                temp_m = Mixer(name = 'mean_mix', inlets = temp_streams)
+                
+                outlet_temp = temp_m.outlets[0].temperature[0]*np.ones(len(self.inlets[0].flowrate[0]))
+                
 
-            outlet_temp = spo.newton_krylov(F = self.enth_func, xin = temp_avg, f_tol = 1E-3)
         elif self.outlets[0].mode == "scalar":
-            outlet_temp = spo.newton(func = self.enth_func, x0 = temp_avg)
+            
+            minT = np.inf
+            maxT = -np.inf
+            for inlet in self.inlets:
+                T1 = conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
+                if T1 < minT:
+                    minT = T1
+                if T1 > maxT:
+                    maxT = T1
+            print temp_avg
+            
+            outlet_temp = spo.brentq(f = self.enth_func,a = minT, b=maxT)
+            
         self.outlets[0].set_temperature((outlet_temp, 'K'))
         
 
@@ -1464,7 +1515,7 @@ class GasifierProcTS(ProcTS):
         
         temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
         
-        mix = Mixer('inlet_mix', inlets = temp_inlets)
+        mix = Mixer('inlet_mix', inlets = temp_inlets, temp_method = 'fast_mean')
 
         #mix.recalc()
 
