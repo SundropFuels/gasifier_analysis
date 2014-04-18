@@ -129,11 +129,12 @@ class Dataframe(pd.DataFrame):
                     row[new_key] = 'NULL'
                 
             try:
-                query = SQL.insert_Query(objects = row, table = table)
-                #print query
+                query = SQL.insert_udk_Query(objects = row, table = table)
+                print query
                 db_interface.query(query)
             except SQL.DBToolboxError:
                 try:
+                    print "kicked down here"
                     query = SQL.update_Query(objects = row, table = table, conditions = ["%s = '%s'" % (index_col,row['%s' % index_col])])
                     #print query.getQuery()
                     db_interface.query(query)
