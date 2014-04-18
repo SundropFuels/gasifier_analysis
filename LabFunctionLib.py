@@ -414,7 +414,6 @@ class Stream:
                 if self.mode is None or self.mode == "scalar":
                     self.mode = "scalar"
                 elif self.mode == "vector":
-                    print type(temperature[0])
                     temperature[0] = pd.Series(temperature[0]*np.ones(self.length))
 
             self.temperature = [temperature[0], temperature[1]]
@@ -1168,8 +1167,8 @@ class Mixer(ProcessObject):
                     T = [st.nanmean(inlet.temperature[0]), inlet.temperature[1]]
                     P = [st.nanmean(inlet.pressure[0]), inlet.pressure[1]]
                     F = [st.nanmean(inlet.flowrate[0]), inlet.flowrate[1]]
-                    
-                    temp_streams.append(Stream(name = inlet.name, flowrate = F, temperature = T, pressure = P, basis = inlet.basis))
+                     
+                    temp_streams.append(Stream(name = inlet.name, flowrate = F, temperature = T, pressure = P, basis = inlet.basis, composition = inlet.composition))
                 temp_m = Mixer(name = 'mean_mix', inlets = temp_streams)
                 
                 outlet_temp = temp_m.outlets[0].temperature[0]*np.ones(len(self.inlets[0].flowrate[0]))
@@ -1185,9 +1184,11 @@ class Mixer(ProcessObject):
                     minT = T1
                 if T1 > maxT:
                     maxT = T1
-            print temp_avg
+               
+                   
+           
             
-            outlet_temp = spo.brentq(f = self.enth_func,a = minT, b=maxT)
+            outlet_temp = spo.bisect(f = self.enth_func,a = 0, b=1500)
             
         self.outlets[0].set_temperature((outlet_temp, 'K'))
         
