@@ -132,7 +132,7 @@ class XYPlot(Plot):
         for y in self.Y_cols:
             legend.append(y)
             
-            if self.X_col == 'ts':
+            if self.data[self.X_col].values.dtype == '<M8[ns]':
                 plt.plot(self.data[self.X_col].astype(dt.datetime), self.data[y],self.marker)
             else:
                 plt.plot(self.data[self.X_col], self.data[y],self.marker)   #may need a marker default here
