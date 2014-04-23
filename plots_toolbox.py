@@ -132,7 +132,10 @@ class XYPlot(Plot):
         for y in self.Y_cols:
             legend.append(y)
             
-            plt.plot(self.data[self.X_col], self.data[y],self.marker)   #may need a marker default here
+            if self.X_col == 'ts':
+                plt.plot(self.data[self.X_col].astype(dt.datetime), self.data[y],self.marker)
+            else:
+                plt.plot(self.data[self.X_col], self.data[y],self.marker)   #may need a marker default here
             
             try:
                 if max_val is None or np.max(self.data.finite_vals(y)) > max_val:
@@ -611,7 +614,7 @@ class XBarControlChart(ControlChart):
         self._calcXBarPoints()
         self._calcControlLimits()
         try:
-            print self.X_bar
+#            print self.X_bar
             data = df.Dataframe({'x-bar':self.X_bar, chart2:getattr(self,chart2), 'x':self.ord_pts})
             #print data
             self.chart1_plot = XYPlot(data = data, x_label = self.x_label, y_label = 'x-bar', X_col = 'x', Y_cols = ['x-bar'], auto_scale = True, subplot = True, subplot_num = 211, marker = 'o')     
