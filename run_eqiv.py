@@ -57,6 +57,7 @@ class partitionDataframe(df.Dataframe):
         self.partition_tolerance = 0.1
         self.partition_tolerance_abs = 0.1
         self.kde_bw = kde_bw
+    
     def partition(self, cols, id_col):
         if not isinstance(cols, list):
             raise TypeError, "The list of columns to partition on must be a list object" ##!!FINISH 
@@ -115,8 +116,7 @@ class partitionDataframe(df.Dataframe):
             
             eq_sets.append(es_new)
             i += 1
-        for es in eq_sets:
-            print es.label
+        
         return eq_sets
 
         
@@ -152,7 +152,7 @@ class partitionDataframe(df.Dataframe):
                     new_lists.append(new_list)
         return new_lists
 
-    def find_unique_sets(self, cols, id_col):
+    def find_unique_sets(self, cols, id_col, verbose = False, min_length = 0):
         self.partition(cols, id_col)
         #Create the list of lists
         l = []
@@ -161,7 +161,27 @@ class partitionDataframe(df.Dataframe):
             for es in self.eq_sets[col]:
                 li.append(es.keys())
             l.append(li)
-        return self.unique_set(l)
+
+        us = self.unique_set(l)
+
+        if verbose:
+            #we want to print each of the sets in self.unique_set(l) out with their values for each of the columns
+
+            for s in us:
+                #each s should be a unique set, each item of which is in an equivalence set -- we just need to find it and print the relevant information
+                if len(s) >= min_length:
+                    print "-------------------------------------------------------"
+                    for col in self.eq_sets:
+                        for es in self.eq_sets[col]:
+                            if s[0] in es.keys():
+                                #This is the correct eq set
+                                print "%s:\t%s" % (col, es.label)
+                                break #We found it, let's go to the next column
+                    print s
+                    print "*******************************************************"
+
+
+        return us
 
 
 class EquivalentSetFinder:
@@ -174,12 +194,12 @@ class EquivalentSetFinder:
         self.interface.query(q)
 
         self.runs = partitionDataframe()
-        self.runs.SQL_load_data(self.interface, table = 'integral_summary')
+        self.runs.SQL_load_data(self.interface, table = 'integral_summary', conditions = ["quality = 'G'",])
 
         
-    def find_unique_sets(self, cols):
+    def find_unique_sets(self, cols, verbose = False, min_length = 0):
         #create the partition of the data frame
-        self.unique = self.runs.find_unique_sets(cols, "run_id")
+        self.unique = self.runs.find_unique_sets(cols, "run_id", verbose = verbose, min_length = min_length)
         #for es in self.runs.eq_sets.values():
         #    print es
         #    for i in range(0,len(es)):
@@ -188,8 +208,7 @@ class EquivalentSetFinder:
         #due to ordering considerations, these lists may not be 
 
         #build the list of lists
-        for un in self.unique:
-            print un
+        return self.unique
            
             
 
@@ -202,4 +221,4 @@ if __name__ == "__main__":
     pswd = getpass.getpass()
 
     finder = EquivalentSetFinder(user, pswd)
-    finder.find_unique_sets(cols = ["space_time_avg", "d50", "pp_H2O_avg", "tube_dia", "pp_CO2_avg", "pressure_ash_knockout_vessel_avg", "mass_flow_brush_feeder_avg","temp_skin_tube_middle_avg", "temp_steam_reactor_entry_avg"])
+    a = finder.find_unique_sets(cols = ["mass_flow_brush_feeder_avg", "temp_skin_tube_middle_avg", "temp_steam_reactor_entry_avg", "d50", "pp_H2O_avg", "pp_CO2_avg"], verbose = True, min_length = 2)
