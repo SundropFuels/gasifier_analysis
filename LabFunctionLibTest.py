@@ -984,6 +984,31 @@ class EnthalpyTests(unittest.TestCase):
                 print 'Failed on %s %s K' %(specie, Tf)
                 self.assertLess(percent, 3)
 
+    def testChangeBiomassTranslation(self):
+        """Must successfully change the underlying biomass composition in the Stream class"""
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        changed_dict = {'CELL':0.15, 'HCE':0.4, 'LIGC':0.15, 'LIGH':0.2, 'LIGC':0.2}
+        biomass_feed.change_biomass_composition(changed_dict)
+        self.assertEqual(lfl.Stream.ct_trans['biomass'],changed_dict)
+
+    def testChangeBiomassTranslationBadInput(self):
+        """Must successfully raise errors when there are problems with the input to the translation function"""
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        changed_dict = {'CELL':0.15, 'HCE':0.4, 'LIGC':0.15, 'LIGH':0.2, 'LIGC':0.2}
+        self.assertRaises(lfl.BadCTTransInputError, biomass_feed.change_biomass_composition, "a")
+        self.assertRaises(lfl.BadCTTransInputError, biomass_feed.change_biomass_composition, {'CELL':-0.5, 'HCE':0.2})
+        self.assertRaises(lfl.BadCTTransInputError, biomass_feed.change_biomass_composition, {'CELL':'ab', 'HCE':0.2})
+        self.assertRaises(lfl.BadCTTransInputError, biomass_feed.change_biomass_composition, {'CELL':0.1, 'PENGUINS':0.4})
+
+        
     def testCanteraStreamEnthalpyBiomass(self):
         """Must correctly calculate enthalpy for streams that contain biomass using the Cantera GasifierSpecies.cti file."""
         gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
@@ -1040,6 +1065,35 @@ class EnthalpyTests(unittest.TestCase):
         tot_enth = hand_stream.enthalpy_mole()/1000/1000*hand_stream_flowrate
         
         self.assertAlmostEqual(test_stream.get_enthalpy('kJ/s'), tot_enth, 2)
+
+    
+
+    def testMaxEnthalpyCalculation(self):
+        """The max enthalpy change function must correctly calculate the max enthalpy change"""
+        
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass',flowrate = (np.array([4.0,3.5],'lb/hr'), composition = {'biomass':1.00-0.075, 'H2O':0.075}, basis = "mass")
+        steam_feed = lfl.Stream('steam', flowrate = (np.array([1.0*3.5/4.0, 'lb/hr'), composition = {'H2O':1.0}, basis = "mass")
+        CO2_feed = lfl.Stream('CO2', flowrate = (np.array([2.0*3.5/4.0],'lb/hr'), composition = {'CO2':1.00}, basis = "mass")
+
+        biomass_feed.change_biomass_composition({'CELL':0.6, 'LIGC':0.4/3.0, 'LIGH':0.4/3.0, 'LIGO':0.4/3.0})
+                
+        biomass_feed.temperature = (25,"C")
+        biomass_feed.pressure = (101325, "Pa")
+	        
+        steam_feed.temperature = (500, "C")
+        steam_feed.pressure(101325, "Pa")
+
+        CO2_feed.temperature = (25, "C")
+        CO2_feed.pressure(101325, "Pa")        
+        gts.inlet_streams = [CO2_feed, steam_feed, biomass_feed]
+        gts.calc_max_dH(temperature = [1275, "C"], pressure = [101325, "Pa"], units = 'kW')
+        
+        dH_out = np.array([3.663, 4.186])
+        self.assertTrue((dH_out==gts['dH_max']).all())
 
 class HeatExchangeTests(unittest.TestCase):
     """Needs to:
