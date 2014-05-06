@@ -59,6 +59,9 @@ class ConversionError(lflException):
 class NoInletOutletFlowrateError(lflException):
     pass
 
+class BadCTTransInputError(lflException):
+    pass
+
 class ts_data(df.Dataframe):
     """General timeseries data class"""
     def __init__(self, start, end, data = None, units_dict = None):
@@ -755,6 +758,28 @@ class Stream:
         conv = uc.UnitConverter()
         return conv.convert_units(self.entropy[0], self.entropy[1], units)
 
+    def change_biomass_composition(self, bio_comp):
+        #need to do some error checking here
+        if not isinstance(bio_comp, dict):
+            raise BadCTTransInputError, "The new biomass composition must be a dictionary"
+
+        for key in bio_comp:
+            if key not in ["CELL","LIGH","LIGC","LIGO","HCE","ASH"]:
+                raise BadCTTransInputError, "%s is not a valid biomass component" % key
+
+        for value in bio_comp.values():
+            try:
+                int(value)
+            except ValueError:
+                raise BadCTTransInputError, "All compositional values must be numeric"
+
+            if not value >= 0.0:
+                raise BadCTTransInputError, "All compositional values must be greater than zero"
+
+        Stream.ct_trans['biomass'] = bio_comp
+            
+
+
     def ct_setcomp(self, composition = None):
         """Returns a string that can be used to input the stream's composition into a Cantera object"""
         # Missing transport data for H2S necessary to work with Cantera.  Prevent Stream object from putting H2S into Cantera composition, for now.  Shouldn't have too much of an impact in calculations, as H2S is a trace species.
@@ -843,6 +868,7 @@ class Stream:
     def _calc_spec_enthalpy_scalar(self):
         """Internal function for calculating the specific enthalpy for scalar valued streams"""
         self.ct_setcomp(self.composition)
+        
         self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
         if self.basis == "mass":
             self.spec_enthalpy = self.ctphase.enthalpy_mass()	#Units will be J/kg
@@ -1004,6 +1030,7 @@ class ProcessObject:
         return S
 
     def deltaH(self, units):
+        
         return self.totalOutletEnthalpy(units) - self.totalInletEnthalpy(units)
     
     def deltaS(self, units):
@@ -1188,7 +1215,7 @@ class Mixer(ProcessObject):
                    
            
             
-            outlet_temp = spo.bisect(f = self.enth_func,a = 0, b=1500)
+            outlet_temp = spo.bisect(f = self.enth_func,a = 1.0, b=1500.0)
             
         self.outlets[0].set_temperature((outlet_temp, 'K'))
         
@@ -1199,6 +1226,8 @@ class Reactor(ProcessObject):
     def __init__(self, temperature = None, pressure = None, **kwargs):
 
         ProcessObject.__init__(self,**kwargs)
+        self.temperature = temperature
+        self.pressure = pressure
 
     def calc_species_generation(self):
         pass
@@ -1208,6 +1237,89 @@ class Reactor(ProcessObject):
         return self.deltaH(units)
     def calc_entropy_change(self, units):
         return self.deltaS(units)
+
+class SDFIdealGasifier(Reactor):
+    """Idealized SDF gasifier -- 100% conversion"""
+    def __init__(self, y_CO2_out, y_CH4_out, **kwargs):
+        Reactor.__init__(self, **kwargs)
+        self.y_CO2 = y_CO2_out
+        self.y_CH4 = y_CH4_out
+
+        #need to convert the biomass in the inlet streams to the components
+        for inlet in self.inlets:
+            if 'biomass' in inlet.composition:
+                for key in Stream.ct_trans['biomass']:
+                    inlet.composition[key] = Stream.ct_trans['biomass'][key]*inlet.composition['biomass']
+                del inlet.composition['biomass']
+                  
+
+
+    def generate_outlet_stream(self):
+        #calculate the molar flowrates of each of the species
+	species = []
+        for inlet in self.inlets:
+            for key in inlet.composition:
+                if key not in species:
+                    species.append(key)
+
+        flowrates = {}
+        for key in species:
+            for inlet in self.inlets:
+                 try:
+                     flowrates[key] += inlet.calcSpeciesMolarFlowrate(key)
+                 except KeyError:
+                     flowrates[ key] = inlet.calcSpeciesMolarFlowrate(key)
+
+        inc_spec = ["CELL", "HCE", "LIGC", "LIGO", "LIGH", "H2", "CO", "CO2", "CH4", "H2O", "N2"]
+        for spec in inc_spec:
+            if spec not in flowrates:
+                 flowrates[spec] = np.zeros(len(self.inlets[0].flowrate[0]))
+
+
+        
+        #calculate grouped parameters
+        xi1 = flowrates["CELL"]
+        xi2 = flowrates["HCE"]
+        xi3 = flowrates["LIGC"]
+        xi4 = flowrates["LIGO"]
+        xi5 = flowrates["LIGH"]
+        phi0 = flowrates["H2"] + flowrates["CO"] + flowrates["CO2"] + flowrates["CH4"]
+        phi1 = 12*xi1 + 10*xi2 + 33*xi3 + 41*xi4 + 49*xi5
+        xi6 = (self.y_CO2*(phi0+phi1)+3*self.y_CO2*flowrates["CH4"] + 3*self.y_CH4*flowrates["CO2"] - flowrates["CO2"])/(1+3*self.y_CH4-self.y_CO2)
+        xi7 = (self.y_CH4/self.y_CO2)*(flowrates["CO2"]+xi6) - flowrates["CH4"]     
+   
+        #now do the mass balances
+        outs = {}
+        outs['CELL'] = flowrates['CELL'] - xi1
+        outs['HCE'] = flowrates['HCE'] - xi2
+        outs['LIGC'] = flowrates['LIGC'] - xi3
+        outs['LIGO'] = flowrates['LIGO'] - xi4
+	outs['LIGH'] = flowrates['LIGH'] - xi5
+        outs['H2'] = flowrates['H2'] +6*xi1 + 5*xi2 + 18*xi3 + 21*xi4 + 27*xi5 + xi6 - 3*xi7
+        outs['CO'] = flowrates['CO'] +6*xi1 + 5*xi2 + 15*xi3 + 20*xi4 + 22*xi5 - xi6 - xi7
+        outs['CO2'] = flowrates['CO2'] + xi6
+        outs['CH4'] = flowrates['CH4'] + xi7
+        outs['H2O'] = flowrates['H2O'] -xi1 -xi2 - 11*xi3 - 10*xi4 - 13*xi5 - xi6 + xi7
+
+        
+
+
+        #set up the outlet stream
+        fr = 0.0
+        for specie in outs:
+            fr += outs[specie]
+
+        composition = {}
+        for specie in outs:
+            composition[specie] = outs[specie]/fr
+
+        outlet = Stream('max_dH_outlet', flowrate = [fr, 'mol/s'], temperature = self.temperature, pressure = self.pressure, composition = composition, basis = "molar")
+
+        self.outlets = [outlet,]
+     
+
+        
+
         
 class Condenser(ProcessObject):
     def __init__(self, **kwargs):
@@ -1405,6 +1517,12 @@ class ProcTS(ts_data):
 
     def enthalpy_change(self, units):
         """Returns the enthalpy change in the process"""
+        #Because we cannot measure the C coming out, we need to make up for it in an outlet stream
+        #In a similar manner, we need to account for the water that is not measured and set the outlet temperature
+
+        #Another way to accomplish this would be to multiply the conversion against the total dH_max -- this would give an approximate answer that is probably just as good
+        #And that is how we are going to calculate this approximation
+
         #Create a reactor object with inlet and outlet streams
         r = Reactor(inlets = self.inlet_streams, outlets = self.outlet_streams)
 
@@ -1536,6 +1654,24 @@ class GasifierProcTS(ProcTS):
 
         self['space_time'] = tau
         self.units['space_time'] = 's'
+
+    def calc_max_dH(self, temperature, pressure, units = 'W'):
+        """Calculates the potential enthalpy change given the wall temperature and the feedrate of biomass"""
+        #Create a Reactor from the inlet streams
+        r = SDFIdealGasifier(y_CO2_out = 0.065, y_CH4_out = 0.0029, temperature = temperature, pressure = pressure, inlets = self.inlet_streams)
+        r.generate_outlet_stream()
+        self['dH_max'] = r.calc_enthalpy_change(units)
+        self.units['dH_max'] = units
+
+        #Calculate the Reactor's outlet stream using fixed mass balances (this could use an extensible mass balance package, but c'est la vie
+
+        #Determine the potential change in enthalpy using built-in functions
+
+    def generate_enthalpy_change(self, units):
+        """Calculates the enthalpy change by multiplying the max change over the conversion"""
+        conv = uc.UnitConverter()
+        self['delta_H'] = conv.convert_units(self['dH_max'], self.units['dH_max'], units)*self['X_tot']
+
 
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""

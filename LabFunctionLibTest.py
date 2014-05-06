@@ -983,6 +983,82 @@ class EnthalpyTests(unittest.TestCase):
             except:
                 print 'Failed on %s %s K' %(specie, Tf)
                 self.assertLess(percent, 3)
+
+    def testChangeBiomassTranslation(self):
+        """Must successfully change the underlying biomass composition in the Stream class"""
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        changed_dict = {'CELL':0.15, 'HCE':0.4, 'LIGC':0.15, 'LIGH':0.2, 'LIGC':0.2}
+        biomass_feed.change_biomass_composition(changed_dict)
+        self.assertEqual(lfl.Stream.ct_trans['biomass'],changed_dict)
+
+    def testChangeBiomassTranslationBadInput(self):
+        """Must successfully raise errors when there are problems with the input to the translation function"""
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        changed_dict = {'CELL':0.15, 'HCE':0.4, 'LIGC':0.15, 'LIGH':0.2, 'LIGC':0.2}
+        self.assertRaises(lfl.BadCTTransInputError, biomass_feed.change_biomass_composition, "a")
+        self.assertRaises(lfl.BadCTTransInputError, biomass_feed.change_biomass_composition, {'CELL':-0.5, 'HCE':0.2})
+        self.assertRaises(lfl.BadCTTransInputError, biomass_feed.change_biomass_composition, {'CELL':'ab', 'HCE':0.2})
+        self.assertRaises(lfl.BadCTTransInputError, biomass_feed.change_biomass_composition, {'CELL':0.1, 'PENGUINS':0.4})
+
+        
+    def testCanteraStreamEnthalpyBiomass(self):
+        """Must correctly calculate enthalpy for streams that contain biomass using the Cantera GasifierSpecies.cti file."""
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('ME_101',flowrate = gts.get_val('ME_101'), composition = {'biomass':1.00}, basis = "mass")
+        entrainment_gas_feed = lfl.Stream('MFC_101', flowrate = gts.get_val('MFC_101'), composition = {'N2':0.95, 'Ar':0.05}, basis = "gas_volume")
+        methane_gas_feed = lfl.Stream('MFC_102', flowrate = gts.get_val('MFC_102'), composition = {'CH4':1.00}, basis = "gas_volume")
+        gas_exit = lfl.Stream('FE_101', flowrate = gts.get_val('FE_101'),basis = "gas_volume")
+        
+        biomass_feed.temperature = (25,"C")
+        biomass_feed.pressure = (101325, "Pa")
+
+
+        entrainment_gas_feed.temperature = (25,"C")
+        methane_gas_feed.temperature = (25, "C")
+        gas_exit.temperature = (25, "C")
+        entrainment_gas_feed.pressure = (101325, "Pa")
+        methane_gas_feed.pressure = (101325, "Pa")
+        gas_exit.pressure = (101325, 'kg/s^2/m')
+
+        exit_list = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2', 'Ar']
+        for specie in exit_list:
+            key = "%s_GC" % specie
+            gas_exit.composition[specie] = gts[key]
+        gts.inlet_streams = [entrainment_gas_feed, methane_gas_feed, biomass_feed]
+        gts.outlet_streams = [gas_exit]
+        gts.proc_elements = ['C', 'H', 'O']
+        gts.proc_species = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2']
+        biomass_breakdown = {}
+        biomass_breakdown['biomass'] = {'C':0.5, 'O': 0.4, 'H': 0.1}
+        biomass_feed.special_species = biomass_breakdown
+        gts.generate_inlet_outlet_elemental_flows()
+        gts.generate_inlet_outlet_species_flows()
+        
+     
+
+        gts.generate_carbon_conversions()
+        inlet = LoadDataTests.general_library['ME_101']*0.5*453.592909/3600.0/12.0 + LoadDataTests.general_library['MFC_102']/60000.0*101325/8.314/298.15
+        outlet_molar = LoadDataTests.general_library['FE_101']/60000*101325/8.314/298.15
+        
+        goodX = outlet_molar*(LoadDataTests.general_library['CO_GC']+LoadDataTests.general_library['CO2_GC'])/inlet 
+        totX = outlet_molar*(LoadDataTests.general_library['CO_GC']+LoadDataTests.general_library['CO2_GC']+LoadDataTests.general_library['CH4_GC']+2.0*LoadDataTests.general_library['C2H6_GC'])/inlet 
+        stdX = outlet_molar*(LoadDataTests.general_library['CO_GC']+LoadDataTests.general_library['CO2_GC']+LoadDataTests.general_library['CH4_GC'])/inlet 
+        phiCO = outlet_molar*(LoadDataTests.general_library['CO_GC'])/inlet
+
+        #Need to determine what the exit enthalpy SHOULD be ... then we can do the tests.
+
+        self.assertEqual(1,0)
                           
     def testStreamEnthalpy(self):
         """Must correctly calculate stream enthalpy"""
@@ -995,6 +1071,36 @@ class EnthalpyTests(unittest.TestCase):
         tot_enth = hand_stream.enthalpy_mole()/1000/1000*hand_stream_flowrate
         
         self.assertAlmostEqual(test_stream.get_enthalpy('kJ/s'), tot_enth, 2)
+
+    
+
+    def testMaxEnthalpyCalculation(self):
+        """The max enthalpy change function must correctly calculate the max enthalpy change"""
+        
+        gts = lfl.GasifierProcTS(start = datetime.datetime(1981,07,06,13,12,12),end=datetime.datetime(1981,07,06,13,12,16))
+        for (key, value) in LoadDataTests.general_library.items():
+            gts[key] = value
+        gts.set_units(LoadDataTests.units)
+        biomass_feed = lfl.Stream('biomass',flowrate = (np.array([4.0,3.5,4.0,4.0,4.0]),'lb/hr'), composition = {'biomass':1.00-0.075, 'H2O':0.075}, basis = "mass")
+        steam_feed = lfl.Stream('steam', flowrate = (np.array([1.0, 1.0*3.5/4.0,1.0,1.0,1.0]), 'lb/hr'), composition = {'H2O':1.0}, basis = "mass")
+        CO2_feed = lfl.Stream('CO2', flowrate = (np.array([2.0,2.0*3.5/4.0,2.0,2.0,2.0]),'lb/hr'), composition = {'CO2':1.00}, basis = "mass")
+
+        biomass_feed.change_biomass_composition({'CELL':0.6, 'LIGC':0.4/3.0, 'LIGH':0.4/3.0, 'LIGO':0.4/3.0})
+                
+        biomass_feed.temperature = (25,"C")
+        biomass_feed.pressure = (101325, "Pa")
+	        
+        steam_feed.temperature = (500, "C")
+        steam_feed.pressure = (101325, "Pa")
+
+        CO2_feed.temperature = (25, "C")
+        CO2_feed.pressure = (101325, "Pa")        
+        gts.inlet_streams = [CO2_feed, steam_feed, biomass_feed]
+        gts.calc_max_dH(temperature = [1275, "C"], pressure = [101325, "Pa"], units = 'kW')
+        
+        dH_out = np.array([4.149, 3.63, 4.149, 4.149, 4.149])
+        
+        self.assertTrue((np.round(dH_out,1)==np.round(gts['dH_max'],1)).all())
 
 class HeatExchangeTests(unittest.TestCase):
     """Needs to:
