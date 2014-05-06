@@ -843,6 +843,8 @@ class Stream:
     def _calc_spec_enthalpy_scalar(self):
         """Internal function for calculating the specific enthalpy for scalar valued streams"""
         self.ct_setcomp(self.composition)
+        print "this should be a scalar"
+        print conv.convert_units(self.temperature[0], self.temperature[1], 'K')
         self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
         if self.basis == "mass":
             self.spec_enthalpy = self.ctphase.enthalpy_mass()	#Units will be J/kg
@@ -1188,7 +1190,7 @@ class Mixer(ProcessObject):
                    
            
             
-            outlet_temp = spo.bisect(f = self.enth_func,a = 0, b=1500)
+            outlet_temp = spo.bisect(f = self.enth_func,a = 1.0, b=1500.0)
             
         self.outlets[0].set_temperature((outlet_temp, 'K'))
         
@@ -1536,6 +1538,15 @@ class GasifierProcTS(ProcTS):
 
         self['space_time'] = tau
         self.units['space_time'] = 's'
+
+    def calc_max_dH(self, temperature, pressure):
+        """Calculates the potential enthalpy change given the wall temperature and the feedrate of biomass"""
+        #Create a Reactor from the inlet streams
+        r = Reactor(temperature, pressure, inlets = self.inlets)
+
+        #Calculate the Reactor's outlet stream using fixed mass balances (this could use an extensible mass balance package, but c'est la vie
+
+        #Determine the potential change in enthalpy using built-in functions
 
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""

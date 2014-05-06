@@ -28,7 +28,7 @@ class UnitConverter:
     money_dict = {'$':1.0}
     percent_dict = {'%':1.0, 'ppm':10000.0, 'fraction':1.0/100.0}
 
-    energy_dict = {'J':1.0, 'kJ':0.001, 'MJ':1E-6, 'cal':0.238845896628, 'kcal':2.38845896628E-4, 'Btu':9.47817120313E-4, 'MMBtu':9.47817120313E-10}
+    energy_dict = {'J':1.0, 'kJ':0.001, 'MJ':1E-6, 'cal':0.239005736138, 'kcal':2.39005736138E-4, 'Btu':9.47817120313E-4, 'MMBtu':9.47817120313E-10}
     energy_units = 'kg*m^2/s^2'    
 
     pressure_dict = {'Pa':1, 'psia':1.4503773773E-4, 'psig':1.4503773773E-4, 'bar':1E-5, 'atm':9.86923266716E-6, 'mmHg':0.007500616827, 'mmH2O':0.101971621298, 'inH2O':0.00401463076}
