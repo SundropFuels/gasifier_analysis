@@ -222,6 +222,7 @@ class GasifierDataAnalysis:
         self.gts.generate_CH4_yield()
         
         #3. Calculate changes in enthalpy and entropy
+        self.gts.calc_max_dH
         self.gts.generate_enthalpy_change('kW')
         #self.gts.generate_entropy_change(self, 'kW/K')
 

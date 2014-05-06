@@ -1020,13 +1020,13 @@ class EnthalpyTests(unittest.TestCase):
         methane_gas_feed = lfl.Stream('MFC_102', flowrate = gts.get_val('MFC_102'), composition = {'CH4':1.00}, basis = "gas_volume")
         gas_exit = lfl.Stream('FE_101', flowrate = gts.get_val('FE_101'),basis = "gas_volume")
         
-        biomass_feed.temperature = (235,"C")
+        biomass_feed.temperature = (25,"C")
         biomass_feed.pressure = (101325, "Pa")
-	#%#
 
-        entrainment_gas_feed.temperature = (100,"C")
-        methane_gas_feed.temperature = (675, "C")
-        gas_exit.temperature = (922, "C")
+
+        entrainment_gas_feed.temperature = (25,"C")
+        methane_gas_feed.temperature = (25, "C")
+        gas_exit.temperature = (25, "C")
         entrainment_gas_feed.pressure = (101325, "Pa")
         methane_gas_feed.pressure = (101325, "Pa")
         gas_exit.pressure = (101325, 'kg/s^2/m')
@@ -1044,13 +1044,19 @@ class EnthalpyTests(unittest.TestCase):
         biomass_feed.special_species = biomass_breakdown
         gts.generate_inlet_outlet_elemental_flows()
         gts.generate_inlet_outlet_species_flows()
-        #Want to check the stream calculation for each of the streams
-        H = []
-        for stream in gts.inlet_streams:
-            H.append(stream.get_enthalpy('W'))
-        print H[2]
-        #Need hand calculations -- did these in Excel for the streams
+        
      
+
+        gts.generate_carbon_conversions()
+        inlet = LoadDataTests.general_library['ME_101']*0.5*453.592909/3600.0/12.0 + LoadDataTests.general_library['MFC_102']/60000.0*101325/8.314/298.15
+        outlet_molar = LoadDataTests.general_library['FE_101']/60000*101325/8.314/298.15
+        
+        goodX = outlet_molar*(LoadDataTests.general_library['CO_GC']+LoadDataTests.general_library['CO2_GC'])/inlet 
+        totX = outlet_molar*(LoadDataTests.general_library['CO_GC']+LoadDataTests.general_library['CO2_GC']+LoadDataTests.general_library['CH4_GC']+2.0*LoadDataTests.general_library['C2H6_GC'])/inlet 
+        stdX = outlet_molar*(LoadDataTests.general_library['CO_GC']+LoadDataTests.general_library['CO2_GC']+LoadDataTests.general_library['CH4_GC'])/inlet 
+        phiCO = outlet_molar*(LoadDataTests.general_library['CO_GC'])/inlet
+
+        #Need to determine what the exit enthalpy SHOULD be ... then we can do the tests.
 
         self.assertEqual(1,0)
                           

@@ -1030,8 +1030,7 @@ class ProcessObject:
         return S
 
     def deltaH(self, units):
-        #print "Inlet Enthalpy: %s" % self.totalInletEnthalpy(units)
-        #print "Outlet Enthalpy: %s" % self.totalOutletEnthalpy(units)
+        
         return self.totalOutletEnthalpy(units) - self.totalInletEnthalpy(units)
     
     def deltaS(self, units):
@@ -1302,8 +1301,7 @@ class SDFIdealGasifier(Reactor):
         outs['CH4'] = flowrates['CH4'] + xi7
         outs['H2O'] = flowrates['H2O'] -xi1 -xi2 - 11*xi3 - 10*xi4 - 13*xi5 - xi6 + xi7
 
-        for key in outs:
-            print "%s:\t%s" % (key, outs[key][0])
+        
 
 
         #set up the outlet stream
@@ -1519,6 +1517,12 @@ class ProcTS(ts_data):
 
     def enthalpy_change(self, units):
         """Returns the enthalpy change in the process"""
+        #Because we cannot measure the C coming out, we need to make up for it in an outlet stream
+        #In a similar manner, we need to account for the water that is not measured and set the outlet temperature
+
+        #Another way to accomplish this would be to multiply the conversion against the total dH_max -- this would give an approximate answer that is probably just as good
+        #And that is how we are going to calculate this approximation
+
         #Create a reactor object with inlet and outlet streams
         r = Reactor(inlets = self.inlet_streams, outlets = self.outlet_streams)
 
@@ -1657,10 +1661,17 @@ class GasifierProcTS(ProcTS):
         r = SDFIdealGasifier(y_CO2_out = 0.065, y_CH4_out = 0.0029, temperature = temperature, pressure = pressure, inlets = self.inlet_streams)
         r.generate_outlet_stream()
         self['dH_max'] = r.calc_enthalpy_change(units)
+        self.units['dH_max'] = units
 
         #Calculate the Reactor's outlet stream using fixed mass balances (this could use an extensible mass balance package, but c'est la vie
 
         #Determine the potential change in enthalpy using built-in functions
+
+    def generate_enthalpy_change(self, units):
+        """Calculates the enthalpy change by multiplying the max change over the conversion"""
+        conv = uc.UnitConverter()
+        self['delta_H'] = conv.convert_units(self['dH_max'], self.units['dH_max'], units)*self['X_tot']
+
 
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""
