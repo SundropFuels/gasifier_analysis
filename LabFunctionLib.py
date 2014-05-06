@@ -764,7 +764,7 @@ class Stream:
             raise BadCTTransInputError, "The new biomass composition must be a dictionary"
 
         for key in bio_comp:
-            if key not in ["CELL","LIGH","LIGC","LIGH","HCE","ASH"]:
+            if key not in ["CELL","LIGH","LIGC","LIGO","HCE","ASH"]:
                 raise BadCTTransInputError, "%s is not a valid biomass component" % key
 
         for value in bio_comp.values():
@@ -1030,6 +1030,8 @@ class ProcessObject:
         return S
 
     def deltaH(self, units):
+        #print "Inlet Enthalpy: %s" % self.totalInletEnthalpy(units)
+        #print "Outlet Enthalpy: %s" % self.totalOutletEnthalpy(units)
         return self.totalOutletEnthalpy(units) - self.totalInletEnthalpy(units)
     
     def deltaS(self, units):
@@ -1242,13 +1244,13 @@ class SDFIdealGasifier(Reactor):
     def __init__(self, y_CO2_out, y_CH4_out, **kwargs):
         Reactor.__init__(self, **kwargs)
         self.y_CO2 = y_CO2_out
-        self.y_CH4 = y_CO2_out
+        self.y_CH4 = y_CH4_out
 
         #need to convert the biomass in the inlet streams to the components
         for inlet in self.inlets:
             if 'biomass' in inlet.composition:
                 for key in Stream.ct_trans['biomass']:
-                    inlet.composition[key] = Stream.ct_trans['biomass'][key]/inlet.composition['biomass']
+                    inlet.composition[key] = Stream.ct_trans['biomass'][key]*inlet.composition['biomass']
                 del inlet.composition['biomass']
                   
 
@@ -1272,9 +1274,10 @@ class SDFIdealGasifier(Reactor):
         inc_spec = ["CELL", "HCE", "LIGC", "LIGO", "LIGH", "H2", "CO", "CO2", "CH4", "H2O", "N2"]
         for spec in inc_spec:
             if spec not in flowrates:
-                 flowrates[key] = 0.0
+                 flowrates[spec] = np.zeros(len(self.inlets[0].flowrate[0]))
 
 
+        
         #calculate grouped parameters
         xi1 = flowrates["CELL"]
         xi2 = flowrates["HCE"]
@@ -1283,9 +1286,9 @@ class SDFIdealGasifier(Reactor):
         xi5 = flowrates["LIGH"]
         phi0 = flowrates["H2"] + flowrates["CO"] + flowrates["CO2"] + flowrates["CH4"]
         phi1 = 12*xi1 + 10*xi2 + 33*xi3 + 41*xi4 + 49*xi5
-        xi6 = (self.y_CO2/(phi0+phi1)+3*self.y_CO2*flowrates["CH4"] + 3*self.y_CH4*flowrates["CO2"] - flowrates["CO2"])/(1+3*self.y_CH4-self.y_CO2)
+        xi6 = (self.y_CO2*(phi0+phi1)+3*self.y_CO2*flowrates["CH4"] + 3*self.y_CH4*flowrates["CO2"] - flowrates["CO2"])/(1+3*self.y_CH4-self.y_CO2)
         xi7 = (self.y_CH4/self.y_CO2)*(flowrates["CO2"]+xi6) - flowrates["CH4"]     
-
+   
         #now do the mass balances
         outs = {}
         outs['CELL'] = flowrates['CELL'] - xi1
@@ -1299,6 +1302,10 @@ class SDFIdealGasifier(Reactor):
         outs['CH4'] = flowrates['CH4'] + xi7
         outs['H2O'] = flowrates['H2O'] -xi1 -xi2 - 11*xi3 - 10*xi4 - 13*xi5 - xi6 + xi7
 
+        for key in outs:
+            print "%s:\t%s" % (key, outs[key][0])
+
+
         #set up the outlet stream
         fr = 0.0
         for specie in outs:
@@ -1308,7 +1315,7 @@ class SDFIdealGasifier(Reactor):
         for specie in outs:
             composition[specie] = outs[specie]/fr
 
-        outlet = Stream(flowrate = [fr, 'mol/s'], temperature = self.temperature, pressure = self.pressure, composition = composition, basis = "molar")
+        outlet = Stream('max_dH_outlet', flowrate = [fr, 'mol/s'], temperature = self.temperature, pressure = self.pressure, composition = composition, basis = "molar")
 
         self.outlets = [outlet,]
      
@@ -1647,9 +1654,9 @@ class GasifierProcTS(ProcTS):
     def calc_max_dH(self, temperature, pressure, units = 'W'):
         """Calculates the potential enthalpy change given the wall temperature and the feedrate of biomass"""
         #Create a Reactor from the inlet streams
-        r = SDFIdealGasifier(temperature, pressure, inlets = self.inlets)
+        r = SDFIdealGasifier(y_CO2_out = 0.065, y_CH4_out = 0.0029, temperature = temperature, pressure = pressure, inlets = self.inlet_streams)
         r.generate_outlet_stream()
-        self['max_dH'] = r.calc_enthalpy_change(units)
+        self['dH_max'] = r.calc_enthalpy_change(units)
 
         #Calculate the Reactor's outlet stream using fixed mass balances (this could use an extensible mass balance package, but c'est la vie
 
