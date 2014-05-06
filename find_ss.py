@@ -6,6 +6,7 @@ import numpy as np
 import db_toolbox as db
 import argparse
 import getpass
+import matplotlib.pyplot as plt
 
 class ssFinder:
 
@@ -25,6 +26,7 @@ class ssFinder:
         self._load_run_info()
         self._load_ts_timeseries_data()
         
+        print self.ts['ts']
         plot = TimeSeriesPlot(data = self.ts, Y_cols = [['mass_flow_brush_feeder', 'CO_MS', 'H2_MS']], markers='o')
         plot.plot()
         plot.show()

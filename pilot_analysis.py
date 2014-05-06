@@ -15,12 +15,12 @@ class PilotDataAnalysis:
     def __init__(self, run_id, user, password, run_information = None):
         #Create the pilot data frame, and load the data from the SQL database.
                
-        self.interface_raw = db.db_interface(host = "#########", user = user, passwd = password)
+        self.interface_raw = db.db_interface(host = "localhost", user = user, passwd = password)
         self.interface_raw.connect()
         q = db.use_Query("pilot_run_db")
         self.interface_raw.query(q)
 
-        self.interface_proc = db.db_interface(host = "#########", user = user, passwd = password)
+        self.interface_proc = db.db_interface(host = "localhost", user = user, passwd = password)
         self.interface_proc.connect()
         q = db.use_Query("pilot_proc_db")
         self.interface_proc.query(q)
@@ -66,89 +66,60 @@ class PilotDataAnalysis:
         
     def _setup_standard_streams(self):
         """Sets up the standard streams and material compositions for analysis"""
-        biomass_feed = Stream('biomass_feed',flowrate = self.gts.val_units('mass_flow_brush_feeder'),composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
+        l
+        ########################################
+        ### Following streams must be defined ##
+        ########################################
         
+        #1 Entrainment CO2
+        #2 Sweep CO2
+        #3 Steam
+        #4 Argon
+        #5 Biomass
+        #6 Gas Exit
         
-        if self.gts['entrainment_gas_type'][0] == 0:
-            e_type = "N2"
-        elif self.gts['entrainment_gas_type'][0] == 1:
-            e_type = "CO2"       
-
-        if self.run_info.info['downbed_gas_type'] == 0:
-            db_type = "N2"
-        elif self.run_info.info['downbed_gas_type'] == 1:
-            db_type = "CO2"
-        else:
-            db_type = "CO2"
-       
-        if self.gts['makeup_gas_type'][0] == 0:
-            m_type = "N2"
-        elif self.gts['makeup_gas_type'][0] == 1:
-            m_type = "CO2"
-
-        cross_brush_feed = Stream('cross_brush_feed', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {e_type:1.0}, basis = "std_gas_volume")
-        if self.run_info.info['downbed_flow_rate'] < 0.01:
-            down_bed_feed = Stream('down_bed_feed', flowrate = (self.gts['mass_flow_down_brush']*0.0,'L/min'), composition = {db_type:1.0}, basis = "std_gas_volume")
-        else:
-            down_bed_feed = Stream('down_bed_feed', flowrate = self.gts.val_units('mass_flow_down_brush'), composition = {db_type:1.0}, basis = "std_gas_volume")
-
-        if self.run_info.info['makeup_flow'] < 0.01:
-            makeup_feed = Stream('makeup_feed', flowrate = (self.gts['mass_flow_feed_vessel_pressure']*0.0,'L/min'), composition = {m_type:1.0}, basis = "std_gas_volume")
-        else:
-            makeup_feed = Stream('makeup_feed', flowrate = self.gts.val_units('mass_flow_feed_vessel_pressure'), composition = {m_type:1.0}, basis = "std_gas_volume")
-
-        argon_tracer_feed = Stream('argon_tracer', flowrate = self.gts.val_units('mass_flow_argon_tracer'), composition = {'Ar':1.0}, basis = "std_gas_volume")
-        methane_gas_feed = Stream('methane_feed', flowrate = self.gts.val_units('mass_flow_methane'),composition = {'CH4':1.00}, basis = "std_gas_volume")
+        #######
+        ### ###
+        #######
         
-        #Convert steam to mass flow 
-        self.gts.convert_col_units('setpoint_steam_HPLC_pump', 'mL/hr')
-        self.gts['steam_flow'] = self.gts['setpoint_steam_HPLC_pump']
-        self.gts.units['steam_flow'] = 'g/hr'
-        self.gts.convert_col_units('steam_flow', 'lb/hr')
-        steam_feed = Stream('steam_feed', flowrate = self.gts.val_units('steam_flow'), composition = {'H2O':1.00}, basis = "mass")
-        steam_feed.temperature = (self.gts['temp_steam_reactor_entry'], self.gts.units['temp_steam_reactor_entry'])
-        steam_feed.pressure = (self.gts['pressure_reactor_gas_inlet'], self.gts.units['pressure_reactor_gas_inlet'])        
-        
+        #Setup the standard temperatures and pressures
         MFC_SP = (101325.0, 'Pa')
         MFC_ST = (70.0, 'F')
-
-        biomass_feed.set_temperature((25.0, 'C'))
-        cross_brush_feed.set_temperature((25.0, 'C'))
-        down_bed_feed.set_temperature((25.0, 'C'))
-        makeup_feed.set_temperature((25.0, 'C'))
-        argon_tracer_feed.set_temperature((25.0, 'C'))
-        methane_gas_feed.set_temperature((25.0, 'C'))
         
+        #1 Entrainment        
+        entrainment = Stream('entrainment', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {'CO2':1}, basis = 'std_gas_volume')
+        entrainment.set_temperature((25.0, 'C')) #Assumed ambient
+        entrainment.set_pressure(self.gts.val_units('pressure_entrainment')) #PI_924502
+        entrainment.std_temperature = MFC_ST
+        entrainment.std_pressure = MFC_SP
         
-        steam_feed.set_temperature(self.gts.val_units('temp_steam_reactor_entry'))
+        #2 Sweep
+        sweep = Stream('sweep', flowrate = self.gts.val_units('mass_flow_sweep'), composition = {'CO2':1}, basis = 'std_gas_volume')
+        sweep.set_temperature((25.0, 'C')) #Assumed ambient
+        sweep.set_pressure(self.gts.val_units('pressure_bell_housing')) #PI_924502
+        sweep.std_temperature = MFC_ST
+        sweep.std_pressure = MFC_SP
         
-        biomass_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
-        cross_brush_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
-        down_bed_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
-        makeup_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
-        argon_tracer_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
-        methane_gas_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
+        #3 Steam        
+        steam = Stream('steam', flowrate = self.gts.val_units('mass_flow_steam'), composition = {'H2O':1}, basis = 'mass')
+        steam.set_temperature(self.gts.val_units('temp_steam_gasifier_inlet')) #TI_983036
+        steam.set_pressure(self.gts.val_units('pressure_boiler_exit')) #PI_983005
         
-        steam_feed.set_pressure(self.gts.val_units('pressure_reactor_gas_inlet'))
-
-        #Setup the standard temperatures and pressures
-        cross_brush_feed.std_temperature = MFC_ST
-        down_bed_feed.std_temperature = MFC_ST
-        makeup_feed.std_temperature = MFC_ST
+        #4 Argon
+        argon_tracer_feed = Stream('argon_tracer', flowrate = self.gts.val_units('mass_flow_argon'), composition = {'Ar':1}, basis = 'std_gas_volume')
+        argon_tracer_feed.set_temperature((25.0, 'C')) #Assumed ambient
+        argon_tracer_feed.set_pressure(self.gts.val_units('pressure_bell_housing')) #PI_924502
         argon_tracer_feed.std_temperature = MFC_ST
-        methane_gas_feed.std_temperature = MFC_ST
-
-
-        cross_brush_feed.std_pressure = MFC_SP
-        down_bed_feed.std_pressure = MFC_SP
-        makeup_feed.std_pressure = MFC_SP
         argon_tracer_feed.std_pressure = MFC_SP
-        methane_gas_feed.std_pressure = MFC_SP
+                
+        #5 Biomass
+        biomass_feed = Stream('biomass_feed',flowrate = self.gts.val_units('mass_flow_biomass'), composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
+        biomass_feed.set_temperature((25.0, 'C'))
+        biomass_feed.set_pressure(self.gts.val_units(''))      
 
         #Set up exit gas flowrates
-        
-        
         gas_exit = self.gts.outlet_stream_from_tracer([argon_tracer_feed],"Molar", "Ar", self.gts['Ar_MS']/100.0, 'gas_exit')
+        
         #Need to set up the exit gas composition now -- we can actually build a variety of different streams here and use them as necessary 
         mass_spec_list = ['C2H2', 'Ar', 'C6H6', 'CO2', 'C2H6', 'C2H4', 'H2S', 'H2', 'CH4', 'C10H8', 'N2', 'C3H8', 'C3H6', 'C7H8', 'H2O', 'CO']
         
@@ -282,13 +253,13 @@ class PilotDataAnalysis:
         
         #try to upload the data
         try:
-            q = db.insert_Query(objects, table = "gas_integral_tbl")
+            q = db.insert_Query(objects, table = "integral_tbl")
             #print q.getQuery()
             self.interface_proc.query(q)
         except db.DBToolboxError:
             try:
                 
-                q = db.update_Query(objects, table = "gas_integral_tbl", conditions = ["run_id = %s" % objects['run_id']])
+                q = db.update_Query(objects, table = "integral_tbl", conditions = ["run_id = %s" % objects['run_id']])
                 #print q.getQuery()
                 self.interface_proc.query(q)
             except db.DBToolboxError:

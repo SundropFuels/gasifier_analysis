@@ -98,11 +98,11 @@ class GasifierReport:
         #Create ARIMA fits as necessary - will not work for NaN data (i.e. raw MS data -- that should not be autocorrellated anyway)
         ARIMA_list = ['mass_flow_brush_feeder','temp_steam_reactor_entry']
         for col in ARIMA_list:
-            #try:
+            try:
                 self.fit_ARIMA(col)
                 
-            #except Exception:
-            #    ARIMA_list.remove(col)
+            except Exception:
+                ARIMA_list.remove(col)
 
         ARIMA_captions = {'mass_flow_brush_feeder':'biomass flow rate','temp_steam_reactor_entry':'reactor inlet steam temperature'}        
 
@@ -166,6 +166,7 @@ class GasifierReport:
         self.ts.glossary_replace(self.glossary)
         self.ts.set_units(self.gl_units)
         self.ts.replace_None_w_nan_all()
+        self.ts['ts'] = self.ts['ts'].astype(datetime.datetime)
 
     def _load_ss_timeseries_data(self):
         """Loads processed steady state data including calculated columns"""
@@ -173,7 +174,8 @@ class GasifierReport:
         self.ss.SQL_load(self.interface_proc,'gas_proc_data_tbl')
         
         self.ss.replace_None_w_nan_all()
-
+        self.ss['ts'] = self.ss['ts'].astype(datetime.datetime)
+        
     def _add_units_to_run_info(self):
         for i in self.ts.units:
             if self.ts.units[i]=='C':
@@ -187,9 +189,12 @@ class GasifierReport:
         l=self.run_info.info.keys()
         for i in l:
             if i.endswith('_std'):
+                print i
                 try: self.run_info.info[i[:-4]+'_pstd']=self.run_info.info[i]/self.run_info.info[i[:-4]+'_avg']*100
                 except KeyError:
                     pass
+#                except TypeError:
+#                    pass
                 except ZeroDivisionError:
                     self.run_info.info[i[:-4]+'_pstd']=0
 
