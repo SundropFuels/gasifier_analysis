@@ -222,7 +222,7 @@ class GasifierDataAnalysis:
         self.gts.generate_CH4_yield()
         
         #3. Calculate changes in enthalpy and entropy
-        self.gts.calc_max_dH
+        self.gts.calc_max_dH(temperature = [self.gts['temp_skin_tube_middle'],self.gts.units['temp_skin_tube_middle']], pressure = [self.gts['pressure_ash_knockout_vessel'],self.gts.units['pressure_ash_knockout_vessel']], units = 'kW')
         self.gts.generate_enthalpy_change('kW')
         #self.gts.generate_entropy_change(self, 'kW/K')
 
@@ -364,12 +364,13 @@ if __name__ == '__main__':
         print "Analyzing run %s..." % run_id
 #        try:
         analyzer = GasifierDataAnalysis(run_id = run_id, user = user, password = pswd)
-        #print "Data loaded"
+        print "Data loaded"
         analyzer.calculate_standard_things()
-        #print "Standard things calculated"
-        #analyzer.generate_output_file('run100.csv')
+        print "Standard things calculated"
+        analyzer.generate_output_file('run100.csv')
         analyzer.upload_to_database()
+        print "Data uploaded to database"
 #        except Exception, e:
 #            print "Had a problem: %s" % e
 #            pass
-        #print "Data uploaded to database"
+        
