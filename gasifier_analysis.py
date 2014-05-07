@@ -241,7 +241,8 @@ class GasifierDataAnalysis:
         self.gts.calc_space_time(self.reactor_size, 'biomass')
         
         #7. Calculate optical thicknesses
-        self.gts.calc_optical_thickness(tubeD = self.tube_id, density = (1400, 'kg/m^3'), 
+        if 'd10' in self.run_info.info and 'd50' in self.run_info.info and 'd90' in self.run_info.info:
+            self.gts.calc_optical_thickness(tubeD = self.tube_id, density = (1400, 'kg/m^3'), 
                                         particle_size = {'d10':(self.run_info.info['d10']*10**-6, 'm'), 
                                                          'd50':(self.run_info.info['d50']*10**-6, 'm'), 
                                                          'd90':(self.run_info.info['d90']*10**-6, 'm')})
