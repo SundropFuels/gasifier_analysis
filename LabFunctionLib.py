@@ -382,6 +382,7 @@ class Stream:
         self.std_pressure = std_pressure
 
         self.special_species = {}
+        self.enthalpy_reserve = [0.0, 'W']  #This is a cludge fix -- it will be used to handle liquid water until I make streams n-phase capable
 
         self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
 
@@ -748,7 +749,7 @@ class Stream:
         
         self._calc_enthalpy()
         conv = uc.UnitConverter()
-        return conv.convert_units(self.enthalpy[0], self.enthalpy[1], units)
+        return conv.convert_units(self.enthalpy[0], self.enthalpy[1], units) + conv.convert_units(self.enthalpy_reserve[0], self.enthalpy_reserve[1], units)
 
     def get_entropy(self, units):
         if not isinstance(units, str):
@@ -1051,6 +1052,12 @@ class Mixer(ProcessObject):
         self._calc_outlet_pressure(outlet_pressure)
         self._calc_outlet_flowrate()
         self._calc_outlet_temperature()
+
+        #need to drag along the enthalpy reserve from the inlet streams -- will be fixed when streams get n-phase capability
+        conv = uc.UnitConverter()
+        for inlet in self.inlets:
+            self.outlets[0].enthalpy_reserve[0] += conv.convert_units(inlet.enthalpy_reserve[0], inlet.enthalpy_reserve[1], 'W')
+
 
     def recalc(self, outlet_pressure = None):
         self._calc_outlet_pressure(outlet_pressure)

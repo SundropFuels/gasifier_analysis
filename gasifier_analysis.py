@@ -8,6 +8,7 @@ import Thermo
 import argparse
 import csv
 import getpass
+import unitConversion as uc
 
 class GasifierDataAnalysis:
     """The basic data analysis class for gasifier experiments"""
@@ -74,7 +75,9 @@ class GasifierDataAnalysis:
     def _setup_standard_streams(self):
         """Sets up the standard streams and material compositions for analysis"""
         biomass_feed = Stream('biomass_feed',flowrate = self.gts.val_units('mass_flow_brush_feeder'),composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
-        
+        #Need to add back the enthalpy of vaporization to the biomass phase here -- this is due to two phase considerations
+        #conv = uc.UnitConverter()
+        #biomass_feed.enthalpy_reserve[0] += 
         
         if self.gts['entrainment_gas_type'][0] == 0:
             e_type = "N2"
