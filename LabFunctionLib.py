@@ -1030,7 +1030,8 @@ class ProcessObject:
         return S
 
     def deltaH(self, units):
-        
+        print "Total Inlet Enthalpy:\t%s" % self.totalInletEnthalpy(units)[0]
+        print "Total Outlet Enthalpy:\t%s" % self.totalOutletEnthalpy(units)[0]
         return self.totalOutletEnthalpy(units) - self.totalInletEnthalpy(units)
     
     def deltaS(self, units):
@@ -1261,6 +1262,7 @@ class SDFIdealGasifier(Reactor):
             for key in inlet.composition:
                 if key not in species:
                     species.append(key)
+            
 
         flowrates = {}
         for key in species:
@@ -1275,6 +1277,9 @@ class SDFIdealGasifier(Reactor):
             if spec not in flowrates:
                  flowrates[spec] = np.zeros(len(self.inlets[0].flowrate[0]))
 
+        for spec in flowrates:
+            print "%s:\t%s" % (spec, flowrates[spec][0])
+
 
         
         #calculate grouped parameters
@@ -1283,10 +1288,10 @@ class SDFIdealGasifier(Reactor):
         xi3 = flowrates["LIGC"]
         xi4 = flowrates["LIGO"]
         xi5 = flowrates["LIGH"]
-        phi0 = flowrates["H2"] + flowrates["CO"] + flowrates["CO2"] + flowrates["CH4"]
-        phi1 = 12*xi1 + 10*xi2 + 33*xi3 + 41*xi4 + 49*xi5
-        xi6 = (self.y_CO2*(phi0+phi1)+3*self.y_CO2*flowrates["CH4"] + 3*self.y_CH4*flowrates["CO2"] - flowrates["CO2"])/(1+3*self.y_CH4-self.y_CO2)
-        xi7 = (self.y_CH4/self.y_CO2)*(flowrates["CO2"]+xi6) - flowrates["CH4"]     
+        #phi0 = flowrates["H2"] + flowrates["CO"] + flowrates["CO2"] + flowrates["CH4"]
+        #phi1 = 12*xi1 + 10*xi2 + 33*xi3 + 41*xi4 + 49*xi5
+        xi6 = 0.0 #setting this to zero - essentially turning off water-gas shift(self.y_CO2*(phi0+phi1)+3*self.y_CO2*flowrates["CH4"] + 3*self.y_CH4*flowrates["CO2"] - flowrates["CO2"])/(1+3*self.y_CH4-self.y_CO2)
+        xi7 = 0.0 #setting this to zero - essentially turning off steam-reforming(self.y_CH4/self.y_CO2)*(flowrates["CO2"]+xi6) - flowrates["CH4"]     
    
         #now do the mass balances
         outs = {}
@@ -1300,8 +1305,11 @@ class SDFIdealGasifier(Reactor):
         outs['CO2'] = flowrates['CO2'] + xi6
         outs['CH4'] = flowrates['CH4'] + xi7
         outs['H2O'] = flowrates['H2O'] -xi1 -xi2 - 11*xi3 - 10*xi4 - 13*xi5 - xi6 + xi7
+        outs['N2'] = flowrates['N2']
+        outs['Ar'] = flowrates['Ar']
 
-        
+        for out in outs:
+             print "%s:\t%s" % (out, outs[out][0])
 
 
         #set up the outlet stream
@@ -1662,6 +1670,7 @@ class GasifierProcTS(ProcTS):
         r.generate_outlet_stream()
         self['dH_max'] = r.calc_enthalpy_change(units)
         self.units['dH_max'] = units
+        print self['dH_max'][0]
 
         #Calculate the Reactor's outlet stream using fixed mass balances (this could use an extensible mass balance package, but c'est la vie
 
