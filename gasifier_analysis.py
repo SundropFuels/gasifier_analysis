@@ -76,8 +76,9 @@ class GasifierDataAnalysis:
         """Sets up the standard streams and material compositions for analysis"""
         biomass_feed = Stream('biomass_feed',flowrate = self.gts.val_units('mass_flow_brush_feeder'),composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
         #Need to add back the enthalpy of vaporization to the biomass phase here -- this is due to two phase considerations
-        #conv = uc.UnitConverter()
-        #biomass_feed.enthalpy_reserve[0] += 
+        conv = uc.UnitConverter()
+        #I just created the biomass feed stream, so the reserve will be in 'W'
+        biomass_feed.enthalpy_reserve[0] += conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')*biomass_feed.composition['H2O']/0.018*-44010.0
         
         if self.gts['entrainment_gas_type'][0] == 0:
             e_type = "N2"
