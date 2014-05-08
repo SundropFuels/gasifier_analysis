@@ -1031,8 +1031,8 @@ class ProcessObject:
         return S
 
     def deltaH(self, units):
-        print "Total Inlet Enthalpy:\t%s" % self.totalInletEnthalpy(units)[0]
-        print "Total Outlet Enthalpy:\t%s" % self.totalOutletEnthalpy(units)[0]
+        #print "Total Inlet Enthalpy:\t%s" % self.totalInletEnthalpy(units)[0]
+        #print "Total Outlet Enthalpy:\t%s" % self.totalOutletEnthalpy(units)[0]
         return self.totalOutletEnthalpy(units) - self.totalInletEnthalpy(units)
     
     def deltaS(self, units):
@@ -1284,8 +1284,8 @@ class SDFIdealGasifier(Reactor):
             if spec not in flowrates:
                  flowrates[spec] = np.zeros(len(self.inlets[0].flowrate[0]))
 
-        for spec in flowrates:
-            print "%s:\t%s" % (spec, flowrates[spec][0])
+        #for spec in flowrates:
+        #    print "%s:\t%s" % (spec, flowrates[spec][0])
 
 
         
@@ -1315,8 +1315,8 @@ class SDFIdealGasifier(Reactor):
         outs['N2'] = flowrates['N2']
         outs['Ar'] = flowrates['Ar']
 
-        for out in outs:
-             print "%s:\t%s" % (out, outs[out][0])
+        #for out in outs:
+        #     print "%s:\t%s" % (out, outs[out][0])
 
 
         #set up the outlet stream
@@ -1677,7 +1677,7 @@ class GasifierProcTS(ProcTS):
         r.generate_outlet_stream()
         self['dH_max'] = r.calc_enthalpy_change(units)
         self.units['dH_max'] = units
-        print self['dH_max'][0]
+        #print self['dH_max'][0]
 
         #Calculate the Reactor's outlet stream using fixed mass balances (this could use an extensible mass balance package, but c'est la vie
 
