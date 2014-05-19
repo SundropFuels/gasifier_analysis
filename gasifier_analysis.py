@@ -78,7 +78,7 @@ class GasifierDataAnalysis:
         #Need to add back the enthalpy of vaporization to the biomass phase here -- this is due to two phase considerations
         conv = uc.UnitConverter()
         #I just created the biomass feed stream, so the reserve will be in 'W'
-        biomass_feed.enthalpy_reserve[0] += conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')*biomass_feed.composition['H2O']/0.018*-44010.0 #Heat of vaporization of water
+#        biomass_feed.enthalpy_reserve[0] += conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')*biomass_feed.composition['H2O']/0.018*-44010.0 #Heat of vaporization of water
         #NOTE -- this will ONLY WORK if the temperature is AT OR NEAR 25 C -- otherwise, we need a specific heat correction as well; we only have an Hf correction
         
         if self.gts['entrainment_gas_type'][0] == 0:
@@ -374,15 +374,15 @@ if __name__ == '__main__':
 
     for run_id in run_id_list:
         print "Analyzing run %s..." % run_id
-#        try:
-        analyzer = GasifierDataAnalysis(run_id = run_id, user = user, password = pswd)
-        print "Data loaded"
-        analyzer.calculate_standard_things()
-        print "Standard things calculated"
-        analyzer.generate_output_file('run100.csv')
-        analyzer.upload_to_database()
-        print "Data uploaded to database"
-#        except Exception, e:
-#            print "Had a problem: %s" % e
-#            pass
+        try:
+            analyzer = GasifierDataAnalysis(run_id = run_id, user = user, password = pswd)
+            print "Data loaded"
+            analyzer.calculate_standard_things()
+            print "Standard things calculated"
+            analyzer.generate_output_file('run100.csv')
+            analyzer.upload_to_database()
+            print "Data uploaded to database for run_id %s" %run_id
+        except Exception, e:
+            print "Had a problem on run_id %s: %s" %(run_id,e)
+            pass
         
