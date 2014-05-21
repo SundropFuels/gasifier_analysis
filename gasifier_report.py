@@ -93,14 +93,14 @@ class GasifierReport:
             fp_plots[key].save()
             LaTeX_fp += fp_plots[key].LaTeX_insert("fp_%s" % key)
             fp_plots[key].close()
+
         
-                
         #Create ARIMA fits as necessary - will not work for NaN data (i.e. raw MS data -- that should not be autocorrellated anyway)
         ARIMA_list = ['mass_flow_brush_feeder','temp_steam_reactor_entry']
         for col in ARIMA_list:
             try:
                 self.fit_ARIMA(col)
-                
+
             except Exception:
                 ARIMA_list.remove(col)
 
@@ -117,7 +117,7 @@ class GasifierReport:
             items.append(ARIMA_captions[col])
         for item in items:
             cp_caption.append("Individuals control chart for %s ARIMA(1,1) residuals" % item)
-        
+
         LaTeX_cp = ""
         for key, Y, caption in zip(cp_keys, cp_Y, cp_caption):
             input_df = ControlChartfromDataframe(data = self.ss, y_col = Y, x_col = 'ts', ignore_nan = True)
@@ -132,9 +132,9 @@ class GasifierReport:
         self.run_info.info['timeseriesplots'] =  LaTeX_ts
         self.run_info.info['fourplots'] = LaTeX_fp
         self.run_info.info['controlplots'] = LaTeX_cp
-           
+
         self.generate_standard_report()
-        
+
     def _create_file_structure(self):
         self.directory='rpt/%s/' % str(self.run_info.info['run_id'])
         if not os.path.exists(self.directory):
@@ -189,7 +189,6 @@ class GasifierReport:
         l=self.run_info.info.keys()
         for i in l:
             if i.endswith('_std'):
-                print i
                 try: self.run_info.info[i[:-4]+'_pstd']=self.run_info.info[i]/self.run_info.info[i[:-4]+'_avg']*100
                 except KeyError:
                     pass
@@ -218,7 +217,6 @@ class GasifierReport:
         self.run_info.info['H2S_normalized_avg']=self.run_info.info['H2S_MS_avg']*normprod
         self.run_info.info['H2S_normalized_std']=self.run_info.info['H2S_MS_std']*normprod
         self.run_info.info['H2S_normalized_units']='ppm'
-    
 
     ##CHANGE        
     def _convert_steam_flow_to_ml_min(self):
