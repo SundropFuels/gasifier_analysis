@@ -78,7 +78,7 @@ class GasifierDataAnalysis:
         #Need to add back the enthalpy of vaporization to the biomass phase here -- this is due to two phase considerations
         conv = uc.UnitConverter()
         #I just created the biomass feed stream, so the reserve will be in 'W'
-#        biomass_feed.enthalpy_reserve[0] += conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')*biomass_feed.composition['H2O']/0.018*-44010.0 #Heat of vaporization of water
+        biomass_feed.enthalpy_reserve[0] += (conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')*biomass_feed.composition['H2O']/0.018*-4444010.0) #Heat of vaporization of water
         #NOTE -- this will ONLY WORK if the temperature is AT OR NEAR 25 C -- otherwise, we need a specific heat correction as well; we only have an Hf correction
         
         if self.gts['entrainment_gas_type'][0] == 0:
@@ -243,7 +243,7 @@ class GasifierDataAnalysis:
         self.gts.calc_tar_rate(self.gts.outlet_streams[0])
 
         #6. Calculate the space time
-        self.gts.calc_space_time(self.reactor_size, 'biomass')
+        self.gts.calc_space_time(self.reactor_size, 'CELL')
         
         #7. Calculate optical thicknesses
 
