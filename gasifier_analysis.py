@@ -78,7 +78,7 @@ class GasifierDataAnalysis:
         #Need to add back the enthalpy of vaporization to the biomass phase here -- this is due to two phase considerations
         conv = uc.UnitConverter()
         #I just created the biomass feed stream, so the reserve will be in 'W'
-        biomass_feed.enthalpy_reserve[0] += (conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')*biomass_feed.composition['H2O']/0.018*-4444010.0) #Heat of vaporization of water
+        biomass_feed.enthalpy_reserve[0] += (conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')*biomass_feed.composition['H2O']/0.018*-44010.0) #Heat of vaporization of water
         #NOTE -- this will ONLY WORK if the temperature is AT OR NEAR 25 C -- otherwise, we need a specific heat correction as well; we only have an Hf correction
         
         if self.gts['entrainment_gas_type'][0] == 0:
@@ -99,12 +99,12 @@ class GasifierDataAnalysis:
             m_type = "CO2"
 
         cross_brush_feed = Stream('cross_brush_feed', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {e_type:1.0}, basis = "std_gas_volume")
-        if self.run_info.info['downbed_flow_rate'] < 0.01:
+        if self.run_info.info['downbed_flow_rate'] < 0.5:
             down_bed_feed = Stream('down_bed_feed', flowrate = (self.gts['mass_flow_down_brush']*0.0,'L/min'), composition = {db_type:1.0}, basis = "std_gas_volume")
         else:
             down_bed_feed = Stream('down_bed_feed', flowrate = self.gts.val_units('mass_flow_down_brush'), composition = {db_type:1.0}, basis = "std_gas_volume")
 
-        if self.run_info.info['makeup_flow'] < 0.01:
+        if self.run_info.info['makeup_flow'] < 0.5:
             makeup_feed = Stream('makeup_feed', flowrate = (self.gts['mass_flow_feed_vessel_pressure']*0.0,'L/min'), composition = {m_type:1.0}, basis = "std_gas_volume")
         else:
             makeup_feed = Stream('makeup_feed', flowrate = self.gts.val_units('mass_flow_feed_vessel_pressure'), composition = {m_type:1.0}, basis = "std_gas_volume")
@@ -150,7 +150,6 @@ class GasifierDataAnalysis:
         argon_tracer_feed.std_temperature = MFC_ST
         methane_gas_feed.std_temperature = MFC_ST
 
-
         cross_brush_feed.std_pressure = MFC_SP
         down_bed_feed.std_pressure = MFC_SP
         makeup_feed.std_pressure = MFC_SP
@@ -158,8 +157,7 @@ class GasifierDataAnalysis:
         methane_gas_feed.std_pressure = MFC_SP
 
         #Set up exit gas flowrates
-        
-        
+           
         gas_exit = self.gts.outlet_stream_from_tracer([argon_tracer_feed],"Molar", "Ar", self.gts['Ar_MS']/100.0, 'gas_exit')
         #Need to set up the exit gas composition now -- we can actually build a variety of different streams here and use them as necessary 
         mass_spec_list = ['C2H2', 'Ar', 'C6H6', 'CO2', 'C2H6', 'C2H4', 'H2S', 'H2', 'CH4', 'C10H8', 'N2', 'C3H8', 'C3H6', 'C7H8', 'H2O', 'CO']
@@ -235,9 +233,9 @@ class GasifierDataAnalysis:
         self.gts.generate_normalized_compositions()
         
         #calculate inlet partial pressures
-        self.gts['pp_CO2'] = self.gts['CO2_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['Ar_inlet'])*self.gts['pressure_reactor_gas_inlet']
-        self.gts['pp_H2O'] = self.gts['H2O_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['Ar_inlet'])*self.gts['pressure_reactor_gas_inlet']
-        self.gts['pp_Ar'] = self.gts['Ar_inlet']/(self.gts['Ar_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['Ar_inlet'])*self.gts['pressure_reactor_gas_inlet']
+        self.gts['pp_CO2'] = self.gts['CO2_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_reactor_gas_inlet']+14.7)
+        self.gts['pp_H2O'] = self.gts['H2O_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_reactor_gas_inlet']+14.7)
+        self.gts['pp_Ar'] = self.gts['Ar_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_reactor_gas_inlet']+14.7)
         
         #5. Calculate tar loads
         self.gts.calc_tar_rate(self.gts.outlet_streams[0])
