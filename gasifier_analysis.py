@@ -233,9 +233,9 @@ class GasifierDataAnalysis:
         self.gts.generate_normalized_compositions()
         
         #calculate inlet partial pressures
-        self.gts['pp_CO2'] = self.gts['CO2_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_reactor_gas_inlet']+14.7)
-        self.gts['pp_H2O'] = self.gts['H2O_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_reactor_gas_inlet']+14.7)
-        self.gts['pp_Ar'] = self.gts['Ar_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_reactor_gas_inlet']+14.7)
+        self.gts['pp_CO2'] = self.gts['CO2_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_ash_knockout_vessel']+14.7)
+        self.gts['pp_H2O'] = self.gts['H2O_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_ash_knockout_vessel']+14.7)
+        self.gts['pp_Ar'] = self.gts['Ar_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_ash_knockout_vessel']+14.7)
         
         #5. Calculate tar loads
         self.gts.calc_tar_rate(self.gts.outlet_streams[0])
