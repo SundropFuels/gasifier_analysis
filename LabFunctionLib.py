@@ -1727,7 +1727,9 @@ class GasifierProcTS(ProcTS):
     def generate_CH4_yield(self):
         if 'C_inlet' not in self.columns or 'CH4_outlet' not in self.columns:
             raise NoInletOutletFlowrateError, "The inlet and outlet flowrates of carbon/CH4 must be solved for first"
-        self['CH4_yield'] = (self['CH4_outlet']-self['CH4_inlet'])/(self['C_inlet']-self['CH4_inlet'])
+        self['CH4_yield'] = (self['CH4_outlet']-self['CH4_inlet'])/(self['C_inlet']-self['CH4_inlet'] - self['CO2_inlet'])
+
+
 
 class RunInformation:
     """Container class for information about experimental runs -- wrapper class around the dictionary object"""
