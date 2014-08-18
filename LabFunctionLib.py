@@ -1689,9 +1689,13 @@ class GasifierProcTS(ProcTS):
         self['delta_H'] = conv.convert_units(self['dH_max'], self.units['dH_max'], units)*self['X_tot']
 
 
-    def calc_min_residence_time(self):
-        """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""
-        pass      
+    def calc_min_residence_time(self, tube_length, tube_diameter):
+        """Calculates the minimum bound on the residence time, assuming the conversion observed and heat up at the instant materials enter the reactor"""
+        Vdot = self.outlet_streams[0].gas_volumetric_flowrate('m^3/s')
+	conv = uc.UnitConverter()
+        Vrx = conv.convert_units(tube_length[0], tube_length[1], 'm')*(conv.convert_units(tube_diameter[0],tube_diameter[1], 'm'))**2/4.0*3.14159
+        self['t_min'] = Vrx/Vdot
+        self.units['t_min'] = 's'
 
     def calc_optical_thickness(self, tubeD, density, particle_size):
         """Calculates the optical thickness of the inlet mixture.  Particle size should be a dictionary with d## keys"""
@@ -1728,6 +1732,7 @@ class GasifierProcTS(ProcTS):
         if 'C_inlet' not in self.columns or 'CH4_outlet' not in self.columns:
             raise NoInletOutletFlowrateError, "The inlet and outlet flowrates of carbon/CH4 must be solved for first"
         self['CH4_yield'] = (self['CH4_outlet']-self['CH4_inlet'])/(self['C_inlet']-self['CH4_inlet'] - self['CO2_inlet'])
+
 
 
 
