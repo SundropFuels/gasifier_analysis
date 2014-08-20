@@ -148,19 +148,7 @@ class PilotDataAnalysis:
         self.gts.units['exit_gas_flowrate'] = 'mol/s'
                
 
-        #interpolate the Ar column to get measurements for GC comparisons
-        GC_list = ['H2', 'CO', 'CO2', 'CH4', 'Ar', 'N2']
-        for specie in GC_list:
-            
-            self.gts['%s_GC_interp' % specie] = self.gts.interpolate_col('counter', '%s_GC' % specie)
-
-        gas_exit_GC = self.gts.outlet_stream_from_tracer([argon_tracer_feed], 'Molar', 'Ar', self.gts['Ar_GC_interp']/100.0, 'gas_exit_interp')
-        gas_exit_GC.set_pressure(self.gts.val_units('pressure_product_gas_downstream_filters'))
-        gas_exit_GC.set_temperature(self.gts.val_units('temp_exit_gas'))
-        gc_composition = {}
-        for specie in GC_list:
-            gc_composition[specie] = self.gts["%s_GC_interp" % specie]
-            gas_exit_GC.set_composition(gc_composition)
+        #!!# This is where you will include the laser Raman data, if desired
 
 
         self.gts.inlet_streams = [entrainment, sweep, steam, argon_tracer_feed, biomass_feed, N2_superheater_purge]
