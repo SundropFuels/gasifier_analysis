@@ -90,7 +90,7 @@ class PilotDataAnalysis:
         #1 Entrainment        
         entrainment = Stream('entrainment', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {'CO2':1}, basis = 'std_gas_volume')
         entrainment.set_temperature((25.0, 'C')) #Assumed ambient
-        entrainment.set_pressure(self.gts.val_units('pressure_entrainment')) #PI_924502
+        entrainment.set_pressure(self.gts.val_units('pressure_bell_housing')) #PI_924502
         entrainment.std_temperature = MFC_ST
         entrainment.std_pressure = MFC_SP
         
@@ -114,7 +114,9 @@ class PilotDataAnalysis:
         argon_tracer_feed.std_pressure = MFC_SP
                 
         #5 Biomass
-        biomass_feed = Stream('biomass_feed',flowrate = self.gts.val_units('mass_flow_biomass'), composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
+        biomass_flowrate = (self.gts['roto_feed_op'] * self.run_info['feeder_slope'] + self.run_info['feeder_intercept'], 'lb/hr')
+
+        biomass_feed = Stream('biomass_feed',flowrate = biomass_flowrate, composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
         biomass_feed.set_temperature((25.0, 'C'))
         biomass_feed.set_pressure(self.gts.val_units('pressure_bell_housing'))      
 
@@ -128,14 +130,17 @@ class PilotDataAnalysis:
         gas_exit = self.gts.outlet_stream_from_tracer([argon_tracer_feed],"Molar", "Ar", self.gts['Ar_MS']/100.0, 'gas_exit')
         
         #Need to set up the exit gas composition now -- we can actually build a variety of different streams here and use them as necessary 
+        #!!#
         mass_spec_list = ['C2H2', 'Ar', 'C6H6', 'CO2', 'C2H6', 'C2H4', 'H2S', 'H2', 'CH4', 'C10H8', 'N2', 'C3H8', 'C3H6', 'C7H8', 'H2O', 'CO']
         
         composition = {}
         for specie in mass_spec_list:
             composition[specie] = self.gts['%s_MS' % specie]/100.0
+        #!!#
         ppm_list = ['C6H6','H2S','C10H8','C7H8']
         for key in ppm_list:
             composition[key] /= 10000.0
+        #!!#
         gas_exit.set_pressure(self.gts.val_units('pressure_product_gas_downstream_filters'))
         gas_exit.set_composition(composition)
         gas_exit.set_temperature(self.gts.val_units('temp_exit_gas'))
@@ -158,7 +163,7 @@ class PilotDataAnalysis:
             gas_exit_GC.set_composition(gc_composition)
 
 
-        self.gts.inlet_streams = [down_bed_feed, cross_brush_feed, makeup_feed, argon_tracer_feed, methane_gas_feed, steam_feed, biomass_feed]
+        self.gts.inlet_streams = [entrainment, sweep, steam, argon_tracer_feed, biomass_feed, N2_superheater_purge]
         
         self.gts.outlet_streams = [gas_exit]
         
