@@ -39,8 +39,8 @@ class PilotDataAnalysis:
         self.run_info.SQL_load(self.interface_proc, table = 'run_plan_view', run_id = self.run_id)
         
         #set up the tube size
-        if self.run_info.info['tube_diameter'] == 2.0:
-            self.reactor_size = (24.0*1.5*1.5*np.pi/4, 'in^3')
+        if self.run_info.info['tube_diameter'] is not None:
+            self.reactor_size = (self.run_info.info['tube_diameter']**2 * np.pi/4*12.0*18.0, 'in^3')
         else:
             self.reactor_size = (None, None)
         
@@ -66,7 +66,7 @@ class PilotDataAnalysis:
         
     def _setup_standard_streams(self):
         """Sets up the standard streams and material compositions for analysis"""
-        l
+        
         ########################################
         ### Following streams must be defined ##
         ########################################
@@ -76,7 +76,8 @@ class PilotDataAnalysis:
         #3 Steam
         #4 Argon
         #5 Biomass
-        #6 Gas Exit
+        #6 Superheater N2 purge (technically, part of the steam, but adding separately for unit convenience)
+        #7 Gas Exit
         
         #######
         ### ###
@@ -103,7 +104,7 @@ class PilotDataAnalysis:
         #3 Steam        
         steam = Stream('steam', flowrate = self.gts.val_units('mass_flow_steam'), composition = {'H2O':1}, basis = 'mass')
         steam.set_temperature(self.gts.val_units('temp_steam_gasifier_inlet')) #TI_983036
-        steam.set_pressure(self.gts.val_units('pressure_boiler_exit')) #PI_983005
+        steam.set_pressure(self.gts.val_units('pressure_bell_housing')) #
         
         #4 Argon
         argon_tracer_feed = Stream('argon_tracer', flowrate = self.gts.val_units('mass_flow_argon'), composition = {'Ar':1}, basis = 'std_gas_volume')
@@ -115,7 +116,13 @@ class PilotDataAnalysis:
         #5 Biomass
         biomass_feed = Stream('biomass_feed',flowrate = self.gts.val_units('mass_flow_biomass'), composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
         biomass_feed.set_temperature((25.0, 'C'))
-        biomass_feed.set_pressure(self.gts.val_units(''))      
+        biomass_feed.set_pressure(self.gts.val_units('pressure_bell_housing'))      
+
+        #6 N2 Superheater Purge
+        N2_superheater_purge = Stream('N2_superheater_purge', flowrate = self.gts.val_units('mass_flow_superheater_purge'), composition = {'N2':1.0}, basis = "std_gas_volume")
+        N2_superheater_purge.set_temperature(self.gts.val_units('temp_steam_gasifier_inlet'))
+        N2_superheater_purge.set_pressure(self.gts.val_units('pressure_bell_housing'))
+
 
         #Set up exit gas flowrates
         gas_exit = self.gts.outlet_stream_from_tracer([argon_tracer_feed],"Molar", "Ar", self.gts['Ar_MS']/100.0, 'gas_exit')
