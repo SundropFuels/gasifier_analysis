@@ -16,18 +16,18 @@ import dataFrame_v2 as df
 from plots_toolbox import *
 import getpass
 
-class GasifierReport:
+class PilotReport:
     """The basic data analysis class for gasifier experiments"""
 
     def __init__(self, run_id, user, password, run_information = None):
         #Create the gasifier data frame, and load the data from the SQL database (this will be automated through the interface later)
-        self.interface_raw = db.db_interface(host = "192.168.13.51", user = user, passwd = password)
+        self.interface_raw = db.db_interface(host = "localhost", user = user, passwd = password)
         self.interface_raw.connect()
-        q = db.use_Query("lab_run_db")
+        q = db.use_Query("pilot_run_db")
         self.interface_raw.query(q)
-        self.interface_proc = db.db_interface(host = "192.168.13.51", user = user, passwd = password)
+        self.interface_proc = db.db_interface(host = "localhost", user = user, passwd = password)
         self.interface_proc.connect()
-        q = db.use_Query("lab_proc_db")
+        q = db.use_Query("pilot_proc_db")
         self.interface_proc.query(q)
         print "databases connected"
 
@@ -317,7 +317,7 @@ if __name__ == '__main__':
     for run_id in run_id_list:
         print "Generating a Report for Run %s..." % run_id
 
-        report = GasifierReport(run_id = run_id, user = user, password = pswd)
+        report = PilotReport(run_id = run_id, user = user, password = pswd)
         #try: 
         #except: print "Report Generation Failed for Run %s" %run_id
 
