@@ -49,13 +49,13 @@ class PilotDataAnalysis:
         """Loads the timeseries data into the database"""
         
         self.gts = GasifierProcTS(start = self.run_info.info['ss_start'], end = self.run_info.info['ss_stop'])
-        self.gts.SQL_load(self.interface_raw,'analysis_view') #This line needs to automatically load the units
+        self.gts.SQL_load(self.interface_raw,'analysis_view', glossary = 'glossary_tbl') #This line needs to automatically load the units
         #Need to build the glossary using the SQL tools
         q = db.select_Query(objects = ['tag_number', 'simple_name', 'units'], table = "glossary_tbl")
-	    glossary = self.interface_raw.query(q)
-	    self.glossary = {}a
-	    self.gl_units = {}
-	    for row in glossary:
+	glossary = self.interface_raw.query(q)
+	self.glossary = {}
+	self.gl_units = {}
+	for row in glossary:
             self.glossary[row['tag_number']] = row['simple_name']
             self.gl_units[row['simple_name']] = row['units']
         
@@ -115,6 +115,9 @@ class PilotDataAnalysis:
                 
         #5 Biomass
         biomass_flowrate = (self.gts['roto_feed_op'] * self.run_info['feeder_slope'] + self.run_info['feeder_intercept'], 'lb/hr')
+        self.gts['biomass_flowrate'] = biomass_flowrate[0]
+        self.gts.units['biomass_flowrate'] = biomass_flowrate[1]
+
 
         biomass_feed = Stream('biomass_feed',flowrate = biomass_flowrate, composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
         biomass_feed.set_temperature((25.0, 'C'))
@@ -130,20 +133,20 @@ class PilotDataAnalysis:
         gas_exit = self.gts.outlet_stream_from_tracer([argon_tracer_feed],"Molar", "Ar", self.gts['Ar_MS']/100.0, 'gas_exit')
         
         #Need to set up the exit gas composition now -- we can actually build a variety of different streams here and use them as necessary 
-        #!!#
-        mass_spec_list = ['C2H2', 'Ar', 'C6H6', 'CO2', 'C2H6', 'C2H4', 'H2S', 'H2', 'CH4', 'C10H8', 'N2', 'C3H8', 'C3H6', 'C7H8', 'H2O', 'CO']
+        
+        mass_spec_list = ['N2','Ar','H2O','H2','CO','CO2','CH4','C2H6','C2H4','C2H2','C3H8','C3H6','C4H8','C4H10','CH3CHCH3CH3','C6H6','C7H8','C6H4CH3CH3','C6H5CH2CH3','C10H8','H2S']
         
         composition = {}
         for specie in mass_spec_list:
             composition[specie] = self.gts['%s_MS' % specie]/100.0
         #!!#
-        ppm_list = ['C6H6','H2S','C10H8','C7H8']
+        ppm_list = ['C6H6','H2S','C10H8','C7H8','CH3CHCH3CH3','C6H4CH3CH3','C6H5CH2CH3']
         for key in ppm_list:
             composition[key] /= 10000.0
         #!!#
-        gas_exit.set_pressure(self.gts.val_units('pressure_product_gas_downstream_filters'))
+        gas_exit.set_pressure(self.gts.val_units('pressure_outlet'))
         gas_exit.set_composition(composition)
-        gas_exit.set_temperature(self.gts.val_units('temp_exit_gas'))
+        gas_exit.set_temperature(self.gts.val_units('temp_gasifier_exit'))
         self.gts['exit_gas_flowrate'] = gas_exit.flowrate[0]
         self.gts.units['exit_gas_flowrate'] = 'mol/s'
                
@@ -156,7 +159,7 @@ class PilotDataAnalysis:
         self.gts.outlet_streams = [gas_exit]
         
         self.gts.proc_elements = ['C', 'H', 'O']
-        self.gts.proc_species = ['H2', 'CO', 'CO2', 'CH4', 'C2H6', 'N2', 'C2H4', 'C2H2', 'C6H6', 'Ar', 'C7H8', 'C10H8', 'C3H8', 'C3H6','H2O']
+        self.gts.proc_species = ['N2','Ar','H2O','H2','CO','CO2','CH4','C2H6','C2H4','C2H2','C3H8','C3H6','C4H8','C4H10','CH3CHCH3CH3','C6H6','C7H8','C6H4CH3CH3','C6H5CH2CH3','C10H8','H2S']
         self.gts.inert_species = ['N2', 'Ar']
         
         #set up the biomass information from the run table
@@ -166,7 +169,7 @@ class PilotDataAnalysis:
             biomass_breakdown['biomass'][item.upper()] = self.run_info['w_%s' % item]/100.0
         
         #Following line overrides assignment for individual sample carbon content and uses bag average carbon content instead. 
-        biomass_breakdown['biomass']['C'] = self.run_info['bag_c']/100
+        #biomass_breakdown['biomass']['C'] = self.run_info['bag_c']/100
         
         #End additional row
         biomass_breakdown['biomass']['O'] = 1 - sum(biomass_breakdown['biomass'].values())
@@ -182,8 +185,11 @@ class PilotDataAnalysis:
 
         #2. Calculate carbon conversions
         self.gts.generate_carbon_conversions()
-        
+        self.gts.generate_C_mass_balance()
+        self.gts.generate_CH4_yield()
+
         #3. Calculate changes in enthalpy and entropy
+        self.gts.calc_max_dH(temperature = [self.gts['temp_skin_tube_middle'],self.gts.units['temp_skin_tube_middle']], pressure = [self.gts['pressure_outlet'],self.gts.units['pressure_outlet']], units = 'kW')
         self.gts.generate_enthalpy_change('kW')
         #self.gts.generate_entropy_change(self, 'kW/K')
 
@@ -196,15 +202,31 @@ class PilotDataAnalysis:
         self.gts['pp_Ar'] = self.gts['Ar_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_ako']+14.7)
         
         #5. Calculate tar loads
-        self.gts.calc_tar_rate(self.gts.outlet_streams[0])
+        self.gts.calc_tar_rate(self.gts.outlet_streams[0], tar_list = ['C6H6', 'C7H8', 'C10H8', 'CH3CHCH3CH3', 'C6H4CH3CH3', 'C6H5CH2CH3'], inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C4H8', 'C4H10', 'C6H6', 'C7H8', 'C10H8', 'CH3CHCH3CH3', 'C6H4CH3CH3', 'C6H5CH2CH3'])
 
         #6. Calculate the space time
         self.gts.calc_space_time(self.reactor_size, 'biomass')
 
-        #7. Calculate integral measures
+        #7. Calculate optical thickness
+
+        sizes = ['10','50','90']
+        for size in sizes:
+            if self.run_info.info['d%s'%size] is None:
+                self.run_info.info['d%s'%size] = np.nan
+
+        tube_id = (self.run_info['tube_diameter'], 'in')
+
+        self.gts.calc_optical_thickness(tubeD = tube_id, density = (1400, 'kg/m^3'), 
+                                        particle_size = {'d10':(self.run_info.info['d10']*10**-6, 'm'), 
+                                                         'd50':(self.run_info.info['d50']*10**-6, 'm'), 
+                                                         'd90':(self.run_info.info['d90']*10**-6, 'm')})
+
+        #8. Calculate integral measures
         self.gts.generate_averages_and_stdevs(cols = self.get_analysis_config_list())
         
-        #8. Calculate uncertainties
+        #!!# New stuff
+
+        #9. Calculate uncertainties
         ####NOT IMPLEMENTED YET
        
     def generate_output_file(self, filename):
@@ -227,7 +249,7 @@ class PilotDataAnalysis:
 
         #upload the time series data
         
-        self.gts.SQL_db_upload(self.interface_proc, table = "gas_proc_data_tbl")
+        self.gts.SQL_db_upload(self.interface_proc, table = "pilot_proc_data_tbl")
 
         print "completed upload of timeseries data"
         #upload the integral data
@@ -237,15 +259,9 @@ class PilotDataAnalysis:
         #need to build the query elements
         objects = {}
         objects['run_id'] = str(self.run_id)
-        objects['moisture'] = str(self.run_info.info['moisture'])
-        objects['d10'] = str(self.run_info.info['d10'])
-        objects['d50'] = str(self.run_info.info['d50'])
-        objects['d90'] = str(self.run_info.info['d90'])
-        objects['campaign_id'] = str(self.run_info.info['campaign_id'])
-        objects['w_c'] = str(self.run_info.info['w_c'])
         objects['N_total'] = str(len(self.gts.index))
         objects['N_MS'] = str(len(self.gts['CO_MS'][np.isfinite(self.gts['CO_MS'].astype(float))]))
-        objects['analysis_timestamp'] = datetime.datetime.strftime(datetime.datetime.today(), '%Y-%m-%d %H:%M:%S')
+        objects['analysis_ts'] = datetime.datetime.strftime(datetime.datetime.today(), '%Y-%m-%d %H:%M:%S')
         for key in self.gts.avgs:
             objects['%s_avg' % key] = str(self.gts.avgs[key])
         for key in self.gts.stdevs:
@@ -318,10 +334,10 @@ if __name__ == '__main__':
 
     for run_id in run_id_list:
         print "Analyzing run %s..." % run_id
-        analyzer = GasifierDataAnalysis(run_id = run_id, user = user, password = pswd)
-        #print "Data loaded"
+        analyzer = PilotDataAnalysis(run_id = run_id, user = user, password = pswd)
+        print "Data loaded"
         analyzer.calculate_standard_things()
-        #print "Standard things calculated"
+        print "Standard things calculated"
         #analyzer.generate_output_file('run100.csv')
         analyzer.upload_to_database()
-        #print "Data uploaded to database"
+        print "Data uploaded to database"
