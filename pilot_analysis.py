@@ -140,7 +140,7 @@ class PilotDataAnalysis:
         for specie in mass_spec_list:
             composition[specie] = self.gts['%s_MS' % specie]/100.0
         #!!#
-        ppm_list = ['C6H6','H2S','C10H8','C7H8','CH3CHCH3CH3','C6H4CH3CH3','C6H5CH2CH3']
+        ppm_list = ['C6H6','H2S','C10H8','C7H8','C6H4CH3CH3','C6H5CH2CH3']
         for key in ppm_list:
             composition[key] /= 10000.0
         #!!#

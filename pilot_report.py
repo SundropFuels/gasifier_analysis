@@ -11,7 +11,7 @@ import Thermo
 import argparse
 import csv
 import subprocess
-import statsmodels.tsa.arima_model as ARIMA
+#import statsmodels.tsa.arima_model as ARIMA
 import dataFrame_v2 as df
 from plots_toolbox import *
 import getpass
@@ -44,7 +44,7 @@ class PilotReport:
         self._convert_gas_units_run_info()
         self._convert_conversions_to_percent()
         self._add_std_percent()
-        self._convert_steam_flow_to_ml_min()
+        #self._convert_steam_flow_to_ml_min()
    
         
         #Generate pie plot
@@ -62,10 +62,10 @@ class PilotReport:
 
         ts_plots = {}
         #Generate time series plots
-        ts_keys = ['mass_feed','main_comp','trace_comp','tube_temps']
-        ts_Ycols = [['mass_flow_brush_feeder'],['CO_MS','CO2_MS', 'H2_MS', 'CH4_MS','Ar_MS'],['C2H4_MS', 'C6H6_MS', 'C7H8_MS', 'C10H8_MS'],['temp_skin_tube_top','temp_skin_tube_middle','temp_skin_tube_bottom']]
-        ts_ylabels = ['Biomass feed rate (lb/hr)', 'Gas Composition (% vol)','Gas Composition (ppm)', 'Tube Skin Temperatures ($^\circ$C)']
-        ts_captions = ['Time series plot for biomass flowrate', 'Time series plot for gas composition', 'Time series plot for gas composition', 'Time series plot for reactor tube skin temperatures']
+        ts_keys = ['main_comp','trace_comp','tube_temps']
+        ts_Ycols = [['CO_MS','CO2_MS', 'H2_MS', 'CH4_MS','Ar_MS'],['C2H4_MS', 'C6H6_MS', 'C7H8_MS', 'C10H8_MS'],['temp_skin_tube_top','temp_skin_tube_middle','temp_skin_tube_bottom']]
+        ts_ylabels = ['Gas Composition (% vol)','Gas Composition (ppm)', 'Tube Skin Temperatures ($^\circ$C)']
+        ts_captions = ['Time series plot for gas composition', 'Time series plot for gas composition', 'Time series plot for reactor tube skin temperatures']
         ts_markers = ['-','o','o','-']
         
         LaTeX_ts = ""
@@ -80,10 +80,10 @@ class PilotReport:
 
         #Generate four plots
         fp_plots = {}
-        fp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS']
-        fp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS']
-        fp_label = ['Biomass Flow Rate (lbs/hr)','Reactor Skin Middle ($^\circ$C)','Steam Temperature ($^\circ$C)','Ash Knockout Pressure (psig)','Carbon Monoxide (mol%)','Hydrogen (mol%)','Carbon Dioxide (mol%)', 'Methane (mol%)']
-        fp_caption = ['Four-plot for biomass flow rate','Four-plot for reactor skin temperature','Four-plot for temperature of steam at reactor inlet', 'Four-plot for ash knockout pressure', 'Four-plot for carbon monoxide readings from the mass spectrometer','Four-plot for hydrogen readings from the mass spectrometer','Four-plot for carbon dioxide readings from the mass spectrometer','Four-plot for methane readings from the mass spectrometer']
+        fp_keys = ['temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS']
+        fp_Y = ['temp_skin_tube_middle','temp_steam_gasifier_inlet','pressure_outlet','CO_MS','H2_MS','CO2_MS','CH4_MS']
+        fp_label = ['Reactor Skin Middle ($^\circ$C)','Steam Inlet Temperature ($^\circ$C)','Reactor outlet pressure (psig)','Carbon Monoxide (mol%)','Hydrogen (mol%)','Carbon Dioxide (mol%)', 'Methane (mol%)']
+        fp_caption = ['Four-plot for reactor skin temperature','Four-plot for temperature of steam at reactor inlet', 'Four-plot for ash knockout pressure', 'Four-plot for carbon monoxide readings from the mass spectrometer','Four-plot for hydrogen readings from the mass spectrometer','Four-plot for carbon dioxide readings from the mass spectrometer','Four-plot for methane readings from the mass spectrometer']
         
         LaTeX_fp = ""
 
@@ -96,7 +96,8 @@ class PilotReport:
 
         
         #Create ARIMA fits as necessary - will not work for NaN data (i.e. raw MS data -- that should not be autocorrellated anyway)
-        ARIMA_list = ['mass_flow_brush_feeder','temp_steam_reactor_entry']
+        """
+        ARIMA_list = ['biomass_flowrate','temp_steam_gasifier_inlet']
         for col in ARIMA_list:
             try:
                 self.fit_ARIMA(col)
@@ -104,19 +105,26 @@ class PilotReport:
             except Exception:
                 ARIMA_list.remove(col)
 
-        ARIMA_captions = {'mass_flow_brush_feeder':'biomass flow rate','temp_steam_reactor_entry':'reactor inlet steam temperature'}        
+   
 
+        ARIMA_captions = {'biomass_flowrate':'biomass flow rate','temp_steam_gasifier_inlet':'reactor inlet steam temperature'}        
+
+        """
         cp_plots = {}
-        cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS', 'X_tot', 'mass_feed_ARIMA','temp_steam_ARIMA']
-        cp_Y = ['mass_flow_brush_feeder','temp_skin_tube_middle','temp_steam_reactor_entry','pressure_ash_knockout_vessel','CO_MS','H2_MS','CO2_MS','CH4_MS', 'X_tot']
+        cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS', 'X_tot']#, 'mass_feed_ARIMA','temp_steam_ARIMA']
+        cp_Y = ['biomass_flowrate','temp_skin_tube_middle','temp_steam_gasifier_inlet','pressure_outlet','CO_MS','H2_MS','CO2_MS','CH4_MS', 'X_tot']
         cp_caption = []
-        items = ['biomass flow rate', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)', 'total conversion']
+        items = ['biomass flow', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)', 'total conversion']
+        """
         for col in ARIMA_list:
             cp_keys.append('%s_ARIMA' % col)
             cp_Y.append('%s_ARIMA_resid' % col)
             items.append(ARIMA_captions[col])
+        """
+        """
         for item in items:
             cp_caption.append("Individuals control chart for %s ARIMA(1,1) residuals" % item)
+        """
 
         LaTeX_cp = ""
         for key, Y, caption in zip(cp_keys, cp_Y, cp_caption):
@@ -141,10 +149,10 @@ class PilotReport:
             os.makedirs(self.directory)
         
     def _load_run_info(self):
-        self.run_info.SQL_load(self.interface_proc, table = 'gas_run_info_tbl', run_id = self.run_id)
+        self.run_info.SQL_load(self.interface_proc, table = 'run_plan_view', run_id = self.run_id)
 
     def _load_run_integrals(self):
-        self.run_integrals.SQL_load(self.interface_proc, table = 'gas_integral_tbl', run_id = self.run_id)
+        self.run_integrals.SQL_load(self.interface_proc, table = 'integral_tbl', run_id = self.run_id)
         for i in self.run_integrals.info:
             if i not in self.run_info.info:
                 self.run_info.info[i]=self.run_integrals.info[i]
@@ -152,10 +160,10 @@ class PilotReport:
     def _load_ts_timeseries_data(self):
         """Loads raw gasifier data."""
         self.ts = GasifierProcTS(start = self.run_info.info['ts_start'], end = self.run_info.info['ts_stop'])
-        self.ts.SQL_load(self.interface_raw,'gasifier_lv_GC_view') #This line needs to automatically load the units
+        self.ts.SQL_load(self.interface_raw,'analysis_view', glossary = 'glossary_tbl') #This line needs to automatically load the units
         
         #Need to build the glossary using the SQL tools
-        q = db.select_Query(objects = ['tag_number', 'simple_name', 'units'], table = "tag_glossary_tbl")
+        q = db.select_Query(objects = ['tag_number', 'simple_name', 'units'], table = "glossary_tbl")
         glossary = self.interface_raw.query(q)
         self.glossary = {}
         self.gl_units = {}
@@ -171,7 +179,7 @@ class PilotReport:
     def _load_ss_timeseries_data(self):
         """Loads processed steady state data including calculated columns"""
         self.ss = ts_data(start = self.run_info.info['ss_start'], end = self.run_info.info['ss_stop'])
-        self.ss.SQL_load(self.interface_proc,'gas_proc_data_tbl')
+        self.ss.SQL_load(self.interface_proc,'pilot_proc_data_tbl', glossary='pilot_run_db.glossary_tbl')
         
         self.ss.replace_None_w_nan_all()
         self.ss['ts'] = self.ss['ts'].astype(datetime.datetime)
@@ -180,8 +188,10 @@ class PilotReport:
         for i in self.ts.units:
             if self.ts.units[i]=='C':
                 self.run_info.info[i+'_units']=r'$^\circ'+r'$C'
-            elif self.ts.units[i]=='%':
+            elif self.ts.units[i]=='%' or self.ts.units[i]=='percent':
                 self.run_info.info[i+'_units']='\%'
+            elif self.ts.units[i]=='F':
+                self.run_info.info[i+'_units']=r'$^\circ'+r'$F'
             else:
                 self.run_info.info[i+'_units']=self.ts.units[i]
 
@@ -189,11 +199,12 @@ class PilotReport:
         l=self.run_info.info.keys()
         for i in l:
             if i.endswith('_std'):
+                print i[:-4]+'_avg'
                 try: self.run_info.info[i[:-4]+'_pstd']=self.run_info.info[i]/self.run_info.info[i[:-4]+'_avg']*100
                 except KeyError:
                     pass
-#                except TypeError:
-#                    pass
+                except TypeError:
+                    pass
                 except ZeroDivisionError:
                     self.run_info.info[i[:-4]+'_pstd']=0
 
@@ -204,6 +215,7 @@ class PilotReport:
             if i.endswith('_normalized_avg'):
                 gaslist.append(i.replace('_avg', ''))
         for gas in gaslist:
+            
             self.run_info.info[gas+'_avg']*=100
             self.run_info.info[gas+'_std']*=100
             self.run_info.info[gas+'_units']='\%'
@@ -211,8 +223,8 @@ class PilotReport:
                self.run_info.info[gas+'_avg']*=10000
                self.run_info.info[gas+'_std']*=10000
                self.run_info.info[gas+'_units']='ppm'
-            if self.run_info.info[gas.replace('_normalized','_MS_units')]=='ppm':
-                self.run_info.info[gas+'_units']='ppm'                                  
+            #if self.run_info.info[gas.replace('_normalized','_MS_units')]=='ppm':
+            #    self.run_info.info[gas+'_units']='ppm'                                  
         normprod=self.run_info.info['CO_normalized_avg']/self.run_info.info['CO_MS_avg']
         self.run_info.info['H2S_normalized_avg']=self.run_info.info['H2S_MS_avg']*normprod
         self.run_info.info['H2S_normalized_std']=self.run_info.info['H2S_MS_std']*normprod
@@ -235,7 +247,7 @@ class PilotReport:
             if i.endswith('_MS_avg'):
                 gasdict[i]=self.run_info.info[i]
         goodgas=['CO', 'CO2', 'CH4', 'H2']
-        targas=['C2H6', 'C2H4', 'C2H2', 'C3H8', 'C3H6', 'C6H6', 'C7H8', 'C10H8']
+        targas=['C2H6', 'C2H4', 'C2H2', 'C3H8', 'C3H6', 'C4H10', 'C4H8', 'C6H6', 'C7H8', 'C10H8', 'CH3CHCH3CH3', 'C6H4CH3CH3', 'C6H5CH2CH3']
         plotgasvals=np.array([])
         tar=100-gasdict['N2_MS_avg']-gasdict['H2O_MS_avg']-gasdict['Ar_MS_avg']
         for i in goodgas:
@@ -291,7 +303,7 @@ def parse_list(txt):
     return run_id_list  
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description = "Run a gasifier analysis")
+    parser = argparse.ArgumentParser(description = "Run a pilot gasifier analysis")
     parser.add_argument('--run_range', type=str, action = 'store')
     parser.add_argument('--run_id',type=int, action ='store')
     parser.add_argument('--file',type=str,action = 'store')
