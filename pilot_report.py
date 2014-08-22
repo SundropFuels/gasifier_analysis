@@ -66,7 +66,7 @@ class PilotReport:
         ts_Ycols = [['CO_MS','CO2_MS', 'H2_MS', 'CH4_MS','Ar_MS'],['C2H4_MS', 'C6H6_MS', 'C7H8_MS', 'C10H8_MS'],['temp_skin_tube_top','temp_skin_tube_middle','temp_skin_tube_bottom']]
         ts_ylabels = ['Gas Composition (% vol)','Gas Composition (ppm)', 'Tube Skin Temperatures ($^\circ$C)']
         ts_captions = ['Time series plot for gas composition', 'Time series plot for gas composition', 'Time series plot for reactor tube skin temperatures']
-        ts_markers = ['-','o','o','-']
+        ts_markers = ['o','o','-']
         
         LaTeX_ts = ""
 
@@ -80,10 +80,10 @@ class PilotReport:
 
         #Generate four plots
         fp_plots = {}
-        fp_keys = ['temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS']
+        fp_keys = ['temp_mid', 'temp_steam','p_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS']
         fp_Y = ['temp_skin_tube_middle','temp_steam_gasifier_inlet','pressure_outlet','CO_MS','H2_MS','CO2_MS','CH4_MS']
         fp_label = ['Reactor Skin Middle ($^\circ$C)','Steam Inlet Temperature ($^\circ$C)','Reactor outlet pressure (psig)','Carbon Monoxide (mol%)','Hydrogen (mol%)','Carbon Dioxide (mol%)', 'Methane (mol%)']
-        fp_caption = ['Four-plot for reactor skin temperature','Four-plot for temperature of steam at reactor inlet', 'Four-plot for ash knockout pressure', 'Four-plot for carbon monoxide readings from the mass spectrometer','Four-plot for hydrogen readings from the mass spectrometer','Four-plot for carbon dioxide readings from the mass spectrometer','Four-plot for methane readings from the mass spectrometer']
+        fp_caption = ['Four-plot for reactor skin temperature','Four-plot for temperature of steam at reactor inlet', 'Four-plot for outlet pressure', 'Four-plot for carbon monoxide readings from the mass spectrometer','Four-plot for hydrogen readings from the mass spectrometer','Four-plot for carbon dioxide readings from the mass spectrometer','Four-plot for methane readings from the mass spectrometer']
         
         LaTeX_fp = ""
 
@@ -111,7 +111,7 @@ class PilotReport:
 
         """
         cp_plots = {}
-        cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','pressure_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS', 'X_tot']#, 'mass_feed_ARIMA','temp_steam_ARIMA']
+        cp_keys = ['mass_feed', 'temp_mid', 'temp_steam','p_KO', 'CO_MS', 'CO2_MS', 'H2_MS', 'CH4_MS', 'X_tot']#, 'mass_feed_ARIMA','temp_steam_ARIMA']
         cp_Y = ['biomass_flowrate','temp_skin_tube_middle','temp_steam_gasifier_inlet','pressure_outlet','CO_MS','H2_MS','CO2_MS','CH4_MS', 'X_tot']
         cp_caption = []
         items = ['biomass flow', 'reactor skin temperature', 'temperature of steam at reactor inlet', 'ash knockout pressure', 'carbon monoxide (MS)', 'hydrogen (MS)' ,'carbon dioxide (MS)', 'methane (MS)', 'total conversion']
@@ -186,10 +186,17 @@ class PilotReport:
         
     def _add_units_to_run_info(self):
         for i in self.ts.units:
+            #Need to appropriately parse units -- probably want to do this explicitly to start
+
             if self.ts.units[i]=='C':
                 self.run_info.info[i+'_units']=r'$^\circ'+r'$C'
             elif self.ts.units[i]=='%' or self.ts.units[i]=='percent':
                 self.run_info.info[i+'_units']='\%'
+            elif self.ts.units[i]=='ft^3/min':
+                self.run_info.info[i+'_units']='ft$^{3}$ min$^{-1}$'
+            elif self.ts.units[i]=='ft^3/hr':
+                self.run_info.info[i+'_units']='ft$^{3}$ hr$^{-1}$'
+
             elif self.ts.units[i]=='F':
                 self.run_info.info[i+'_units']=r'$^\circ'+r'$F'
             else:
@@ -199,7 +206,7 @@ class PilotReport:
         l=self.run_info.info.keys()
         for i in l:
             if i.endswith('_std'):
-                print i[:-4]+'_avg'
+
                 try: self.run_info.info[i[:-4]+'_pstd']=self.run_info.info[i]/self.run_info.info[i[:-4]+'_avg']*100
                 except KeyError:
                     pass
@@ -260,7 +267,7 @@ class PilotReport:
         
         
     def _load_report_template(self):
-        with open('GasificationAnalysisReportTemplate.tex', 'r') as f:
+        with open('GasificationAnalysisReportTemplate_pilot.tex', 'r') as f:
             self.template=f.read()
             
     def generate_standard_report(self):

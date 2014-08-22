@@ -146,22 +146,22 @@ class RunTableUploader:
         for setp in self.setpoints:
             objects = {}
             for k in setp.properties:
-                print setp.properties[k]
+                #print setp.properties[k]
                 objects[k] = str(setp.properties[k])
 
             
             q = db.insert_Query(objects = objects, table = "setpoint_tbl")
-            print q.getQuery()
+            #print q.getQuery()
             self.interface.query(q)
 
         for bm in self.biomasses:
             objects = {}
             for k in bm.properties:
-                print bm.properties[k]
+                #print bm.properties[k]
                 objects[k] = str(bm.properties[k])
             
             q = db.insert_Query(objects = objects, table = "biomass_tbl")
-            print q.getQuery()
+            #print q.getQuery()
             self.interface.query(q)
         #now upload the run information, changing to NULL where appropriate
 

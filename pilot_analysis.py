@@ -127,7 +127,8 @@ class PilotDataAnalysis:
         N2_superheater_purge = Stream('N2_superheater_purge', flowrate = self.gts.val_units('mass_flow_superheater_purge'), composition = {'N2':1.0}, basis = "std_gas_volume")
         N2_superheater_purge.set_temperature(self.gts.val_units('temp_steam_gasifier_inlet'))
         N2_superheater_purge.set_pressure(self.gts.val_units('pressure_bell_housing'))
-
+        N2_superheater_purge.set_std_temperature = MFC_ST
+        N2_superheater_purge.set_std_pressure = MFC_SP
 
         #Set up exit gas flowrates
         gas_exit = self.gts.outlet_stream_from_tracer([argon_tracer_feed],"Molar", "Ar", self.gts['Ar_MS']/100.0, 'gas_exit')
