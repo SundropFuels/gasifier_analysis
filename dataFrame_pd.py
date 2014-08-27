@@ -140,7 +140,7 @@ class Dataframe(pd.DataFrame):
                     #print query.getQuery()
                     db_interface.query(query)
                 except SQL.DBToolboxError:
-                    raise dfSQLError, "Whoa...can't load that into the table, brah.  Don't know why."
+                    raise dfSQLError, "Whoa...can't load that into the table, brah.  Don't know why. %s"
 
 
     def write_csv(self, filename, mode = "new", col_list = None):
@@ -179,7 +179,7 @@ class Dataframe(pd.DataFrame):
         for key in glossary.keys():
             if key not in self.columns:
                 #print key
-                raise BadGlossaryTagError, "There is a tag in the glossary that is not in the dataframe"
+                raise BadGlossaryTagError, "There is a tag in the glossary that is not in the dataframe -- %s" % key
             
 
 

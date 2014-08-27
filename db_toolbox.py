@@ -36,7 +36,7 @@ class db_interface:
         self.cursor = self.connection.cursor(MySQLdb.cursors.DictCursor)
         
         self.connected = True
-        
+        self.connection.autocommit(True)
 
     def __setitem__(self,key,item):
         self.parameters[key] = item

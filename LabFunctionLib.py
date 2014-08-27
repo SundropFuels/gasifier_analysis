@@ -101,6 +101,7 @@ class ts_data(df.Dataframe):
         for i in self.columns:
             try:
                 q=SQL.select_Query(objects=['units'], table=glossary, condition_list=["simple_name='%s'" % i])
+                
                 self.units[i]=db_interface.query(q)[0]['units']
             except IndexError:
                 self.units[i]=None
@@ -207,7 +208,7 @@ class ts_data(df.Dataframe):
             try:
 
                 #by default, I ignore nan and inf values
-
+                
                 self.avgs[key] = self[key][np.isfinite(self[key].astype(float))].mean(dtype='float64')
                 self.stdevs[key] = self[key][np.isfinite(self[key].astype(float))].std(dtype='float64')
 
@@ -339,6 +340,11 @@ class Stream:
     species['C6H6'] = {'C':6, 'H':6, 'name':'Benzene','phase':'g'}
     species['C7H8'] = {'C':7, 'H':8, 'name':'Toluene','phase':'g'}
     species['C10H8'] = {'C':10, 'H':8, 'name':'Napthalene', 'phase':'g'}
+    species['C4H8'] = {'C':4, 'H':8, 'name':'1-Butene', 'phase':'g'}
+    species['C4H10'] = {'C':4, 'H':10, 'name':'n-Butane', 'phase':'g'}
+    species['CH3CHCH3CH3'] = {'C':4, 'H':10, 'name':'i-Butane','phase':'g'}
+    species['C6H4CH3CH3'] = {'C':8, 'H':10, 'name':'o-xylene', 'phase':'g'}
+    species['C6H5CH2CH3'] = {'C':8, 'H':10, 'name':'ethyl benzene', 'phase':'g'}
     species['H2O'] = {'H':2,'O':1, 'name':'Water', 'phase':'g'}
     species['Ar'] = {'Ar':1, 'name':'Argon', 'phase':'g'}
     species['N2'] = {'N':2, 'name':'Nitrogen', 'phase':'g'}
@@ -1605,11 +1611,10 @@ class GasifierProcTS(ProcTS):
         for species in self.proc_species:
             self['%s_normalized' % species] = self["%s_outlet%s" % (species, "%s" % name_qualifier)]/norm_flow
 
-    def calc_tar_rate(self, exit_stream, name_qualifier = ""):
+    def calc_tar_rate(self, exit_stream, name_qualifier = "", tar_list = ['C6H6', 'C7H8', 'C10H8'], inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C6H6', 'C7H8', 'C10H8']):
         """Calculate the level of tar in mg/Nm^3 exiting the gasifier"""
         #I'm just going to start by assuming that the outlet flowrate is molar -- I can make it more general later
-	tar_list = ['C6H6', 'C7H8', 'C10H8']
-        inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C6H6', 'C7H8', 'C10H8']
+	
 
         outlet_vol_rate = exit_stream.flowrate[0] * 0.0224	#Nm^3/s, assuming mol/s for basis of original flowrate -- make it more general later
 
