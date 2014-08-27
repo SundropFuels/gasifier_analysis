@@ -221,4 +221,4 @@ if __name__ == "__main__":
     pswd = getpass.getpass()
 
     finder = EquivalentSetFinder(user, pswd)
-    a = finder.find_unique_sets(cols = ["mass_flow_brush_feeder_avg", "space_time_avg","temp_skin_tube_middle_avg", "temp_steam_reactor_entry_avg", "d90", "pp_H2O_avg", "pp_CO2_avg"], verbose = True, min_length = 2)
+    a = finder.find_unique_sets(cols = ["mass_flow_brush_feeder_avg", "space_time_avg","temp_skin_tube_middle_avg", "temp_steam_reactor_entry_avg", "pressure_ash_knockout_vessel_avg", "moisture"], verbose = True, min_length = 2)

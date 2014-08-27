@@ -1683,6 +1683,18 @@ class GasifierProcTS(ProcTS):
 
         #Determine the potential change in enthalpy using built-in functions
 
+    def calc_normalized_max_dH(self, tube_length, tube_diameter):
+        """Calculates the dH_max/A measurement"""
+        conv = uc.UnitConverter()
+        A_lat = conv.convert_units(tube_length[0], tube_length[1], 'm') * conv.convert_units(tube_diameter[0], tube_length[1], 'm') * 3.14159
+        self['dH_max/A'] = self['dH_max']/A_lat
+        self.units['dH_max/A'] = "%s/m^2" % self['dH_max'].units
+
+    def calc_dimensionless_numbers(self):
+        """Calculates Re, Gr, Ri, ... at the inlet and outlet of the tube"""
+	pass
+
+
     def generate_enthalpy_change(self, units):
         """Calculates the enthalpy change by multiplying the max change over the conversion"""
         conv = uc.UnitConverter()
