@@ -208,7 +208,7 @@ class ts_data(df.Dataframe):
             try:
 
                 #by default, I ignore nan and inf values
-
+                
                 self.avgs[key] = self[key][np.isfinite(self[key].astype(float))].mean(dtype='float64')
                 self.stdevs[key] = self[key][np.isfinite(self[key].astype(float))].std(dtype='float64')
 

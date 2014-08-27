@@ -121,6 +121,8 @@ class RunTableUploader:
             for j in sp_info:
                 d[j] = setpoint_table[j][i]
             setp = SetpointRow(**d)
+
+        for i in biomass_table.index:
             d = {}
             for j in bm_info:
                 d[j] = biomass_table[j][i]
@@ -167,7 +169,7 @@ class RunTableUploader:
 
         
 
-        run_info = ['run_id', 'ts_start', 'ts_stop', 'ss_start', 'ss_stop', 'operator', 'feeder_slope', 'feeder_intercept']
+        run_info = ['run_id', 'exp_id', 'ts_start', 'ts_stop', 'ss_start', 'ss_stop', 'operator', 'feeder_slope', 'feeder_intercept']
 
         sp_info = ['temperature', 'pressure', 'biomass_rate', 'steam_flow', 'steam_temp', 'ent_CO2', 'sweep_CO2', 'Ar_tracer', 'superheater_purge', 'tube_diameter']
 

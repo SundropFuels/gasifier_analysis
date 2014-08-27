@@ -114,12 +114,35 @@ class PilotDataAnalysis:
         argon_tracer_feed.std_pressure = MFC_SP
                 
         #5 Biomass
+        ####Flowrate from the slope/intercept method
+
         biomass_flowrate = (self.gts['roto_feed_op'] * self.run_info['feeder_slope'] + self.run_info['feeder_intercept'], 'lb/hr')
         self.gts['biomass_flowrate'] = biomass_flowrate[0]
         self.gts.units['biomass_flowrate'] = biomass_flowrate[1]
 
 
-        biomass_feed = Stream('biomass_feed',flowrate = biomass_flowrate, composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
+        ####Flowrate from the mass loss of the feeder method
+        fit = np.polyfit(self.gts['counter'], self.gts['mass_feed_vessel'], 1)  #Fit a line through the feed vessel data; slope is fit[0]
+        biomass_flowrate_hopper_massloss = (fit[0]*-1.0*3600*np.ones(len(self.gts['mass_feed_vessel'])), 'lb/hr')
+        self.gts['biomass_flowrate_hopper_massloss'] = biomass_flowrate_hopper_massloss[0]
+        self.gts.units['biomass_flowrate_hopper_massloss'] = biomass_flowrate_hopper_massloss[1]
+
+        #Alternately, we could get this flowrate from the feeder by looking only at where the flowrate drops
+        lag1 = self.gts['mass_feed_vessel'].shift(-1)
+        steps = lag1 - self.gts['mass_feed_vessel']
+        self.gts['mass_feed_vessel_stepped'] = self.gts['mass_feed_vessel']
+        self.gts['mass_feed_vessel_stepped'][steps<0.1] = np.nan  #Only take the places where it changes
+        #now, we have two options -- we could try to do a derivative for instantaneous flowrate, or we could just fit a line
+        #let's fit a line to start
+        fit = np.polyfit(self.gts['counter'][np.isfinite(self.gts['mass_feed_vessel_stepped'])], self.gts['mass_feed_vessel_stepped'][np.isfinite(self.gts['mass_feed_vessel_stepped'])], 1)
+        biomass_flowrate_hopper_massloss_s = (fit[0]*-1.0*3600*np.ones(len(self.gts['mass_feed_vessel_stepped'])), 'lb/hr')
+        self.gts['biomass_flowrate_hopper_massloss_s'] = biomass_flowrate_hopper_massloss_s[0]
+        self.gts.units['biomass_flowrate_hopper_massloss_s'] = biomass_flowrate_hopper_massloss_s[1]
+
+ 
+
+
+        biomass_feed = Stream('biomass_feed',flowrate = biomass_flowrate_hopper_massloss_s, composition = {'H2O':self.run_info['moisture']/100.0, 'biomass':1.00-self.run_info['moisture']/100.0}, basis = "mass")
         biomass_feed.set_temperature((25.0, 'C'))
         biomass_feed.set_pressure(self.gts.val_units('pressure_bell_housing'))      
 
@@ -203,7 +226,7 @@ class PilotDataAnalysis:
         self.gts['pp_Ar'] = self.gts['Ar_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_ako']+14.7)
         
         #5. Calculate tar loads
-        self.gts.calc_tar_rate(self.gts.outlet_streams[0], tar_list = ['C6H6', 'C7H8', 'C10H8', 'CH3CHCH3CH3', 'C6H4CH3CH3', 'C6H5CH2CH3'], inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C4H8', 'C4H10', 'C6H6', 'C7H8', 'C10H8', 'CH3CHCH3CH3', 'C6H4CH3CH3', 'C6H5CH2CH3'])
+        self.gts.calc_tar_rate(self.gts.outlet_streams[0], tar_list = ['C6H6', 'C7H8', 'C10H8', 'C6H4CH3CH3', 'C6H5CH2CH3'], inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C4H8', 'C4H10', 'C6H6', 'C7H8', 'C10H8', 'CH3CHCH3CH3', 'C6H4CH3CH3', 'C6H5CH2CH3'])
 
         #6. Calculate the space time
         self.gts.calc_space_time(self.reactor_size, 'biomass')
