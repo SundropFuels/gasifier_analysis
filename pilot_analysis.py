@@ -12,15 +12,17 @@ import getpass
 class PilotDataAnalysis:
     """The basic data analysis class for pilot experiments"""
 
-    def __init__(self, run_id, user, password, run_information = None):
+    def __init__(self, run_id, user, password, server = "localhost", run_information = None):
         #Create the pilot data frame, and load the data from the SQL database.
+
+
                
-        self.interface_raw = db.db_interface(host = "localhost", user = user, passwd = password)
+        self.interface_raw = db.db_interface(host = server, user = user, passwd = password)
         self.interface_raw.connect()
         q = db.use_Query("pilot_run_db")
         self.interface_raw.query(q)
 
-        self.interface_proc = db.db_interface(host = "localhost", user = user, passwd = password)
+        self.interface_proc = db.db_interface(host = server, user = user, passwd = password)
         self.interface_proc.connect()
         q = db.use_Query("pilot_proc_db")
         self.interface_proc.query(q)
@@ -338,10 +340,24 @@ if __name__ == '__main__':
     parser.add_argument('--run_range', type=str, action = 'store')
     parser.add_argument('--run_id',type=int, action ='store')
     parser.add_argument('--file',type=str,action = 'store')
+    parser.add_argument('--user', type=str,action='store')
+    parser.add_argument('--pswd', type=str, action='store')
+    parser.add_argument('--host', type=str, action ='store')
     args = parser.parse_args()
 
-    user = raw_input('User: ')
-    pswd = getpass.getpass()
+    if args.user is not None:
+        user = args.user
+    if args.pswd is not None:
+        pswd = args.pswd
+    if args.host is not None:
+        host = args.host
+    else:
+        host = 'localhost'
+
+
+    if args.user is None or args.pswd is None:
+        user = raw_input('User: ')
+        pswd = getpass.getpass()
         
     if args.run_id is not None:
         run_id_list = [args.run_id]
@@ -358,7 +374,7 @@ if __name__ == '__main__':
 
     for run_id in run_id_list:
         print "Analyzing run %s..." % run_id
-        analyzer = PilotDataAnalysis(run_id = run_id, user = user, password = pswd)
+        analyzer = PilotDataAnalysis(run_id = run_id, user = user, password = pswd, server = host)
         print "Data loaded"
         analyzer.calculate_standard_things()
         print "Standard things calculated"

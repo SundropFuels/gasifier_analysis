@@ -4,6 +4,8 @@ from gi.repository import Gtk
 import pandas as pd
 import db_toolbox as db
 import pandas.io.sql as psql
+import os
+
 
 class PlanApp:
 
@@ -48,11 +50,11 @@ class PlanApp:
         self.main_window.connect("delete-event", Gtk.main_quit)
 
         pd = PasswordDialog()
-	(rsp, user, password, server) = pd.run()
+	(rsp, self.user, self.password, self.server) = pd.run()
         
                    
 
-        self._setup_db_connection(user, password, server)
+        self._setup_db_connection(self.user, self.password, self.server)
         self._build_treeview()
 
 
@@ -61,6 +63,12 @@ class PlanApp:
 
         self.update_db_button = self.builder.get_object("update_database_button")
         self.update_db_button.connect("clicked", self.update_db)
+
+        self.delete_row_button = self.builder.get_object("delete_row_button")
+        self.delete_row_button.connect("clicked", self.delete_row)
+
+        self.run_analysis_button = self.builder.get_object("analyze_data_button")
+        self.run_analysis_button.connect("clicked", self.run_analysis)
 
 
         self.main_window.show_all()
@@ -86,10 +94,10 @@ class PlanApp:
         self.data = psql.read_frame(q.getQuery(), con = self.interface.connection)
 
 
-        self.store = Gtk.ListStore(str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str) #This is awful -- you really should not do it this way
+        self.store = Gtk.ListStore(bool, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str) #This is awful -- you really should not do it this way
         #add all of the rows to the store
         self.col_lookup = {}
-        i = 0
+        i = 1
         for col in objects:
             self.col_lookup[col] = i
             i+=1
@@ -98,7 +106,7 @@ class PlanApp:
 
         for i in range(0, len(self.data.index)):
             #build the row
-            row = []
+            row = [False,]
             for col in objects:
                 row.append(str(self.data.iloc[i][col]))
             
@@ -114,6 +122,12 @@ class PlanApp:
         self.view_renderers = {}
         self.view_columns = {}
         
+        self.analysis_renderer = Gtk.CellRendererToggle()
+        self.analysis_col = Gtk.TreeViewColumn("Analyze", self.analysis_renderer, active = 0)
+        self.analysis_renderer.connect("toggled", self.on_analysis_toggled)
+        self.analysis_renderer.set_sensitive(True)
+        self.view.append_column(self.analysis_col)
+
         for col in objects:
             self.view_renderers[col] = Gtk.CellRendererText()
             self.view_renderers[col].set_property("editable", True)
@@ -122,22 +136,53 @@ class PlanApp:
 
             self.view_columns[col] = Gtk.TreeViewColumn(PlanApp.labels[col], self.view_renderers[col], text = self.col_lookup[col])
             self.view.append_column(self.view_columns[col])
-             
+         
+        self.select = self.view.get_selection()
+        self.select.connect("changed", self.on_tree_selection_changed)
            
+    def on_analysis_toggled(self, widget, path):
+        self.store[path][0] = not self.store[path][0]
+
     def text_edited(self, widget, path, text, col_num = 0):
         self.store[path][col_num] = text
+        
+    def on_tree_selection_changed(self, selection):
+        
+        model, self.current_iter = self.select.get_selected()
         
 
     def add_row(self, widget):
         self.iter = self.store.append()
         self.row_count += 1
-        self.store[self.iter][0] = str(self.row_count) 
+        self.store[self.iter][1] = str(self.row_count) 
 
     def delete_row(self, path):
-        pass
+        #print self.store[self.current_iter]
+        if self.current_iter is not None:
+            self.store.remove(self.current_iter)
+    
+    def run_analysis(self, widget):
+        #iterate through the model and get the run ids
+        run_ids = []
+        it = self.store.get_iter_first()
+        ok = self.store.iter_is_valid(it)
+        if ok:
+
+            while ok:
+                if self.store[it][0] == True:
+                    run_ids.append(self.store[it][1])
+                it = self.store.iter_next(it)
+                ok = (it is not None)
+
+        run_list = ",".join(run_ids)
+        os.system("python ./pilot_analysis.py --run_range %s --user %s --host %s --pswd %s" % (run_list, self.user, self.server, self.password))
+                       
+
 
     def update_db(self, widget):
         self._generate_CSV_file()
+        os.system('python ./run_plan_fill.py --filename proxy_csv.csv --host %s --user %s --pswd %s' % (self.server, self.user, self.password))
+        print "done updating"
 
     def _generate_CSV_file(self):
         f = open('proxy_csv.csv', 'w')
@@ -152,10 +197,15 @@ class PlanApp:
         it = self.store.get_iter_first()
         ok = self.store.iter_is_valid(it)
         if ok:
-            count = 0
-            while ok and count < 10:
+            
+            while ok:
                 row = ""
+                rl = []
                 for item in self.store[it]:
+                    rl.append(item)
+                rl = rl[1:]
+                for item in rl:
+
                     if item is not None:
                         row += "%s," % item
                     else:
@@ -164,7 +214,7 @@ class PlanApp:
                 f.write(row)
                 it = self.store.iter_next(it)
                 ok = (it is not None)
-                count += 1        
+                       
 
         f.close()
 

@@ -5,6 +5,7 @@ import db_toolbox as db
 import numpy as np
 import argparse
 import getpass
+import pandas.io.sql as psql
 
 class PropertyRow:
     """This is the abstract class for various conditions (setpoints, biomass, etc)"""
@@ -60,10 +61,10 @@ class BiomassRow(PropertyRow):
 
 class RunTableUploader:
 
-    def __init__(self, user, password):
+    def __init__(self, user, password, host = 'localhost'):
         
         #set up the database connection
-        self.interface = db.db_interface(host = 'localhost', user = user, passwd = password)
+        self.interface = db.db_interface(host, user = user, passwd = password)
         self.interface.connect()
         q = db.use_Query("pilot_proc_db")
         self.interface.query(q)
@@ -112,8 +113,18 @@ class RunTableUploader:
                 biomasses.append(bmp)
 
         #Now we need to get the existing setpoint and biomass tables
-        setpoint_table = pd.read_sql("SELECT * FROM setpoint_tbl", con = self.interface.connection)
-        biomass_table = pd.read_sql("SELECT * FROM biomass_tbl", con = self.interface.connection)
+        try:
+            setpoint_table = pd.read_sql("SELECT * FROM setpoint_tbl", con = self.interface.connection)
+        
+        except AttributeError:
+            setpoint_table = psql.read_frame("SELECT * FROM setpoint_tbl", con = self.interface.connection)
+
+
+        try:
+            biomass_table = pd.read_sql("SELECT * FROM biomass_tbl", con = self.interface.connection)
+
+        except AttributeError:
+	    biomass_table = psql.read_frame("SELECT * FROM biomass_tbl", con = self.interface.connection)
 
         #Check and see if a specific setpoint is already in the table
         for i in setpoint_table.index:
@@ -219,17 +230,29 @@ class RunTableUploader:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = "Run a gasifier analysis")
     parser.add_argument('--filename', type=str, action = 'store')
+    parser.add_argument('--host', type = str, action = 'store')
+    parser.add_argument('--user', type = str, action = 'store')
+    parser.add_argument('--pswd', type = str, action = 'store')
     args = parser.parse_args()
 
-    user = raw_input('User: ')
-    pswd = getpass.getpass()
+    if args.user is not None and args.pswd is not None:
+        user = args.user
+        pswd = args.pswd
+    else:
+        user = raw_input('User: ')
+        pswd = getpass.getpass()
         
     if args.filename is not None:
         f = args.filename
 
+    if args.host is not None:
+        h = args.host
+    else:
+        h = 'localhost'
+
         
     print "Uploading run table" 
-    loader = RunTableUploader(user = user, password = pswd)
+    loader = RunTableUploader(user = user, password = pswd, host = h)
     loader.read_data(f)
     loader.append_runsheet()
     print "done"
