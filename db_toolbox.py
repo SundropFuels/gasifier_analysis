@@ -36,7 +36,7 @@ class db_interface:
         self.cursor = self.connection.cursor(MySQLdb.cursors.DictCursor)
         
         self.connected = True
-        self.connection.autocommit(True)
+        #self.connection.autocommit(True)
 
     def __setitem__(self,key,item):
         self.parameters[key] = item
@@ -56,7 +56,7 @@ class db_interface:
                 self.cursor.execute(myQuery.getQuery())
                 result = self.cursor.fetchall()
             except MySQLdb.Error, e:
-                #print "This is the error I got: %s" % e
+                print "This is the error I got: %s" % e
                 raise DBToolboxError
         elif return_type == 'pandas_dataframe':
             try:
@@ -96,6 +96,23 @@ class Query:
 
     def __getitem__(self, key):
         return self.items[key]
+
+class oneWord_Query(Query):
+    def __init__(self):
+        Query.__init__(self)
+
+    def getQuery(self):
+        try:
+            self.query = []
+            self.query.extend([self['command']])
+        except KeyError:
+            print "Error - Missing Query Key"
+        return Query.getQuery(self)
+
+class commit_Query(oneWord_Query):
+    def __init__(self):
+        oneWord_Query.__init__(self)
+        self['command'] = 'COMMIT'
 
 class short_Query(Query):
     def __init__(self, objects = []):
@@ -239,6 +256,37 @@ class insert_Query(Query):
             
         
         return Query.getQuery(self)
+
+class multiple_insert_Query(insert_Query):
+    def __init__(self, **kwargs):
+        insert_Query.__init__(self, **kwargs)
+
+    def setObjects(self, objects):
+        #make sure the objects are the right length and type
+        if not isinstance(objects, dict):
+            raise DBToolboxError, "objects must be a dictionary of lists"
+        for key in objects:
+            if not isinstance(objects[key], list):
+                raise DBToolboxError, "objects must be a dictionary of lists"
+
+        l = len(objects[objects.keys()[0]])
+        for key in objects:
+            if len(objects[key]) != l:
+                raise DBToolBoxError, "The length of the lists in objects for key %s is inconsistent with the first item" % key
+
+        
+
+        self['objects'] = "(" + ",".join(obj for obj in objects.keys()) + ")"
+        #now need to create the lists of specific rows to join
+        vals = []
+        for i in range(0, l):
+            row = []
+            for key in objects:
+                row.append(str(objects[key][i]))
+            row = "(" + ",".join(row) + ")"
+            vals.append(row)
+        self['values'] = "VALUES " + ",".join(vals) 
+
 
 class insert_udk_Query(insert_Query):
     "On duplicate key update type insert"

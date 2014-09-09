@@ -115,32 +115,53 @@ class Dataframe(pd.DataFrame):
         if not isinstance(db_interface, SQL.db_interface):
             raise dfSQLError, "The passed interface is not a db_toolbox interface"
 
+
+        #Because I INSERT the entire table anyway when there is a conflict, instead of UPDATE we will just DELETE all of the rows to INSERT
+	#As this is conditional in SQL, it will fail silently when the row is not in the database (or should)
+
+        #build the DELETE query
+        delete_condition = ""
+        for index in range(0, len(self)):
+            delete_condition += "ts = '%s' OR " % self['ts'][index]
+        delete_condition = delete_condition[:-4]
+        
+        q = SQL.delete_Query(table = table, conditions = [delete_condition,])
+        db_interface.query(q)
+
+        #Now build the INSERT query
+        key_map = {}
+        q_vals = {}
+        for key in self.columns:
+            if ' ' in key:
+                key_map[key] = '`' + key + '`'
+            else:
+                key_map[key] = key
+            q_vals[key_map[key]] = []
+
+
+
         for index in range(0,len(self)):
-            row = {}
+            
             
             for key in self.columns:
-                if ' ' in key:
-                    new_key = '`' + key + '`'
-                else:
-                    new_key = key
                 
-                row[new_key] = str(self[key][index])
-                if row[new_key] == 'nan':
-                    row[new_key] = 'NULL'
+                #print "key: %s\tvalue: %s" % (key, self[key][index])
+                q_vals[key_map[key]].append("'" + str(self[key][index]) + "'")
+                if q_vals[key_map[key]][index] == "'nan'":
+                    q_vals[key_map[key]][index] = 'NULL'
                 
-            try:
-                query = SQL.insert_Query(objects = row, table = table)
-                #print query.getQuery()
-                
-                db_interface.query(query)
-            except SQL.DBToolboxError:
-                try:
-                    #print "kicked down here"
-                    query = SQL.update_Query(objects = row, table = table, conditions = ["%s = '%s'" % (index_col,row['%s' % index_col])])
-                    #print query.getQuery()
-                    db_interface.query(query)
-                except SQL.DBToolboxError:
-                    raise dfSQLError, "Whoa...can't load that into the table, brah.  Don't know why. %s"
+        try:
+            query = SQL.multiple_insert_Query(objects = q_vals, table = table)
+            #print query.getQuery()
+            #f1 = open('sql_output.txt', 'w')
+            #f1.write(query.getQuery())
+            #f1.close()
+            db_interface.query(query)
+            query = SQL.commit_Query()
+            db_interface.query(query)
+
+        except SQL.DBToolboxError:
+            raise dfSQLError, "Whoa...can't load that into the table, brah.  Don't know why. %s"
 
 
     def write_csv(self, filename, mode = "new", col_list = None):

@@ -1229,7 +1229,7 @@ class Mixer(ProcessObject):
                    
            
             
-            outlet_temp = spo.bisect(f = self.enth_func,a = 1.0, b=1500.0)
+            outlet_temp = spo.bisect(f = self.enth_func,a = 1.0, b=1500.0, r_tol = 1E-3)
             
         self.outlets[0].set_temperature((outlet_temp, 'K'))
         

@@ -208,12 +208,12 @@ class PilotDataAnalysis:
         #1. Calculate the elemental and species flows
         self.gts.generate_inlet_outlet_elemental_flows()
         self.gts.generate_inlet_outlet_species_flows()
-
+        print "species flows calculated"
         #2. Calculate carbon conversions
         self.gts.generate_carbon_conversions()
         self.gts.generate_C_mass_balance()
         self.gts.generate_CH4_yield()
-
+        print "carbon conversion calculated"
         #3. Calculate changes in enthalpy and entropy
         self.gts.calc_max_dH(temperature = [self.gts['temp_skin_tube_middle'],self.gts.units['temp_skin_tube_middle']], pressure = [self.gts['pressure_outlet'],self.gts.units['pressure_outlet']], units = 'kW')
         self.gts.generate_enthalpy_change('kW')
@@ -221,7 +221,7 @@ class PilotDataAnalysis:
 
         #4. Normalize the compositions
         self.gts.generate_normalized_compositions()
-        
+        print "compositions normalized"
         #calculate inlet partial pressures
         self.gts['pp_CO2'] = self.gts['CO2_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_ako']+14.7)
         self.gts['pp_H2O'] = self.gts['H2O_inlet']/(self.gts['CO2_inlet']+self.gts['Ar_inlet']+self.gts['H2O_inlet']+self.gts['N2_inlet'])*(self.gts['pressure_ako']+14.7)
@@ -229,10 +229,10 @@ class PilotDataAnalysis:
         
         #5. Calculate tar loads
         self.gts.calc_tar_rate(self.gts.outlet_streams[0], tar_list = ['C6H6', 'C7H8', 'C10H8', 'C6H4CH3CH3', 'C6H5CH2CH3'], inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C4H8', 'C4H10', 'C6H6', 'C7H8', 'C10H8', 'CH3CHCH3CH3', 'C6H4CH3CH3', 'C6H5CH2CH3'])
-
+        print "tar loads calculated"
         #6. Calculate the space time
         self.gts.calc_space_time(self.reactor_size, 'biomass')
-
+        print "space time calculated"
         #7. Calculate optical thickness
 
         sizes = ['10','50','90']
@@ -247,6 +247,7 @@ class PilotDataAnalysis:
                                                          'd50':(self.run_info.info['d50']*10**-6, 'm'), 
                                                          'd90':(self.run_info.info['d90']*10**-6, 'm')})
 
+        print "optical thickness calculated"
         #8. Calculate integral measures
         self.gts.generate_averages_and_stdevs(cols = self.get_analysis_config_list())
         
