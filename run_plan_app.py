@@ -256,6 +256,8 @@ class PasswordDialog:
         self.login = le.get_text()
         self.password = pe.get_text()
         self.host = he.get_text()
+        if self.host == '' or self.host is None:
+            self.host = 'localhost'
         self.response = True
 
         self.dialog_window.destroy()
