@@ -376,12 +376,12 @@ class Stream:
 
     def __init__(self, name, flowrate = None, composition = None,
                  basis = "molar", temperature = None, pressure = None,
-                 density = None, compressible = None, std_temperature = (25.0, 'C'), std_pressure = (101325.0, 'Pa')):
+                 density = None, compressible = None, std_temperature = (25.0, 'C'), std_pressure = (101325.0, 'Pa'), mode = None):
 
         if composition is None:
             composition = {}
         self.name = name
-        self.mode = None
+        self.mode = mode
         self.length = None
         self.temperature = None
         self.pressure = None
@@ -1301,29 +1301,10 @@ class Mixer(ProcessObject):
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
         
         temp_avg = temp_sum/len(self.inlets)
-        """
-        #inserting code to find equivalence sets
-        print "starting search for equivalence sets"
-        #create a dataframe to allow use of the run_eqiv.py module
-        data = pd.DataFrame({'id_col':np.arange(0,len(self.inlets[0].flowrate[0]))})
-        for inlet in self.inlets:
-            data['%s_flowrate' % inlet.name] = inlet.flowrate[0]
-            data['%s_temperature' % inlet.name] = inlet.temperature[0]
-            data['%s_pressure' % inlet.name] = inlet.pressure[0]
-        cols = data.columns.values.tolist()
-        cols.remove('id_col')
-        data2 = pd.DataFrame(data = data)
-        
-        pdata = eqv.partitionDataframe(data=data, kde_bw = 0.5)
-        print cols
-        unique = pdata.find_unique_sets(cols, 'id_col')
-        for un in unique:
-            print un
-        """
-        
+                
         if self.outlets[0].mode == "vector": 
             if self.temp_method == 'default':
-                
+                print len(temp_avg)
                 outlet_temp = spo.newton_krylov(F = self.enth_func, xin = temp_avg, f_tol = 1E-3)
             elif self.temp_method == 'fast_mean':
                 #Create streams for each of the inlet streams at the mean value of flowrate, temperature, and pressure
@@ -1332,8 +1313,14 @@ class Mixer(ProcessObject):
                     T = [st.nanmean(inlet.temperature[0]), inlet.temperature[1]]
                     P = [st.nanmean(inlet.pressure[0]), inlet.pressure[1]]
                     F = [st.nanmean(inlet.flowrate[0]), inlet.flowrate[1]]
-                     
-                    temp_streams.append(Stream(name = inlet.name, flowrate = F, temperature = T, pressure = P, basis = inlet.basis, composition = inlet.composition))
+                    #need an average inlet composition
+                    comp = {}
+                    for specie in inlet.composition:
+                        comp[specie] = st.nanmean(inlet.composition[specie]*inlet.flowrate[0])/F[0]
+                    
+                    temp_streams.append(Stream(name = inlet.name, flowrate = F, temperature = T, pressure = P, basis = inlet.basis, composition = comp))  #switch composition to inlet.composition to get old behavior
+                
+
                 temp_m = Mixer(name = 'mean_mix', inlets = temp_streams)
                 
                 outlet_temp = temp_m.outlets[0].temperature[0]*np.ones(len(self.inlets[0].flowrate[0]))
