@@ -1409,7 +1409,7 @@ class SDFIdealGasifier(Reactor):
                  except KeyError:
                      flowrates[ key] = inlet.calcSpeciesMolarFlowrate(key)
 
-        inc_spec = ["CELL", "HCE", "LIGC", "LIGO", "LIGH", "H2", "CO", "CO2", "CH4", "H2O", "N2"]
+        inc_spec = ["CELL", "HCE", "LIGC", "LIGO", "LIGH", "H2", "CO", "CO2", "CH4", "H2O", "N2", "Ar"]
         for spec in inc_spec:
             if spec not in flowrates:
                  flowrates[spec] = np.zeros(len(self.inlets[0].flowrate[0]))
