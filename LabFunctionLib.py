@@ -18,7 +18,10 @@ import matplotlib.pyplot as plt
 import collections
 import element_parser as ep
 import scipy.optimize as spo
-import Cantera as ct
+try:
+    import Cantera as ct
+except ImportError:
+    import cantera as ct
 import time
 import pandas as pd
 import run_eqiv as eqv
