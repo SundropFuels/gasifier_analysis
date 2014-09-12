@@ -79,7 +79,7 @@ class GasifierDataAnalysis:
         conv = uc.UnitConverter()
         #I just created the biomass feed stream, so the reserve will be in 'W'
         biomass_feed.enthalpy_reserve[0] += (conv.convert_units(biomass_feed.flowrate[0], biomass_feed.flowrate[1], 'kg/s')*biomass_feed.composition['H2O']/0.018*-44010.0) #Heat of vaporization of water
-        #NOTE -- this will ONLY WORK if the temperature is AT OR NEAR 25 C -- otherwise, we need a specific heat correction as well; we only have an Hf correction
+        #NOTE -- this will ONLY WORK if the temperatulre is AT OR NEAR 25 C -- otherwise, we need a specific heat correction as well; we only have an Hf correction
         
         if self.gts['entrainment_gas_type'][0] == 0:
             e_type = "N2"

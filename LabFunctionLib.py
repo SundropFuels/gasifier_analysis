@@ -1630,7 +1630,7 @@ class GasifierProcTS(ProcTS):
         self.units['tar_loading'] = 'mg/m^3'
         self.units['tar_loading_incl'] = 'mg/m^3'
 
-    def calc_space_time(self, reactor_vol, excluded_species):
+    def calc_space_time(self, reactor_vol, excluded_species, temp_method = 'fast_mean'):
         """Calculates the inlet space time of the reactor based on the inlet streams"""
         #Right now excluded_species must be in their own stream, find a way to fix this if I can... Maybe create temporary streams without the excluded species.
         conv = uc.UnitConverter()
@@ -1649,13 +1649,10 @@ class GasifierProcTS(ProcTS):
         
         temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
         
-        mix = Mixer('inlet_mix', inlets = temp_inlets, temp_method = 'fast_mean')
+        mix = Mixer('inlet_mix', inlets = temp_inlets, temp_method = temp_method)
 
         #mix.recalc()
 
-
-#        self['mixing_temp'] = mix.outlets[0].temperature[0]
-#        self.units['mixing_temp'] = 'K'
         
         V_dot = mix.outlets[0].gas_volumetric_flowrate('m^3/s')
         self['volumetric_inlet_gas_only'] = V_dot
@@ -1688,15 +1685,14 @@ class GasifierProcTS(ProcTS):
         conv = uc.UnitConverter()
         self['delta_H'] = conv.convert_units(self['dH_max'], self.units['dH_max'], units)*self['X_tot']
 
-
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""
-        pass      
+        pass
 
     def calc_optical_thickness(self, tubeD, density, particle_size):
         """Calculates the optical thickness of the inlet mixture.  Particle size should be a dictionary with d## keys"""
         conv = uc.UnitConverter()
-        
+
         #Need to first get the solids flowrate in
         mdot = 0.0
 	for stream in self.inlet_streams:
@@ -1742,7 +1738,7 @@ class RunInformation:
             query = SQL.select_Query(objects = ['*'], table = table, condition_list = ['run_id=%s' % run_id])
         else:
             query = SQL.select_Query(objects = ['*'], table = table, condition_list = ["run_id='%s'" % run_id])
-        
+
         results = interface.query(query)
 
         #results will be a list of dicts
