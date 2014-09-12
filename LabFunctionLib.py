@@ -1304,7 +1304,7 @@ class Mixer(ProcessObject):
                 
         if self.outlets[0].mode == "vector": 
             if self.temp_method == 'default':
-                print len(temp_avg)
+
                 outlet_temp = spo.newton_krylov(F = self.enth_func, xin = temp_avg, f_tol = 1E-3)
             elif self.temp_method == 'fast_mean':
                 #Create streams for each of the inlet streams at the mean value of flowrate, temperature, and pressure
