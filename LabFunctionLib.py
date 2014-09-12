@@ -1019,7 +1019,7 @@ class CanteraHelper:
         else:
             self.api = "new"
 
-    def importPhase(self, filename, phasename):
+    def importPhase(self, filename, phasename=None):
         return getattr(self, "_importPhase_%s" % self.api)(filename, phasename)
 
     def setMoleFractions(self, phase, mole_fraction_string):
@@ -1046,10 +1046,16 @@ class CanteraHelper:
 
 
     def _importPhase_old(self, filename, phasename):
-        return ct.importPhase(filename, phasename) 
+        if phasename is not None:
+            return ct.importPhase(filename, phasename) 
+        else:
+            return ct.importPhase(filename)
 
     def _importPhase_new(self, filename, phasename):
-        return ct.Solution(filename, phasename)
+        if phasename is not None:
+            return ct.Solution(filename, phasename)
+        else:
+           return ct.Solution(filename)
 
     def _sety_old(self, phase, y_string):
         phase.setMoleFractions(y_string)
@@ -1347,7 +1353,7 @@ class Mixer(ProcessObject):
                    
            
             
-            outlet_temp = spo.bisect(f = self.enth_func,a = 1.0, b=1500.0, r_tol = 1E-3)
+            outlet_temp = spo.bisect(f = self.enth_func,a = 1.0, b=1500.0)
             
         self.outlets[0].set_temperature((outlet_temp, 'K'))
         
