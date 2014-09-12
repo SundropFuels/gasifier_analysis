@@ -22,10 +22,18 @@ try:
     import Cantera as ct
 except ImportError:
     import cantera as ct
+import distutils.version as vch
+#we need to set a global version parameter for the cantera version
+if vch.LooseVersion(ct.__version__) < vch.LooseVersion("2.1.1"):
+    ct_api = "old"
+else:
+    ct_api = "new"
+
 import time
 import pandas as pd
 import run_eqiv as eqv
 import scipy.stats as st
+
 
 conv = uc.UnitConverter()
 
@@ -393,7 +401,9 @@ class Stream:
         self.special_species = {}
         self.enthalpy_reserve = [0.0, 'W']  #This is a cludge fix -- it will be used to handle liquid water until I make streams n-phase capable
 
-        self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
+        self.cantera_helper = CanteraHelper()
+        self.ctphase = self.cantera_helper.importPhase('cantera_biomass/GasifierSpecies.cti', 'gas')
+        #self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
 
     def convert_scalar_to_vector(self, length):
         if self.mode == "scalar":
@@ -403,6 +413,7 @@ class Stream:
             if self.pressure is not None and not isinstance(self.pressure[0], pd.Series) and not isinstance(self.pressure[0],np.ndarray):
                 self.pressure[0] = pd.Series(np.ones(length)*self.pressure[0])
             if self.composition is not None:
+
                 comp = {}
                 for k in self.composition:
                     if not isinstance(self.composition[k], pd.Series) and not isinstance(self.composition[k],np.ndarray):
@@ -814,7 +825,9 @@ class Stream:
                     set_string += '%s:%s, ' % (specie, composition[specie])
             #set the phase composition
             set_string = set_string[:-2] #Remove last ', ' from set_string build
-            self.ctphase.setMoleFractions(set_string)
+            self.cantera_helper.setMoleFractions(self.ctphase, set_string)
+            #self.ctphase.setMoleFractions(set_string)
+            
 
         elif self.basis == 'mass':
             #This is also pretty easy -- just pull all the compositional values and set the phase appropriately
@@ -827,7 +840,8 @@ class Stream:
                     set_string += '%s:%s, ' % (specie, composition[specie])
             #set the phase composition
             set_string = set_string[:-2] #Remove last ', ' from set_string build
-            self.ctphase.setMassFractions(set_string)
+            self.cantera_helper.setMassFractions(self.ctphase, set_string)
+            #self.ctphase.setMassFractions(set_string)
 
         else:
             raise lflException, '%s is not a valid stream basis' % self.basis
@@ -878,12 +892,14 @@ class Stream:
     def _calc_spec_enthalpy_scalar(self):
         """Internal function for calculating the specific enthalpy for scalar valued streams"""
         self.ct_setcomp(self.composition)
-        
-        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        self.cantera_helper.set(self.ctphase, T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')) 
+        #self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
         if self.basis == "mass":
-            self.spec_enthalpy = self.ctphase.enthalpy_mass()	#Units will be J/kg
-        else:							#Everything else is a molar case
-	    self.spec_enthalpy = self.ctphase.enthalpy_mole()
+            self.spec_enthalpy = self.cantera_helper.enthalpy_mass(self.ctphase)
+            #self.spec_enthalpy = self.ctphase.enthalpy_mass()	#Units will be J/kg
+        else:
+            self.spec_enthalpy = self.cantera_helper.enthalpy_mole(self.ctphase)		#Everything else is a molar case
+	    #self.spec_enthalpy = self.ctphase.enthalpy_mole()
 
     def _calc_spec_enthalpy_vector(self):
         """Internal function for calculating the specific enthalpy for vector valued streams"""
@@ -900,8 +916,10 @@ class Stream:
             for k in self.composition:
                 comp[k] = self.composition[k][i]
             self.ct_setcomp(comp)
-            self.ctphase.set(T = conv.convert_units(self.temperature[0][i], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0][i], self.pressure[1], 'Pa'))
-            self.spec_enthalpy[i] = getattr(self.ctphase, "enthalpy_%s" % kw)()
+            self.cantera_helper.set(self.ctphase, T = conv.convert_units(self.temperature[0][i], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0][i], self.pressure[1], 'Pa'))
+            #self.ctphase.set(T = conv.convert_units(self.temperature[0][i], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0][i], self.pressure[1], 'Pa'))
+            self.spec_enthalpy[i] = getattr(self.cantera_helper, "enthalpy_%s" % kw)(self.ctphase)
+            #self.spec_enthalpy[i] = getattr(self.ctphase, "enthalpy_%s" % kw)()
 
 
     def _calc_entropy(self):
@@ -914,17 +932,20 @@ class Stream:
 
         #set the Cantera phase
         self.ct_setcomp(self.composition)
-        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        self.cantera_helper.set(self.ctphase, T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        #self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
 
         if self.basis == 'molar':
             #convert to kmol/s:
             flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
-            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+            self.entropy = [flow*self.cantera_helper.entropy_mole(self.ctphase), 'J/K/s']
+            #self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
 
         elif self.basis == 'mass':
             #convert to kg/s
             flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kg/s')
-            self.entropy = [flow*self.ctphase.entropy_mass(), 'J/K/s']
+            self.entropy = [flow*self.cantera_helper.entropy_mass(self.ctphase), 'J/K/s']
+            #self.entropy = [flow*self.ctphase.entropy_mass(), 'J/K/s']
 
         elif self.basis ==  "gas_volume":
                         
@@ -932,7 +953,8 @@ class Stream:
             p = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
             T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
             flow =  val*p/(8.314*T)
-            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+            self.entropy = [flow*self.cantera_helper.entropy_mole(self.ctphase), 'J/K/s']
+            #self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
 
         elif self.basis == "std_gas_volume":
             
@@ -941,7 +963,8 @@ class Stream:
             p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
             T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
             flow =  val*p/(8.314*T)
-            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+            self.entropy = [flow*self.cantera_helper.entropy_mole(self.ctphase), 'J/K/s']
+            #self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
         
     def convert_to_mass_basis(self):
         if self.basis == 'mass':
@@ -988,6 +1011,99 @@ class Stream:
             self.flowrate = [avg_MW*conv.convert_units(self.flowrate[0],self.flowrate[1], 'mol/s'), 'g/s']
             self.basis = 'mass'
 
+class CanteraHelper:
+    """This class is a wrapper to allow the cantera functions to work in the same way as before"""
+    def __init__(self):
+        if vch.LooseVersion(ct.__version__) < vch.LooseVersion("2.1.1"):
+            self.api = "old"
+        else:
+            self.api = "new"
+
+    def importPhase(self, filename, phasename):
+        return getattr(self, "_importPhase_%s" % self.api)(filename, phasename)
+
+    def setMoleFractions(self, phase, mole_fraction_string):
+        return getattr(self, "_sety_%s" % self.api)(phase, mole_fraction_string)
+
+    def setMassFractions(self, phase, mass_fraction_string):
+        return getattr(self, "_setw_%s" % self.api)(phase, mass_fraction_string) 
+
+    def set(self, phase, T, P, X=None, Y=None):
+        return getattr(self, "_set_%s" % self.api)(phase,T,P,X,Y)
+
+    def enthalpy_mole(self, phase):
+        return getattr(self, "_enthalpy_mole_%s" % self.api)(phase)
+
+    def enthalpy_mass(self, phase):
+        return getattr(self, "_enthalpy_mass_%s" % self.api)(phase)
+
+    def entropy_mole(self, phase):
+        return getattr(self, "_entropy_mole_%s" % self.api)(phase)
+
+    def entropy_mass(self, phase):
+        return getattr(self, "_entropy_mass_%s" % self.api)(phase)
+    
+
+
+    def _importPhase_old(self, filename, phasename):
+        return ct.importPhase(filename, phasename) 
+
+    def _importPhase_new(self, filename, phasename):
+        return ct.Solution(filename, phasename)
+
+    def _sety_old(self, phase, y_string):
+        phase.setMoleFractions(y_string)
+
+    def _sety_new(self, phase, y_string):
+        phase.X = y_string
+
+    def _setw_old(self, phase, w_string):
+        phase.setMassFractions(w_string)
+    
+    def _setw_new(self, phase, w_string):
+        phase.Y = w_string
+
+    def _set_old(self, phase, T, P, X, Y):
+        if X is not None:
+            phase.set(T=T, P=P, X=X)
+        elif Y is not None:
+            phase.set(T=T, P=P, Y=Y)
+        else:
+            phase.set(T=T, P=P)
+
+    def _set_new(self, phase, T,P,X,Y):
+        if X is not None:
+            phase.TPX = T,P,X
+        elif Y is not None:
+            phase.TPY = T,P,Y
+        else:
+            phase.TP = T,P
+
+    def _enthalpy_mole_old(self, phase):
+        return phase.enthalpy_mole()
+
+    def _enthalpy_mole_new(self, phase):
+        return phase.enthalpy_mole
+
+    def _enthalpy_mass_old(self, phase):
+        return phase.enthalpy_mass()
+
+    def _enthalpy_mass_new(self, phase):
+        return phase.enthalpy_mass
+
+    def _entropy_mole_old(self, phase):
+        return phase.entropy_mole()
+
+    def _entropy_mole_new(self, phase):
+        return phase.entropy_mole
+
+    def _entropy_mass_old(self, phase):
+        return phase.entropy_mass()
+
+    def _entropy_mass_new(self, phase):
+        return phase.entropy_mass
+
+
 class ProcessObject:
     
     def __init__(self, inlets, outlets = None):
@@ -1016,7 +1132,6 @@ class ProcessObject:
     def totalInletEnthalpy(self, units):
         H = 0
         for stream in self.inlets:
-            
             H += stream.get_enthalpy(units)
         return H
 
