@@ -107,7 +107,7 @@ class Dataframe(pd.DataFrame):
         self.__init__(data = data, units_dict = self.units)
 
 
-    def SQL_upload_data(self, db_interface, table = "", conditions = None, index_col = "ts"):
+    def SQL_upload_data(self, db_interface, table = "", conditions = None, index_col = "ts", max_query_length = 2000):
         """Allows the user to upload data to a MySQL database; tries an INSERT command first, then an UPDATE if an error is received"""
         if conditions is None:
             conditions = []
@@ -122,47 +122,64 @@ class Dataframe(pd.DataFrame):
         #build the DELETE query
         delete_condition = ""
         for index in range(0, len(self)):
-            delete_condition += "ts = '%s' OR " % self['ts'][index]
+            delete_condition += "%s = '%s' OR " % (index_col, self[index_col][index])
         delete_condition = delete_condition[:-4]
         
         q = SQL.delete_Query(table = table, conditions = [delete_condition,])
+        #print q.getQuery()[:1000]
         db_interface.query(q)
-
-        #Now build the INSERT query
-        key_map = {}
-        q_vals = {}
-        for key in self.columns:
-            if ' ' in key:
-                key_map[key] = '`' + key + '`'
-            else:
-                key_map[key] = key
-            q_vals[key_map[key]] = []
-
-
-
-        for index in range(0,len(self)):
-            
-            
+       
+        #Now build the INSERT query, broken up into max query lengths
+        num_ranges = int(len(self)/max_query_length)
+        
+        rmin = [i for i in range(0,num_ranges*max_query_length,max_query_length)]
+        rmax = [i for i in range(max_query_length, (num_ranges+1)*max_query_length,max_query_length)]
+       
+        if len(self) > max_query_length:
+            rmin.append(num_ranges*max_query_length)
+            rmax.append(len(self))
+        #This is a bit cludgy, but it is what I am doing
+        print rmin
+        print rmax
+        q_vals_set = {}
+        for i in rmin:  #just need the right number of qvals in the set
+            key_map = {}
+            q_vals = {}
             for key in self.columns:
-                
-                #print "key: %s\tvalue: %s" % (key, self[key][index])
-                q_vals[key_map[key]].append("'" + str(self[key][index]) + "'")
-                if q_vals[key_map[key]][index] == "'nan'":
-                    q_vals[key_map[key]][index] = 'NULL'
-                
-        try:
-            query = SQL.multiple_insert_Query(objects = q_vals, table = table)
-            #print query.getQuery()
-            #f1 = open('sql_output.txt', 'w')
-            #f1.write(query.getQuery())
-            #f1.close()
-            db_interface.query(query)
-            query = SQL.commit_Query()
-            db_interface.query(query)
+                if ' ' in key:
+                    key_map[key] = '`' + key + '`'
+                else:
+                    key_map[key] = key
+                q_vals[key_map[key]] = []
+            q_vals_set[i] = q_vals             #use a dict for easy access later
+            
 
-        except SQL.DBToolboxError:
-            raise dfSQLError, "Whoa...can't load that into the table, brah.  Don't know why. %s"
+        i = 0
+        for (range_min, range_max) in zip(rmin, rmax):
+            print "uploading pass %s." % (i+1)
+            for index in range(range_min,range_max):
+            
+            
+                for key in self.columns:
+                
+                    #print "key: %s\tvalue: %s" % (key, self[key][index])
+                    q_vals_set[range_min][key_map[key]].append("'" + str(self[key][index]) + "'")
+                    if q_vals_set[range_min][key_map[key]][index-max_query_length*i] == "'nan'":
+                        q_vals_set[range_min][key_map[key]][index-max_query_length*i] = 'NULL'
+                
+            try:
+                query = SQL.multiple_insert_Query(objects = q_vals_set[range_min], table = table)
+                
+                #f1 = open('sql_output.txt', 'w')
+                #f1.write(query.getQuery())
+                #f1.close()
+                db_interface.query(query)
+                query = SQL.commit_Query()
+                db_interface.query(query)
 
+            except SQL.DBToolboxError:
+                raise dfSQLError, "Whoa...can't load that into the table, brah.  Don't know why. %s"
+            i+=1
 
     def write_csv(self, filename, mode = "new", col_list = None):
         """Writes the dataframe to a csv file"""

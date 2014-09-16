@@ -1722,12 +1722,15 @@ class GasifierProcTS(ProcTS):
         for species in self.proc_species:
             self['%s_normalized' % species] = self["%s_outlet%s" % (species, "%s" % name_qualifier)]/norm_flow
 
-    def calc_tar_rate(self, exit_stream, name_qualifier = "", tar_list = ['C6H6', 'C7H8', 'C10H8'], inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C6H6', 'C7H8', 'C10H8']):
+    def calc_tar_rate(self, exit_stream, name_qualifier = "", tar_list = ['C6H6', 'C7H8', 'C10H8'], inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C6H6', 'C7H8', 'C10H8'], norm_excl_names = ['Ar_MS', 'N2_MS']):
         """Calculate the level of tar in mg/Nm^3 exiting the gasifier"""
         #I'm just going to start by assuming that the outlet flowrate is molar -- I can make it more general later
 	
-
-        outlet_vol_rate = exit_stream.flowrate[0] * 0.0224	#Nm^3/s, assuming mol/s for basis of original flowrate -- make it more general later
+        #Need to normalized tar to remove N2 and Ar
+        factor = 1.0
+        for norm_name in norm_excl_names:
+            factor -= self[norm_name]
+        outlet_vol_rate = exit_stream.flowrate[0] * 0.0224 * factor	#Nm^3/s, assuming mol/s for basis of original flowrate -- make it more general later
 
         total_tar = np.zeros(len(self.index))
         total_tar_incl = np.zeros(len(self.index))
