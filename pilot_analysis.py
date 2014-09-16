@@ -300,11 +300,15 @@ class PilotDataAnalysis:
             q = db.insert_Query(objects, table = "integral_tbl")
             #print q.getQuery()
             self.interface_proc.query(q)
+            q = db.commit_Query()
+            self.interface_proc.query(q)
         except db.DBToolboxError:
             try:
                 
                 q = db.update_Query(objects, table = "integral_tbl", conditions = ["run_id = %s" % objects['run_id']])
                 #print q.getQuery()
+                self.interface_proc.query(q)
+                q = db.commit_Query()
                 self.interface_proc.query(q)
             except db.DBToolboxError:
                 print "Crashed trying to upload to integral data table"
