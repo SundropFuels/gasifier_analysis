@@ -139,8 +139,7 @@ class Dataframe(pd.DataFrame):
             rmin.append(num_ranges*max_query_length)
             rmax.append(len(self))
         #This is a bit cludgy, but it is what I am doing
-        print rmin
-        print rmax
+        
         q_vals_set = {}
         for i in rmin:  #just need the right number of qvals in the set
             key_map = {}

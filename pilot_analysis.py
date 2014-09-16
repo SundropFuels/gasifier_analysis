@@ -230,8 +230,9 @@ class PilotDataAnalysis:
         #5. Calculate tar loads
         self.gts.calc_tar_rate(self.gts.outlet_streams[0], tar_list = ['C6H6', 'C7H8', 'C10H8', 'C6H4CH3CH3', 'C6H5CH2CH3'], inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C4H8', 'C4H10', 'C6H6', 'C7H8', 'C10H8', 'CH3CHCH3CH3', 'C6H4CH3CH3', 'C6H5CH2CH3'])
         print "tar loads calculated"
-        #6. Calculate the space time
+        #6. Calculate the space time and minimum residence time
         self.gts.calc_space_time(self.reactor_size, 'biomass')
+        self.gts.calc_min_RT(tube_length = [18, 'ft'], tube_diameter = [3.5, 'in'], exit_temperature_tag = 'temp_gasifier_exit',exit_pressure_tag =  'pressure_outlet', mode = 'EERC')
         print "space time calculated"
         #7. Calculate optical thickness
 
