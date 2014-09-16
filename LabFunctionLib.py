@@ -1809,6 +1809,29 @@ class GasifierProcTS(ProcTS):
         self['dH_max/A'] = self['dH_max']/A_lat
         self.units['dH_max/A'] = "%s/m^2" % self['dH_max'].units
 
+    def calc_min_RT(self, tube_length, tube_diameter, exit_temperature_tag, exit_pressure_tag, mode = "implicit"):
+        """Calculates a minimum residence time -- needs a unit test!!!"""
+        conv = uc.UnitConverter()
+        V = conv.convert_units(tube_length[0], tube_length[1], 'm') * (conv.convert_units(tube_diameter[0],tube_diameter[1],'m'))**2.0*np.pi/4.0
+        self['t_min'] = getattr(self, "_%s_minRT")(V, exit_temperature_tag, exit_pressure_tag)
+        self.units['t_min'] = 's'
+
+    def _implicit_minRT(self, V, T, P):
+        #sum all of the of molar species
+	conv = uc.UnitConverter()
+        ndot = self.outlet_streams[0].flowrate[0]	#This is naturally in mol/s
+        ndot -= self['H2O_outlet']			#subtract off the outlet water flow
+	ndot += self['H2O_inlet']			#add on the inlet water flow
+        Vdot = ndot * conv.convert_units(self[T], self.units[T], 'K')*8.314/conv.convert_units(self[P], self.units[P], 'Pa')
+        return V/Vdot
+
+    def _EERC_minRT(self, V, T, P):
+        conv = uc.UnitConverter()
+        ndot = self.outlet_streams[0].flowrate[0]
+        ndot -= self['H2O_outlet']
+        ndot += (1-self['H2O_MS']/100.0)/(1-self['ai_outlet_moisture']/100.0)*self['ai_outlet_moisture']/100.0*self.outlet_streams[0]*flowrate[0]
+        Vdot = ndot * conv.convert_units(self[T], self.units[T], 'K')*8.314/conv.convert_units(self[P],self.units[P], 'Pa')
+
     def calc_dimensionless_numbers(self):
         """Calculates Re, Gr, Ri, ... at the inlet and outlet of the tube"""
 	pass
