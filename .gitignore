@@ -4,3 +4,9 @@
 *.log
 *_report.tex
 *.pyc
+GasifierSpecies.xm
+*.csv
+auto_pdf.py
+*.ods
+*.txt
+gri30.xml

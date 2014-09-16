@@ -2,7 +2,7 @@ units(length = "cm", time = "s", quantity = "mol", act_energy = "cal/mol")
 
 ideal_gas(name = "gas",
       elements = " C  H  O Ar N",
-      species = """CELL  HCE  LIGC  LIGH  LIGO CH4 CO CO2 H2 H2O O2 N2 AR C2H6 C2H4 C2H2 C3H8 C3H6 C6H6 C7H8 C10H8 
+      species = """CELL  HCE  LIGC  LIGH  LIGO CH4 CO CO2 H2 H2O O2 N2 AR C2H6 C2H4 C2H2 C3H8 C3H6 C6H6 C7H8 C10H8 C4H8 C4H10 CH3CHCH3CH3 C6H4CH3CH3 C6H5CH2CH3
                   """,
       reactions = "all",
       transport = "Mix",
@@ -376,4 +376,94 @@ species(name = "C10H8",
                      rot_relax = 1)
        )
 
+species(name = "C4H8",
+    atoms = " C:4  H:8 ",
+    thermo = (
+       NASA( [  300.00,  1000.00], [4.42674073E+000,  6.63946249E-003, 
+              6.80652815E-005,  -9.28753562E-008, 3.73473949E-011,
+               -2.11532796E+003,  7.54694860E+000] ),
+       NASA( [ 1000.00,  5000.00], [ 8.02147991E+000,  2.26010707E-002, 
+              -8.31284033E-006,  1.37803072E-009, -8.42175459E-014,
+              -4.30852153E+003, -1.71170697E+001] )
+             ),
+    transport = gas_transport(
+                     geom = "nonlinear",
+                     diam = 6.18,
+                     well_depth = 630.4,
+                     polar = 16.5,
+                     rot_relax = 1)
+       )
 
+#THESE ARE ALL FAKE!!!
+
+species(name = "C4H10",
+    atoms = " C:4  H:10 ",
+    thermo = (
+       NASA( [  300.00,  1000.00], [6.14746806E+000,  1.55947389E-004, 
+              9.67913517E-005,  -1.25483910E-007, 4.97816555E-011,
+               -1.75994402E+004,  -1.09409879E+000] ),
+       NASA( [ 1000.00,  5000.00], [ 9.44535834E+000,  2.57858073E-002, 
+              -9.236129122E-06,  1.48632755E-009, -8.87897158E-014,
+              -2.01382165E+004, -2.63470076E+001] )
+             ),
+    transport = gas_transport(
+                     geom = "nonlinear",
+                     diam = 6.18,
+                     well_depth = 630.4,
+                     polar = 16.5,
+                     rot_relax = 1)
+       )
+
+species(name = "CH3CHCH3CH3",
+    atoms = " C:4  H:10 ",
+    thermo = (
+       NASA( [  300.00,  1000.00], [4.45479276E+000,  8.26057985E-003, 
+              8.29886664E-005,  -1.14647642E-007, 4.64570101E-11,
+               -1.84593931E+004,  4.92743175E+000] ),
+       NASA( [ 1000.00,  5000.00], [ 9.76991245E+000,  2.5499721E-002, 
+              -9.14142932E-006,  1.47328271E-009, -8.80800188E-014,
+              -2.14052647E+004, -3.00329101E+001] )
+             ),
+    transport = gas_transport(
+                     geom = "nonlinear",
+                     diam = 6.18,
+                     well_depth = 630.4,
+                     polar = 16.5,
+                     rot_relax = 1)
+       )
+
+species(name = "C6H4CH3CH3",
+    atoms = " C:4  H:8 ",
+    thermo = (
+       NASA( [  300.00,  1000.00], [4.42674073E+000,  6.63946249E-003, 
+              6.80652815E-005,  -9.28753562E-008, 3.73473949E-011,
+               -2.11532796E+003,  7.54694860E+000] ),
+       NASA( [ 1000.00,  5000.00], [ 8.02147991E+000,  2.26010707E-002, 
+              -8.31284033E-006,  1.37803072E-009, -8.42175459E-014,
+              -4.30852153E+003, -1.71170697E+001] )
+             ),
+    transport = gas_transport(
+                     geom = "nonlinear",
+                     diam = 6.18,
+                     well_depth = 630.4,
+                     polar = 16.5,
+                     rot_relax = 1)
+       )
+
+species(name = "C6H5CH2CH3",
+    atoms = " C:4  H:8 ",
+    thermo = (
+       NASA( [  300.00,  1000.00], [4.42674073E+000,  6.63946249E-003, 
+              6.80652815E-005,  -9.28753562E-008, 3.73473949E-011,
+               -2.11532796E+003,  7.54694860E+000] ),
+       NASA( [ 1000.00,  5000.00], [ 8.02147991E+000,  2.26010707E-002, 
+              -8.31284033E-006,  1.37803072E-009, -8.42175459E-014,
+              -4.30852153E+003, -1.71170697E+001] )
+             ),
+    transport = gas_transport(
+                     geom = "nonlinear",
+                     diam = 6.18,
+                     well_depth = 630.4,
+                     polar = 16.5,
+                     rot_relax = 1)
+       )

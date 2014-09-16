@@ -18,11 +18,22 @@ import matplotlib.pyplot as plt
 import collections
 import element_parser as ep
 import scipy.optimize as spo
-import Cantera as ct
+try:
+    import Cantera as ct
+except ImportError:
+    import cantera as ct
+import distutils.version as vch
+#we need to set a global version parameter for the cantera version
+if vch.LooseVersion(ct.__version__) < vch.LooseVersion("2.1.1"):
+    ct_api = "old"
+else:
+    ct_api = "new"
+
 import time
 import pandas as pd
 import run_eqiv as eqv
 import scipy.stats as st
+
 
 conv = uc.UnitConverter()
 
@@ -101,6 +112,7 @@ class ts_data(df.Dataframe):
         for i in self.columns:
             try:
                 q=SQL.select_Query(objects=['units'], table=glossary, condition_list=["simple_name='%s'" % i])
+                
                 self.units[i]=db_interface.query(q)[0]['units']
             except IndexError:
                 self.units[i]=None
@@ -207,7 +219,7 @@ class ts_data(df.Dataframe):
             try:
 
                 #by default, I ignore nan and inf values
-
+                
                 self.avgs[key] = self[key][np.isfinite(self[key].astype(float))].mean(dtype='float64')
                 self.stdevs[key] = self[key][np.isfinite(self[key].astype(float))].std(dtype='float64')
 
@@ -339,6 +351,11 @@ class Stream:
     species['C6H6'] = {'C':6, 'H':6, 'name':'Benzene','phase':'g'}
     species['C7H8'] = {'C':7, 'H':8, 'name':'Toluene','phase':'g'}
     species['C10H8'] = {'C':10, 'H':8, 'name':'Napthalene', 'phase':'g'}
+    species['C4H8'] = {'C':4, 'H':8, 'name':'1-Butene', 'phase':'g'}
+    species['C4H10'] = {'C':4, 'H':10, 'name':'n-Butane', 'phase':'g'}
+    species['CH3CHCH3CH3'] = {'C':4, 'H':10, 'name':'i-Butane','phase':'g'}
+    species['C6H4CH3CH3'] = {'C':8, 'H':10, 'name':'o-xylene', 'phase':'g'}
+    species['C6H5CH2CH3'] = {'C':8, 'H':10, 'name':'ethyl benzene', 'phase':'g'}
     species['H2O'] = {'H':2,'O':1, 'name':'Water', 'phase':'g'}
     species['Ar'] = {'Ar':1, 'name':'Argon', 'phase':'g'}
     species['N2'] = {'N':2, 'name':'Nitrogen', 'phase':'g'}
@@ -359,12 +376,12 @@ class Stream:
 
     def __init__(self, name, flowrate = None, composition = None,
                  basis = "molar", temperature = None, pressure = None,
-                 density = None, compressible = None, std_temperature = (25.0, 'C'), std_pressure = (101325.0, 'Pa')):
+                 density = None, compressible = None, std_temperature = (25.0, 'C'), std_pressure = (101325.0, 'Pa'), mode = None):
 
         if composition is None:
             composition = {}
         self.name = name
-        self.mode = None
+        self.mode = mode
         self.length = None
         self.temperature = None
         self.pressure = None
@@ -384,7 +401,9 @@ class Stream:
         self.special_species = {}
         self.enthalpy_reserve = [0.0, 'W']  #This is a cludge fix -- it will be used to handle liquid water until I make streams n-phase capable
 
-        self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
+        self.cantera_helper = CanteraHelper()
+        self.ctphase = self.cantera_helper.importPhase('cantera_biomass/GasifierSpecies.cti', 'gas')
+        #self.ctphase = ct.importPhase('cantera_biomass/GasifierSpecies.cti','gas')
 
     def convert_scalar_to_vector(self, length):
         if self.mode == "scalar":
@@ -394,6 +413,7 @@ class Stream:
             if self.pressure is not None and not isinstance(self.pressure[0], pd.Series) and not isinstance(self.pressure[0],np.ndarray):
                 self.pressure[0] = pd.Series(np.ones(length)*self.pressure[0])
             if self.composition is not None:
+
                 comp = {}
                 for k in self.composition:
                     if not isinstance(self.composition[k], pd.Series) and not isinstance(self.composition[k],np.ndarray):
@@ -805,7 +825,9 @@ class Stream:
                     set_string += '%s:%s, ' % (specie, composition[specie])
             #set the phase composition
             set_string = set_string[:-2] #Remove last ', ' from set_string build
-            self.ctphase.setMoleFractions(set_string)
+            self.cantera_helper.setMoleFractions(self.ctphase, set_string)
+            #self.ctphase.setMoleFractions(set_string)
+            
 
         elif self.basis == 'mass':
             #This is also pretty easy -- just pull all the compositional values and set the phase appropriately
@@ -818,7 +840,8 @@ class Stream:
                     set_string += '%s:%s, ' % (specie, composition[specie])
             #set the phase composition
             set_string = set_string[:-2] #Remove last ', ' from set_string build
-            self.ctphase.setMassFractions(set_string)
+            self.cantera_helper.setMassFractions(self.ctphase, set_string)
+            #self.ctphase.setMassFractions(set_string)
 
         else:
             raise lflException, '%s is not a valid stream basis' % self.basis
@@ -869,12 +892,14 @@ class Stream:
     def _calc_spec_enthalpy_scalar(self):
         """Internal function for calculating the specific enthalpy for scalar valued streams"""
         self.ct_setcomp(self.composition)
-        
-        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        self.cantera_helper.set(self.ctphase, T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa')) 
+        #self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
         if self.basis == "mass":
-            self.spec_enthalpy = self.ctphase.enthalpy_mass()	#Units will be J/kg
-        else:							#Everything else is a molar case
-	    self.spec_enthalpy = self.ctphase.enthalpy_mole()
+            self.spec_enthalpy = self.cantera_helper.enthalpy_mass(self.ctphase)
+            #self.spec_enthalpy = self.ctphase.enthalpy_mass()	#Units will be J/kg
+        else:
+            self.spec_enthalpy = self.cantera_helper.enthalpy_mole(self.ctphase)		#Everything else is a molar case
+	    #self.spec_enthalpy = self.ctphase.enthalpy_mole()
 
     def _calc_spec_enthalpy_vector(self):
         """Internal function for calculating the specific enthalpy for vector valued streams"""
@@ -891,8 +916,10 @@ class Stream:
             for k in self.composition:
                 comp[k] = self.composition[k][i]
             self.ct_setcomp(comp)
-            self.ctphase.set(T = conv.convert_units(self.temperature[0][i], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0][i], self.pressure[1], 'Pa'))
-            self.spec_enthalpy[i] = getattr(self.ctphase, "enthalpy_%s" % kw)()
+            self.cantera_helper.set(self.ctphase, T = conv.convert_units(self.temperature[0][i], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0][i], self.pressure[1], 'Pa'))
+            #self.ctphase.set(T = conv.convert_units(self.temperature[0][i], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0][i], self.pressure[1], 'Pa'))
+            self.spec_enthalpy[i] = getattr(self.cantera_helper, "enthalpy_%s" % kw)(self.ctphase)
+            #self.spec_enthalpy[i] = getattr(self.ctphase, "enthalpy_%s" % kw)()
 
 
     def _calc_entropy(self):
@@ -905,17 +932,20 @@ class Stream:
 
         #set the Cantera phase
         self.ct_setcomp(self.composition)
-        self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        self.cantera_helper.set(self.ctphase, T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
+        #self.ctphase.set(T = conv.convert_units(self.temperature[0], self.temperature[1], 'K'), P = conv.convert_units(self.pressure[0], self.pressure[1], 'Pa'))
 
         if self.basis == 'molar':
             #convert to kmol/s:
             flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kmol/s')
-            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+            self.entropy = [flow*self.cantera_helper.entropy_mole(self.ctphase), 'J/K/s']
+            #self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
 
         elif self.basis == 'mass':
             #convert to kg/s
             flow = conv.convert_units(self.flowrate[0], self.flowrate[1], 'kg/s')
-            self.entropy = [flow*self.ctphase.entropy_mass(), 'J/K/s']
+            self.entropy = [flow*self.cantera_helper.entropy_mass(self.ctphase), 'J/K/s']
+            #self.entropy = [flow*self.ctphase.entropy_mass(), 'J/K/s']
 
         elif self.basis ==  "gas_volume":
                         
@@ -923,7 +953,8 @@ class Stream:
             p = conv.convert_units(self.pressure[0], self.pressure[1], 'kg/s^2/m')
             T = conv.convert_units(self.temperature[0], self.temperature[1], 'K')
             flow =  val*p/(8.314*T)
-            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+            self.entropy = [flow*self.cantera_helper.entropy_mole(self.ctphase), 'J/K/s']
+            #self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
 
         elif self.basis == "std_gas_volume":
             
@@ -932,7 +963,8 @@ class Stream:
             p = conv.convert_units(self.std_pressure[0], self.std_pressure[1], 'Pa')
             T = conv.convert_units(self.std_temperature[0], self.std_temperature[1], 'K')
             flow =  val*p/(8.314*T)
-            self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
+            self.entropy = [flow*self.cantera_helper.entropy_mole(self.ctphase), 'J/K/s']
+            #self.entropy = [flow*self.ctphase.entropy_mole(), 'J/K/s']
         
     def convert_to_mass_basis(self):
         if self.basis == 'mass':
@@ -978,6 +1010,105 @@ class Stream:
                 self.composition[species] = species_dict[species]/avg_MW
             self.flowrate = [avg_MW*conv.convert_units(self.flowrate[0],self.flowrate[1], 'mol/s'), 'g/s']
             self.basis = 'mass'
+
+class CanteraHelper:
+    """This class is a wrapper to allow the cantera functions to work in the same way as before"""
+    def __init__(self):
+        if vch.LooseVersion(ct.__version__) < vch.LooseVersion("2.1.1"):
+            self.api = "old"
+        else:
+            self.api = "new"
+
+    def importPhase(self, filename, phasename=None):
+        return getattr(self, "_importPhase_%s" % self.api)(filename, phasename)
+
+    def setMoleFractions(self, phase, mole_fraction_string):
+        return getattr(self, "_sety_%s" % self.api)(phase, mole_fraction_string)
+
+    def setMassFractions(self, phase, mass_fraction_string):
+        return getattr(self, "_setw_%s" % self.api)(phase, mass_fraction_string) 
+
+    def set(self, phase, T, P, X=None, Y=None):
+        return getattr(self, "_set_%s" % self.api)(phase,T,P,X,Y)
+
+    def enthalpy_mole(self, phase):
+        return getattr(self, "_enthalpy_mole_%s" % self.api)(phase)
+
+    def enthalpy_mass(self, phase):
+        return getattr(self, "_enthalpy_mass_%s" % self.api)(phase)
+
+    def entropy_mole(self, phase):
+        return getattr(self, "_entropy_mole_%s" % self.api)(phase)
+
+    def entropy_mass(self, phase):
+        return getattr(self, "_entropy_mass_%s" % self.api)(phase)
+    
+
+
+    def _importPhase_old(self, filename, phasename):
+        if phasename is not None:
+            return ct.importPhase(filename, phasename) 
+        else:
+            return ct.importPhase(filename)
+
+    def _importPhase_new(self, filename, phasename):
+        if phasename is not None:
+            return ct.Solution(filename, phasename)
+        else:
+           return ct.Solution(filename)
+
+    def _sety_old(self, phase, y_string):
+        phase.setMoleFractions(y_string)
+
+    def _sety_new(self, phase, y_string):
+        phase.X = y_string
+
+    def _setw_old(self, phase, w_string):
+        phase.setMassFractions(w_string)
+    
+    def _setw_new(self, phase, w_string):
+        phase.Y = w_string
+
+    def _set_old(self, phase, T, P, X, Y):
+        if X is not None:
+            phase.set(T=T, P=P, X=X)
+        elif Y is not None:
+            phase.set(T=T, P=P, Y=Y)
+        else:
+            phase.set(T=T, P=P)
+
+    def _set_new(self, phase, T,P,X,Y):
+        if X is not None:
+            phase.TPX = T,P,X
+        elif Y is not None:
+            phase.TPY = T,P,Y
+        else:
+            phase.TP = T,P
+
+    def _enthalpy_mole_old(self, phase):
+        return phase.enthalpy_mole()
+
+    def _enthalpy_mole_new(self, phase):
+        return phase.enthalpy_mole
+
+    def _enthalpy_mass_old(self, phase):
+        return phase.enthalpy_mass()
+
+    def _enthalpy_mass_new(self, phase):
+        return phase.enthalpy_mass
+
+    def _entropy_mole_old(self, phase):
+        return phase.entropy_mole()
+
+    def _entropy_mole_new(self, phase):
+        return phase.entropy_mole
+
+    def _entropy_mass_old(self, phase):
+        return phase.entropy_mass()
+
+    def _entropy_mass_new(self, phase):
+        return phase.entropy_mass
+
 
 class ProcessObject:
     
@@ -1171,29 +1302,10 @@ class Mixer(ProcessObject):
             temp_sum += conv.convert_units(inlet.temperature[0], inlet.temperature[1], 'K')
         
         temp_avg = temp_sum/len(self.inlets)
-        """
-        #inserting code to find equivalence sets
-        print "starting search for equivalence sets"
-        #create a dataframe to allow use of the run_eqiv.py module
-        data = pd.DataFrame({'id_col':np.arange(0,len(self.inlets[0].flowrate[0]))})
-        for inlet in self.inlets:
-            data['%s_flowrate' % inlet.name] = inlet.flowrate[0]
-            data['%s_temperature' % inlet.name] = inlet.temperature[0]
-            data['%s_pressure' % inlet.name] = inlet.pressure[0]
-        cols = data.columns.values.tolist()
-        cols.remove('id_col')
-        data2 = pd.DataFrame(data = data)
-        
-        pdata = eqv.partitionDataframe(data=data, kde_bw = 0.5)
-        print cols
-        unique = pdata.find_unique_sets(cols, 'id_col')
-        for un in unique:
-            print un
-        """
-        
+                
         if self.outlets[0].mode == "vector": 
             if self.temp_method == 'default':
-                
+
                 outlet_temp = spo.newton_krylov(F = self.enth_func, xin = temp_avg, f_tol = 1E-3)
             elif self.temp_method == 'fast_mean':
                 #Create streams for each of the inlet streams at the mean value of flowrate, temperature, and pressure
@@ -1202,8 +1314,14 @@ class Mixer(ProcessObject):
                     T = [st.nanmean(inlet.temperature[0]), inlet.temperature[1]]
                     P = [st.nanmean(inlet.pressure[0]), inlet.pressure[1]]
                     F = [st.nanmean(inlet.flowrate[0]), inlet.flowrate[1]]
-                     
-                    temp_streams.append(Stream(name = inlet.name, flowrate = F, temperature = T, pressure = P, basis = inlet.basis, composition = inlet.composition))
+                    #need an average inlet composition
+                    comp = {}
+                    for specie in inlet.composition:
+                        comp[specie] = st.nanmean(inlet.composition[specie]*inlet.flowrate[0])/F[0]
+                    
+                    temp_streams.append(Stream(name = inlet.name, flowrate = F, temperature = T, pressure = P, basis = inlet.basis, composition = comp))  #switch composition to inlet.composition to get old behavior
+                
+
                 temp_m = Mixer(name = 'mean_mix', inlets = temp_streams)
                 
                 outlet_temp = temp_m.outlets[0].temperature[0]*np.ones(len(self.inlets[0].flowrate[0]))
@@ -1279,7 +1397,7 @@ class SDFIdealGasifier(Reactor):
                  except KeyError:
                      flowrates[ key] = inlet.calcSpeciesMolarFlowrate(key)
 
-        inc_spec = ["CELL", "HCE", "LIGC", "LIGO", "LIGH", "H2", "CO", "CO2", "CH4", "H2O", "N2"]
+        inc_spec = ["CELL", "HCE", "LIGC", "LIGO", "LIGH", "H2", "CO", "CO2", "CH4", "H2O", "N2", "Ar"]
         for spec in inc_spec:
             if spec not in flowrates:
                  flowrates[spec] = np.zeros(len(self.inlets[0].flowrate[0]))
@@ -1605,11 +1723,10 @@ class GasifierProcTS(ProcTS):
         for species in self.proc_species:
             self['%s_normalized' % species] = self["%s_outlet%s" % (species, "%s" % name_qualifier)]/norm_flow
 
-    def calc_tar_rate(self, exit_stream, name_qualifier = ""):
+    def calc_tar_rate(self, exit_stream, name_qualifier = "", tar_list = ['C6H6', 'C7H8', 'C10H8'], inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C6H6', 'C7H8', 'C10H8']):
         """Calculate the level of tar in mg/Nm^3 exiting the gasifier"""
         #I'm just going to start by assuming that the outlet flowrate is molar -- I can make it more general later
-	tar_list = ['C6H6', 'C7H8', 'C10H8']
-        inclusive_tar_list = ['C2H2', 'C2H4', 'C2H6', 'C3H8', 'C3H6', 'C6H6', 'C7H8', 'C10H8']
+	
 
         outlet_vol_rate = exit_stream.flowrate[0] * 0.0224	#Nm^3/s, assuming mol/s for basis of original flowrate -- make it more general later
 
@@ -1680,14 +1797,37 @@ class GasifierProcTS(ProcTS):
 
         #Determine the potential change in enthalpy using built-in functions
 
+    def calc_normalized_max_dH(self, tube_length, tube_diameter):
+        """Calculates the dH_max/A measurement"""
+        conv = uc.UnitConverter()
+        A_lat = conv.convert_units(tube_length[0], tube_length[1], 'm') * conv.convert_units(tube_diameter[0], tube_length[1], 'm') * 3.14159
+        self['dH_max/A'] = self['dH_max']/A_lat
+        self.units['dH_max/A'] = "%s/m^2" % self['dH_max'].units
+
+    def calc_dimensionless_numbers(self):
+        """Calculates Re, Gr, Ri, ... at the inlet and outlet of the tube"""
+	pass
+
+
     def generate_enthalpy_change(self, units):
         """Calculates the enthalpy change by multiplying the max change over the conversion"""
         conv = uc.UnitConverter()
         self['delta_H'] = conv.convert_units(self['dH_max'], self.units['dH_max'], units)*self['X_tot']
 
+<<<<<<< HEAD
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""
         pass
+=======
+
+    def calc_min_residence_time(self, tube_length, tube_diameter):
+        """Calculates the minimum bound on the residence time, assuming the conversion observed and heat up at the instant materials enter the reactor"""
+        Vdot = self.outlet_streams[0].gas_volumetric_flowrate('m^3/s')
+	conv = uc.UnitConverter()
+        Vrx = conv.convert_units(tube_length[0], tube_length[1], 'm')*(conv.convert_units(tube_diameter[0],tube_diameter[1], 'm'))**2/4.0*3.14159
+        self['t_min'] = Vrx/Vdot
+        self.units['t_min'] = 's'
+>>>>>>> fb42dba9c8799439b6037b3535251d711f988261
 
     def calc_optical_thickness(self, tubeD, density, particle_size):
         """Calculates the optical thickness of the inlet mixture.  Particle size should be a dictionary with d## keys"""
@@ -1723,7 +1863,10 @@ class GasifierProcTS(ProcTS):
     def generate_CH4_yield(self):
         if 'C_inlet' not in self.columns or 'CH4_outlet' not in self.columns:
             raise NoInletOutletFlowrateError, "The inlet and outlet flowrates of carbon/CH4 must be solved for first"
-        self['CH4_yield'] = (self['CH4_outlet']-self['CH4_inlet'])/(self['C_inlet']-self['CH4_inlet'])
+        self['CH4_yield'] = (self['CH4_outlet']-self['CH4_inlet'])/(self['C_inlet']-self['CH4_inlet'] - self['CO2_inlet'])
+
+
+
 
 class RunInformation:
     """Container class for information about experimental runs -- wrapper class around the dictionary object"""
