@@ -166,6 +166,8 @@ class RunTableUploader:
             q = db.insert_Query(objects = objects, table = "setpoint_tbl")
             #print q.getQuery()
             self.interface.query(q)
+            q = db.commit_Query()
+            self.interface.query(q)
 
         for bm in self.biomasses:
             objects = {}
@@ -175,6 +177,8 @@ class RunTableUploader:
             
             q = db.insert_Query(objects = objects, table = "biomass_tbl")
             #print q.getQuery()
+            self.interface.query(q)
+            q = db.commit_Query()
             self.interface.query(q)
         #now upload the run information, changing to NULL where appropriate
 
@@ -215,9 +219,13 @@ class RunTableUploader:
             try:
                  q = db.insert_Query(objects = d, table = "run_info_tbl")
                  self.interface.query(q)
+                 q = db.commit_Query()
+                 self.interface.query(q)
             except db.DBToolboxError:
                 try:
                     q = db.update_Query(objects = d, table = "run_info_tbl", conditions = ["%s = '%s'" % ('run_id', d['run_id'])])
+                    self.interface.query(q)
+                    q = db.commit_Query()
                     self.interface.query(q)
                 except db.DBToolboxError:
                     raise Exception, "Trouble loading the data, man.  How bout you go catch some tasty waves?"         
