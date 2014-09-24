@@ -156,7 +156,7 @@ class PilotDataAnalysis:
         if superheater_gas_type not in ['CO2', 'N2']:
              raise Exception, "%s is not a recognized superheater gas type" % superheater_gas_type
 
-        X_superheater_purge = Stream('X_superheater_purge', flowrate = self.gts.val_units('mass_flow_superheater_purge'), composition = {superheater_gas_type:1.0}, basis = "std_gas_volume")
+        X_superheater_purge = Stream('X_superheater_purge', flowrate = self.gts.val_units('mass_flow_superheater_purge'), composition = {'N2':1.0}, basis = "std_gas_volume")
         X_superheater_purge.set_temperature(self.gts.val_units('temp_steam_gasifier_inlet'))
         X_superheater_purge.set_pressure(self.gts.val_units('pressure_bell_housing'))
         X_superheater_purge.set_std_temperature = MFC_ST
