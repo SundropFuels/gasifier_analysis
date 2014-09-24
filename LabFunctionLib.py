@@ -1729,7 +1729,7 @@ class GasifierProcTS(ProcTS):
         #Need to normalized tar to remove N2 and Ar
         factor = 1.0
         for norm_name in norm_excl_names:
-            factor -= self[norm_name]
+            factor -= self[norm_name]/100.0
         outlet_vol_rate = exit_stream.flowrate[0] * 0.0224 * factor	#Nm^3/s, assuming mol/s for basis of original flowrate -- make it more general later
 
         total_tar = np.zeros(len(self.index))
@@ -1831,6 +1831,7 @@ class GasifierProcTS(ProcTS):
         ndot -= self['H2O_outlet']
         ndot += (1-self['H2O_MS']/100.0)/(1-self['ai_outlet_moisture']/100.0)*self['ai_outlet_moisture']/100.0*self.outlet_streams[0].flowrate[0]
         Vdot = ndot * conv.convert_units(self[T], self.units[T], 'K')*8.314/conv.convert_units(self[P],self.units[P], 'Pa')
+        return V/Vdot
 
     def calc_dimensionless_numbers(self):
         """Calculates Re, Gr, Ri, ... at the inlet and outlet of the tube"""
