@@ -97,6 +97,7 @@ class PilotDataAnalysis:
         entrainment.std_pressure = MFC_SP
         
         #2 Sweep
+
         sweep = Stream('sweep', flowrate = self.gts.val_units('mass_flow_sweep'), composition = {'N2':1}, basis = 'std_gas_volume')
         sweep.set_temperature((25.0, 'C')) #Assumed ambient
         sweep.set_pressure(self.gts.val_units('pressure_bell_housing')) #PI_924502
