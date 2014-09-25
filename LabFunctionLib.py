@@ -1067,6 +1067,7 @@ class CanteraHelper:
         phase.setMassFractions(w_string)
     
     def _setw_new(self, phase, w_string):
+        #print w_string
         phase.Y = w_string
 
     def _set_old(self, phase, T, P, X, Y):
@@ -1134,7 +1135,7 @@ class ProcessObject:
     
         self.inlets = inlets
         self.outlets = outlets
-    
+        
     def totalInletEnthalpy(self, units):
         H = 0
         for stream in self.inlets:
@@ -1175,11 +1176,13 @@ class Mixer(ProcessObject):
     def __init__(self, name, outlet_pressure = None, temp_method = 'default', **kwargs):
         ProcessObject.__init__(self, **kwargs)
         self.temp_method = temp_method
+        
         self.outlets = [Stream(name = '%s_outlet' % name)]
         
         #Need to solve for the outlet stream pressure, temperature, and composition
         #pressure is easy -- it is assumed that the pressure drops to the LOWEST stream pressure entering the mixer if an outlet pressure is not specified
         self._calc_outlet_pressure(outlet_pressure)
+	
         self._calc_outlet_flowrate()
         self._calc_outlet_temperature()
 
@@ -1240,6 +1243,7 @@ class Mixer(ProcessObject):
         c = True
         basis_fl_dict = {'molar':'mol/s', 'mass':'kg/s', 'gas_volume':'m^3/s', 'std_gas_volume':'m^3/s'}
         basis_choice = self.inlets[0].basis
+        
         #if we have vectors for outlet flowrates, convert all the streams to vector streams
         mode = None
         for inlet in self.inlets:
@@ -1277,7 +1281,7 @@ class Mixer(ProcessObject):
         for species in species_list:
             spec_sum = 0            
             for inlet in self.inlets:
-                if species in inlet.composition:               
+                if species in inlet.composition: 
                     spec_sum += conv.convert_units(inlet.flowrate[0], inlet.flowrate[1], basis_fl_dict[basis_choice])*inlet.composition[species]
             composition[species] = spec_sum/fl_sum
         
@@ -1316,8 +1320,11 @@ class Mixer(ProcessObject):
                     #need an average inlet composition
                     comp = {}
                     for specie in inlet.composition:
-                        comp[specie] = st.nanmean(inlet.composition[specie]*inlet.flowrate[0])/F[0]
-                    
+                        if F[0] != 0:                        
+                            comp[specie] = st.nanmean(inlet.composition[specie]*inlet.flowrate[0])/F[0]
+                        else:
+                            comp[specie] = st.nanmean(inlet.composition[specie])
+
                     temp_streams.append(Stream(name = inlet.name, flowrate = F, temperature = T, pressure = P, basis = inlet.basis, composition = comp))  #switch composition to inlet.composition to get old behavior
                 
 
@@ -1762,12 +1769,12 @@ class GasifierProcTS(ProcTS):
             for species in stream.composition:
                 if species in excluded_species:
                     excl_inlets.append(stream)
-
+        
         
         #need a mixer that works on both the FULL streams as well as the gas-only
         
         temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
-        
+
         mix = Mixer('inlet_mix', inlets = temp_inlets, temp_method = 'fast_mean')
 
         #mix.recalc()
