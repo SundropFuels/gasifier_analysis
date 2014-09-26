@@ -124,7 +124,7 @@ class Dataframe(pd.DataFrame):
         for index in range(0, len(self)):
             delete_condition += "%s = '%s' OR " % (index_col, self[index_col][index])
         delete_condition = delete_condition[:-4]
-        
+
         q = SQL.delete_Query(table = table, conditions = [delete_condition,])
         #print q.getQuery()[:1000]
         db_interface.query(q)
@@ -134,6 +134,11 @@ class Dataframe(pd.DataFrame):
         
         rmin = [i for i in range(0,num_ranges*max_query_length,max_query_length)]
         rmax = [i for i in range(max_query_length, (num_ranges+1)*max_query_length,max_query_length)]
+
+        if num_ranges == 0:
+            rmin = [0]
+            rmax = [len(self)]
+        
        
         if len(self) > max_query_length:
             rmin.append(num_ranges*max_query_length)

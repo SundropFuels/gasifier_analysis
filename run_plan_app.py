@@ -11,7 +11,7 @@ class PlanApp:
 
     sp_info = ['temperature', 'pressure', 'biomass_rate', 'steam_flow', 'steam_temp', 'ent_CO2', 'sweep_CO2', 'Ar_tracer', 'superheater_purge', 'tube_diameter']
     bm_info = ['sample_name', 'moisture', 'w_c', 'w_n', 'w_h', 'd10', 'd50', 'd90']
-    run_info = ['run_id', 'exp_id', 'ts_start', 'ts_stop', 'ss_start', 'ss_stop', 'operator', 'feeder_slope', 'feeder_intercept']
+    run_info = ['run_id', 'exp_id', 'ts_start', 'ts_stop', 'ss_start', 'ss_stop', 'operator', 'feeder_slope', 'feeder_intercept', 'superheater_gas_type', 'quality']
 
     labels = {}
     labels['temperature'] = 'Temperature (F)'
@@ -41,6 +41,8 @@ class PlanApp:
     labels['operator'] = 'Sundrop Supervisor'
     labels['feeder_slope'] = 'Feeder calibration slope'
     labels['feeder_intercept'] = 'Feeder calibration intercept'
+    labels['superheater_gas_type'] = 'Superheater Gas Type'
+    labels['quality'] = 'Run Quality'
 
 
     def __init__(self):
@@ -94,7 +96,7 @@ class PlanApp:
         self.data = psql.read_frame(q.getQuery(), con = self.interface.connection)
 
 
-        self.store = Gtk.ListStore(bool, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str) #This is awful -- you really should not do it this way
+        self.store = Gtk.ListStore(bool, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str) #This is awful -- you really should not do it this way
         #add all of the rows to the store
         self.col_lookup = {}
         i = 1

@@ -97,11 +97,13 @@ class PilotDataAnalysis:
         entrainment.std_pressure = MFC_SP
         
         #2 Sweep
-        sweep = Stream('sweep', flowrate = self.gts.val_units('mass_flow_sweep'), composition = {'CO2':1}, basis = 'std_gas_volume')
+
+        sweep = Stream('sweep', flowrate = self.gts.val_units('mass_flow_sweep'), composition = {'N2':1}, basis = 'std_gas_volume')
         sweep.set_temperature((25.0, 'C')) #Assumed ambient
         sweep.set_pressure(self.gts.val_units('pressure_bell_housing')) #PI_924502
         sweep.std_temperature = MFC_ST
         sweep.std_pressure = MFC_SP
+        
         
         #3 Steam        
         steam = Stream('steam', flowrate = self.gts.val_units('mass_flow_steam'), composition = {'H2O':1}, basis = 'mass')
@@ -148,12 +150,17 @@ class PilotDataAnalysis:
         biomass_feed.set_temperature((25.0, 'C'))
         biomass_feed.set_pressure(self.gts.val_units('pressure_bell_housing'))      
 
-        #6 N2 Superheater Purge
-        N2_superheater_purge = Stream('N2_superheater_purge', flowrate = self.gts.val_units('mass_flow_superheater_purge'), composition = {'N2':1.0}, basis = "std_gas_volume")
-        N2_superheater_purge.set_temperature(self.gts.val_units('temp_steam_gasifier_inlet'))
-        N2_superheater_purge.set_pressure(self.gts.val_units('pressure_bell_housing'))
-        N2_superheater_purge.set_std_temperature = MFC_ST
-        N2_superheater_purge.set_std_pressure = MFC_SP
+        #6 N2 Superheater Purge (now can be CO2 instead)
+
+        superheater_gas_type = self.run_info['superheater_gas_type']
+        if superheater_gas_type not in ['CO2', 'N2']:
+             raise Exception, "%s is not a recognized superheater gas type" % superheater_gas_type
+
+        X_superheater_purge = Stream('X_superheater_purge', flowrate = self.gts.val_units('mass_flow_superheater_purge'), composition = {'N2':1.0}, basis = "std_gas_volume")
+        X_superheater_purge.set_temperature(self.gts.val_units('temp_steam_gasifier_inlet'))
+        X_superheater_purge.set_pressure(self.gts.val_units('pressure_bell_housing'))
+        X_superheater_purge.set_std_temperature = MFC_ST
+        X_superheater_purge.set_std_pressure = MFC_SP
 
         #Set up exit gas flowrates
         gas_exit = self.gts.outlet_stream_from_tracer([argon_tracer_feed],"Molar", "Ar", self.gts['Ar_MS']/100.0, 'gas_exit')
@@ -180,7 +187,7 @@ class PilotDataAnalysis:
         #!!# This is where you will include the laser Raman data, if desired
 
 
-        self.gts.inlet_streams = [entrainment, sweep, steam, argon_tracer_feed, biomass_feed, N2_superheater_purge]
+        self.gts.inlet_streams = [entrainment, sweep, steam, argon_tracer_feed, biomass_feed, X_superheater_purge]
         
         self.gts.outlet_streams = [gas_exit]
         
@@ -232,7 +239,7 @@ class PilotDataAnalysis:
         print "tar loads calculated"
         #6. Calculate the space time and minimum residence time
         self.gts.calc_space_time(self.reactor_size, 'biomass')
-        self.gts.calc_min_RT(tube_length = [18, 'ft'], tube_diameter = [3.5, 'in'], exit_temperature_tag = 'temp_gasifier_exit',exit_pressure_tag =  'pressure_outlet', mode = 'EERC')
+        self.gts.calc_min_RT(tube_length = [18, 'ft'], tube_diameter = [3.5, 'in'], exit_temperature_tag = 'temp_skin_tube_middle',exit_pressure_tag =  'pressure_outlet', mode = 'EERC')
         print "space time calculated"
         #7. Calculate optical thickness
 

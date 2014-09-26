@@ -184,7 +184,7 @@ class RunTableUploader:
 
         
 
-        run_info = ['run_id', 'exp_id', 'ts_start', 'ts_stop', 'ss_start', 'ss_stop', 'operator', 'feeder_slope', 'feeder_intercept']
+        run_info = ['run_id', 'exp_id', 'ts_start', 'ts_stop', 'ss_start', 'ss_stop', 'operator', 'feeder_slope', 'feeder_intercept', 'superheater_gas_type', 'quality']
 
         sp_info = ['temperature', 'pressure', 'biomass_rate', 'steam_flow', 'steam_temp', 'ent_CO2', 'sweep_CO2', 'Ar_tracer', 'superheater_purge', 'tube_diameter']
 
