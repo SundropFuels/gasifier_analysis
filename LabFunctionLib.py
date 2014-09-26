@@ -1775,13 +1775,9 @@ class GasifierProcTS(ProcTS):
         #need a mixer that works on both the FULL streams as well as the gas-only
         
         temp_inlets = [i for i in self.inlet_streams if i not in excl_inlets] 
-<<<<<<< HEAD
-        
-        mix = Mixer('inlet_mix', inlets = temp_inlets, temp_method = temp_method)
-=======
 
-        mix = Mixer('inlet_mix', inlets = temp_inlets, temp_method = 'fast_mean')
->>>>>>> 4a74d7e0da90f47dbe43e6257936a32a23afa158
+        mix = Mixer('inlet_mix', inlets = temp_inlets, temp_method = temp_method)
+
 
         #mix.recalc()
 
@@ -1853,11 +1849,11 @@ class GasifierProcTS(ProcTS):
         conv = uc.UnitConverter()
         self['delta_H'] = conv.convert_units(self['dH_max'], self.units['dH_max'], units)*self['X_tot']
 
-<<<<<<< HEAD
+
     def calc_min_residence_time(self):
         """Calculates the minimum bound on the residence time, assuming complete conversion and heat up at the instant materials enter the reactor"""
         pass
-=======
+
 
     def calc_min_residence_time(self, tube_length, tube_diameter):
         """Calculates the minimum bound on the residence time, assuming the conversion observed and heat up at the instant materials enter the reactor"""
@@ -1866,7 +1862,6 @@ class GasifierProcTS(ProcTS):
         Vrx = conv.convert_units(tube_length[0], tube_length[1], 'm')*(conv.convert_units(tube_diameter[0],tube_diameter[1], 'm'))**2/4.0*3.14159
         self['t_min'] = Vrx/Vdot
         self.units['t_min'] = 's'
->>>>>>> fb42dba9c8799439b6037b3535251d711f988261
 
     def calc_optical_thickness(self, tubeD, density, particle_size):
         """Calculates the optical thickness of the inlet mixture.  Particle size should be a dictionary with d## keys"""
