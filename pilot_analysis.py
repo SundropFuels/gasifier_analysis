@@ -89,8 +89,15 @@ class PilotDataAnalysis:
         MFC_SP = (101325.0, 'Pa')
         MFC_ST = (70.0, 'F')
         
-        #1 Entrainment        
-        entrainment = Stream('entrainment', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {'CO2':1}, basis = 'std_gas_volume')
+        #1 Entrainment   
+        conv = uc.UnitConverter()     
+        roto_feed_pressure = conv.convert_units(self.gts['pressure_roto_feed_injector_inlet'], self.gts.units['pressure_roto_feed_injector_inlet'], 'psig')
+        entrainment_in = Stream('entrainment', flowrate = self.gts.val_units('mass_flow_entrainment'), composition = {'CO2':1}, basis = 'std_gas_volume')
+        entrainment_leak = Stream('entrainment_leak', flowrate = (-0.00176 * roto_feed_pressure **2 + 0.28478 * roto_feed_pressure - 5.71023, 'lb/hr'), composition = {'CO2':1}, basis = 'mass')
+        leak_mole = entrainment_leak.calcSpeciesMolarFlowrate('CO2')
+        in_mole = entrainment_in.calcSpeciesMolarFlowrate('CO2')
+        entrainment_mole = in_mole - leak_mole
+        entrainment = Stream('entrainment', flowrate = (entrainment_mole, 'mol/s'), composition = {'CO2':1}, basis = 'molar')
         entrainment.set_temperature((25.0, 'C')) #Assumed ambient
         entrainment.set_pressure(self.gts.val_units('pressure_bell_housing')) #PI_924502
         entrainment.std_temperature = MFC_ST
